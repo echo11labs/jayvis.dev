@@ -23,10 +23,12 @@ import {
   Code2,
   Sparkles,
   Boxes,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { useDiagramStore } from '@/store/diagram-store';
 import { serializeDBML } from '@/lib/parser/dbml';
 import { exportDDL } from '@/lib/export/ddl';
+import { downloadErdSvg } from '@/lib/export/erd-svg';
 import { toast } from 'sonner';
 
 interface CommandPaletteProps {
@@ -76,6 +78,16 @@ export function CommandPalette({
     a.click();
     URL.revokeObjectURL(url);
     toast.success('Exported schema.dbml');
+    close();
+  }, [ast, close]);
+
+  const handleExportErd = useCallback(() => {
+    const positions: Record<string, { x: number; y: number }> = {};
+    for (const n of useDiagramStore.getState().nodes) {
+      positions[n.id] = { x: n.position.x, y: n.position.y };
+    }
+    downloadErdSvg(ast, positions);
+    toast.success('Exported stitchdb-erd.svg');
     close();
   }, [ast, close]);
 
@@ -131,6 +143,10 @@ export function CommandPalette({
           <CommandItem onSelect={handleExportDBML}>
             <FileCode2 className="mr-2 h-4 w-4 text-violet-400" />
             Export as DBML
+          </CommandItem>
+          <CommandItem onSelect={handleExportErd}>
+            <ImageIcon className="mr-2 h-4 w-4 text-emerald-400" />
+            Export ERD as SVG
           </CommandItem>
         </CommandGroup>
 

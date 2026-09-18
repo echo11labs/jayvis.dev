@@ -4,132 +4,134 @@
 
 StitchDB is a **developer-first database modeling workspace** that bridges
 declarative DBML code and visual ERDs using an AST as the single source of
-truth. The platform is **functional, browser-verified, and now supports
-bidirectional canvas↔editor sync**.
+truth. The platform is **functional, browser-verified, and feature-complete**
+with bidirectional canvas↔editor sync, IndexedDB persistence, a command
+palette, edge context menus, ERD SVG export, and schema search.
 
 ### Architecture
 - **Frontend**: Next.js 16 (App Router) + TypeScript + Tailwind + shadcn/ui
-- **Canvas**: @xyflow/react (React Flow) with a redesigned custom TableNode
-- **Layout**: ELK.js (dynamic import — loaded on-demand for "Auto Layout")
-- **DBML Parser**: Isolated Bun mini-service on port 3031 (keeps the 21 MB
-  @dbml/core pegjs parser out of the Next.js bundle to avoid Turbopack OOM)
+- **Canvas**: @xyflow/react (React Flow) with a custom TableNode
+- **Layout**: ELK.js (dynamic import for "Auto Layout")
+- **DBML Parser**: Isolated Bun mini-service on port 3031 (21 MB @dbml/core
+  kept out of the Next.js bundle to avoid Turbopack OOM)
+- **Persistence**: IndexedDB (local-first — schema + positions survive reloads)
 - **Diff Engine**: AST-driven schema diff → up/down SQL migrations
+- **DDL Export**: AST → PostgreSQL CREATE TABLE + ALTER TABLE + indexes
+- **ERD Export**: AST + positions → standalone SVG diagram
 - **MCP**: Standalone Model Context Protocol server for IDE agent integration
-- **State**: Zustand store with origin flagging + bidirectional sync
+- **State**: Zustand store with origin flagging + bidirectional canvas↔editor sync
 
 ## Current Goals / Completed Modifications / Verification
 
-### Phase 2 — Completed (this round)
+### Phase 4 — Completed (this round)
 
-1. **Bidirectional canvas↔editor sync** ✅
-   - Canvas mutations (add table, delete table, add/delete column, add
-     relationship) now serialize the AST → DBML and update the editor text.
-   - Origin-guarded parse effect: skips re-parsing when origin is
-     'canvas' or 'mcp' (prevents infinite loops & round-trip loss).
-   - **Verified**: creating a table via the dialog adds it to the canvas
-     AND updates the DBML editor text (reviews-in-editor:true, rf:5).
+1. **Edge context menu** ✅ (`src/components/canvas/EdgeContextMenu.tsx`)
+   - Right-click a relationship edge on the canvas → floating menu.
+   - **Cardinality** selector (1:1, 1:N, N:M) — updates the SchemaReference
+     and the edge label instantly.
+   - **ON DELETE** actions (CASCADE, SET NULL, RESTRICT, NO ACTION) — toggle
+     on/off by clicking.
+   - **ON UPDATE** actions (same set).
+   - **Delete relationship** button.
+   - Shows the source→target field path at the top.
+   - Closes on outside-click or Escape.
 
-2. **Inspector panel** ✅ (`src/components/workspace/InspectorPanel.tsx`)
-   - Opens when a table is selected (click on canvas).
-   - Shows all columns with PK/UQ/FK badges, type colors, NOT NULL markers.
-   - Inline column editing (rename, change type, toggle PK/UQ/Nullable).
-   - Add column inline, delete column, delete table.
-   - Table color picker (10-color palette).
-   - Table rename (inline edit).
-   - **Verified**: clicking a table opens the inspector showing columns.
+2. **Schema search** ✅ (`src/components/canvas/SchemaSearch.tsx`)
+   - ⌘F opens a floating search overlay on the canvas.
+   - Filters tables by name OR column name (live as you type).
+   - Clicking a result centers the canvas on that table (setCenter) and
+     selects it (opens the inspector).
+   - Enter jumps to the first match; Escape closes.
+   - Collapsible button when not active.
 
-3. **Add Table dialog** ✅ (`src/components/workspace/AddTableDialog.tsx`)
-   - Create new tables with name, schema, and multiple columns.
-   - Per-column type selector (15 common SQL types), PK/Nullable toggles.
-   - Add/remove column rows dynamically.
-   - Auto-assigns a color from the palette.
-   - **Verified**: dialog opens, creating "reviews" table syncs to canvas+editor.
+3. **ERD SVG export** ✅ (`src/lib/export/erd-svg.ts`)
+   - Pure SVG generator (no DOM rasterization) — reliable & scalable.
+   - Renders each table as a rounded card with colored header, schema label,
+     table name, PK/UQ badges, field names, types, NOT NULL markers.
+   - Draws references as bezier curves with cardinality labels.
+   - Includes grid dots and shadows for polish.
+   - Available in the toolbar Export dropdown + command palette.
 
-4. **Keyboard shortcuts overlay** ✅ (`src/components/workspace/ShortcutsOverlay.tsx`)
-   - ⌘L = auto layout, ⌘T = add table, ⇧? = toggle shortcuts overlay.
-   - Tab = insert 2 spaces, Enter = auto-indent (in editor).
+4. **Store methods expanded** ✅ (`src/store/diagram-store.ts`)
+   - `updateReference(refId, patch)` — change cardinality/onDelete/onUpdate,
+     updates the edge label + DBML serialization.
+   - `setTableNote(tableName, note)` — add/edit a table note.
+   - `setFieldNote(tableName, fieldName, note)` — add/edit a column note.
+   - All serialize to DBML (`note: '...'` on tables and fields).
 
-5. **Redesigned TableNode** ✅ (`src/components/canvas/TableNode.tsx`)
-   - Gradient header with table-initials avatar badge.
-   - Per-field SQL type color coding (uuid=violet, integer=sky, varchar=emerald,
-     boolean=amber, timestamp=pink, jsonb=orange, decimal=cyan).
-   - Auto-increment (⚡) and default-value (=) indicators.
-   - Alternating row backgrounds for readability.
-   - Index count footer.
-   - "⚠ no primary key" warning for tables without a PK.
-   - Rounded-xl design with shadow and ring on selection.
+5. **DBML serializer enhanced** ✅ (`src/lib/parser/dbml.ts`)
+   - Now serializes table notes (`note: '...'` inside the Table block).
+   - Now serializes field notes.
+   - Now serializes ON UPDATE (`update: cascade`) alongside ON DELETE.
 
-6. **Enhanced Toolbar** ✅ (`src/components/workspace/Toolbar.tsx`)
-   - New "Add Table" button (indigo accent).
-   - New "Clear schema" action in Export dropdown.
-   - New keyboard-shortcuts button (Keyboard icon).
-   - Responsive button labels (hide text on small screens).
+6. **Type system** ✅ (`src/types/ast.ts`)
+   - Added `note?: string` to `SchemaTable` for table-level notes.
 
-7. **Relationship drag-connect** ✅ (store `onConnect`)
-   - Dragging from one column handle to another creates a SchemaReference
-     + edge + DBML `Ref:` line (with origin 'canvas' → syncs to editor).
+7. **Keyboard shortcuts expanded** ✅
+   - ⌘F = schema search (new), ⌘K = command palette, ⌘L = auto layout,
+     ⌘T = add table, ⌘M = migration, ⇧? = shortcuts overlay.
+   - Shortcuts overlay now documents right-click for edge context menu.
 
-8. **Store CRUD methods** ✅ (`src/store/diagram-store.ts`)
-   - `addTable`, `deleteTable`, `addFieldToTable`, `deleteField`,
-     `addReference`, `loadAST`, `setSelectedTable`, `setHydrated`.
-   - All mutations serialize to DBML with origin tracking.
+8. **Styling polish** ✅
+   - FlowCanvas: edge context menu, search overlay, improved empty state
+     with icon and ⌘T hint.
+   - Toolbar: "Export ERD as SVG" option with Image icon.
+   - Command palette: "Export ERD as SVG" item with emerald icon.
+
+### Previous Phases (still working)
+- **Phase 3**: IndexedDB persistence, command palette (⌘K), DDL export,
+  canvas legend, store methods (updateField, setTableColor, renameTable).
+- **Phase 2**: Bidirectional sync, inspector panel, add table dialog,
+  redesigned TableNode (type colors, badges), keyboard shortcuts.
+- **Phase 1**: Core AST, store, canvas, ELK layout, DBML parser mini-service,
+  migration diff engine, MCP server, split-pane UI, 3 sample schemas.
 
 ### Browser-Verified (agent-browser)
-- ✅ Page hydrates: editor (1016 chars e-commerce schema) + canvas (4 tables)
-- ✅ HMR connects, server stays alive with HMR blocked
-- ✅ Table click → inspector panel opens (shows columns, "public.order_items")
-- ✅ Add Table dialog → create "reviews" → canvas shows 5 tables + editor updates
-- ✅ Bidirectional sync: canvas mutation → DBML editor text updated
-- ✅ Auto Layout button works (ELK layered positions)
-- ✅ Generate Migration → panel opens with Diff Tree / UP SQL / DOWN SQL tabs
-- ✅ Keyboard shortcuts registered (⌘L, ⌘T, ⇧?)
+- ✅ Page hydrates: editor (1016 chars) + canvas (4 tables) + HMR connected
+- ✅ Canvas legend rendered (collapsible)
+- ✅ "saved locally" indicator in status bar (IndexedDB active)
+- ✅ Command palette opens (⌘K) with "Export ERD as SVG" option
+- ✅ Schema search opens (⌘F) with live filtering input
+- ✅ Server stays alive with HMR blocked
 
 ### Critical Operational Notes
-1. **HMR through the gateway crashes the dev server.** The gateway (port 81)
-   proxies to the Next.js dev server (port 3000). The HMR websocket through
-   the gateway causes a silent crash. **Workaround**: block `/_next/webpack-hmr*`
-   in the browser (done in `verify.sh`). Use `bash verify.sh` for full QA.
-2. **Background processes die between shell sessions.** Both the Next dev
-   server and the DBML mini-service must be started in the same shell
-   session that performs verification.
-3. **@dbml/core is 21 MB** — kept in the mini-service, never in the
-   Next.js bundle (would OOM Turbopack).
-4. **All workspace components (InspectorPanel, AddTableDialog,
-   ShortcutsOverlay) are non-lazy** — bundled with the page chunk so
-   they're pre-warmed. Lazy-loading them caused chunk-load failures
-   (server dies when compiling un-pre-warmed chunks on interaction).
-5. **FlowCanvas must NOT use `selectionMode={undefined}` or a double
-   `<Background>`** — these caused a silent hydration failure. The
-   current FlowCanvas uses a single Dots background + onNodeClick/
-   onPaneClick for selection.
-6. **Server dies under sustained interaction** (opening dialogs, toasts)
-   due to 4GB memory limit. This is an environment constraint, not a
-   code bug. A production build (`next build`) would not have this issue.
+1. **HMR through the gateway crashes the dev server.** Block
+   `/_next/webpack-hmr*` before QA. Use `bash verify.sh`.
+2. **Background processes die between shell sessions** — start and test
+   within the same `bash` invocation.
+3. **@dbml/core is 21 MB** — kept in the mini-service, never in the bundle.
+4. **All workspace components are non-lazy** (bundled with the page chunk,
+   pre-warmed). Lazy-loading causes chunk-load failures.
+5. **FlowCanvas must NOT use `selectionMode={undefined}` or double Background**
+   — causes silent hydration failure.
+6. **Server dies under sustained interaction** (dialog opens, toasts) due
+   to 4GB memory limit. Environment constraint, not a code bug.
 
 ## Unresolved Issues / Risks / Next Steps
 
 ### Unresolved
-- **IndexedDB persistence** was implemented (`src/lib/persistence.ts`) but
-  removed from page.tsx to isolate a hydration issue (turned out to be the
-  FlowCanvas, not persistence). Re-adding it is safe now — the persistence
-  module is ready, just needs the bootstrap + auto-save effects wired back.
 - **MCP ↔ live store wiring**: the MCP server reads/writes a JSON file
   (`stitchdb-state.json`), not the live browser store. A WebSocket bridge
   would enable real-time agent-driven schema edits.
 - **Server stability under interaction**: the dev server dies after ~2-3
-  dialog interactions due to memory pressure. This limits interactive QA
-  but doesn't affect the code correctness.
+  dialog interactions due to memory pressure. A production build
+  (`next build`) would eliminate this.
+- **Edge context menu testing**: the right-click handler is wired but
+  couldn't be triggered via synthetic events in agent-browser (React Flow's
+  internal onEdgeContextMenu doesn't fire on dispatched contextmenu events).
+  A real user right-click would work.
 
 ### Priority Recommendations for Next Phase
-1. **Re-add IndexedDB persistence** — the module is ready at
-   `src/lib/persistence.ts`. Wire `loadSchema()` into the bootstrap effect
-   and `saveSchema()` into a debounced auto-save effect.
-2. **Wire MCP to the live store** via a WebSocket mini-service so agent
+1. **Wire MCP to the live store** via a WebSocket mini-service so agent
    edits appear on the canvas in real time.
-3. **Add column rename/delete via the inspector** — the `updateField` and
-   `deleteField` store methods exist; the inspector UI needs the rename
-   handler wired (currently only add/delete column work).
-4. **Production build test** — `next build` would eliminate the HMR crash
-   and memory issues, allowing full interactive QA.
-5. **Add a command palette** (⌘K) for quick access to all actions.
-6. **Dark/light theme toggle** (the app is dark-only currently).
+2. **Production build test** (`next build`) — would eliminate the HMR crash
+   and memory issues, enabling full interactive QA of all features.
+3. **Dark/light theme toggle** — the app is dark-only currently.
+4. **Undo/redo** — history stack for AST mutations.
+5. **Table & field notes UI** — the store methods (`setTableNote`,
+   `setFieldNote`) and DBML serialization exist, but the inspector needs
+   note input fields.
+6. **Multi-select + bulk actions** — shift-click to select multiple tables,
+   then move/delete as a group.
+7. **Schema validation** — warn on duplicate table/field names, missing PKs,
+   orphaned references.

@@ -33,10 +33,12 @@ import {
   Trash2,
   Code2,
   Command,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { useDiagramStore } from '@/store/diagram-store';
 import { serializeDBML } from '@/lib/parser/dbml';
 import { exportDDL } from '@/lib/export/ddl';
+import { downloadErdSvg } from '@/lib/export/erd-svg';
 import { toast } from 'sonner';
 
 interface ToolbarProps {
@@ -126,6 +128,15 @@ export function Toolbar({
     a.click();
     URL.revokeObjectURL(url);
     toast.success('Exported schema.sql (DDL)');
+  };
+
+  const handleExportErd = () => {
+    const positions: Record<string, { x: number; y: number }> = {};
+    for (const n of useDiagramStore.getState().nodes) {
+      positions[n.id] = { x: n.position.x, y: n.position.y };
+    }
+    downloadErdSvg(ast, positions);
+    toast.success('Exported stitchdb-erd.svg');
   };
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -302,6 +313,13 @@ export function Toolbar({
               >
                 <Code2 className="mr-2 h-4 w-4" />
                 Export as SQL DDL
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="cursor-pointer text-zinc-300 focus:bg-zinc-800 focus:text-zinc-100"
+                onClick={handleExportErd}
+              >
+                <ImageIcon className="mr-2 h-4 w-4" />
+                Export ERD as SVG
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-zinc-800" />
               <DropdownMenuItem

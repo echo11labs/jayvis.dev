@@ -16,14 +16,16 @@ interface ShortcutsOverlayProps {
 
 const SHORTCUTS = [
   { keys: ['⌘', 'K'], label: 'Open command palette' },
+  { keys: ['⌘', 'F'], label: 'Search tables on the canvas' },
   { keys: ['⌘', 'L'], label: 'Run auto-layout on the canvas' },
   { keys: ['⌘', 'M'], label: 'Open the migration diff panel' },
   { keys: ['⌘', 'T'], label: 'Create a new table (dialog)' },
   { keys: ['⇧', '?'], label: 'Toggle this shortcuts overlay' },
   { keys: ['Tab'], label: 'Insert two spaces in the editor' },
   { keys: ['Enter'], label: 'Auto-indent the next line' },
-  { keys: ['Drag'], label: 'Drag from a column handle to create a relationship' },
-  { keys: ['Click'], label: 'Click a table to inspect & edit its columns' },
+  { keys: ['Right-click', ''], label: 'Right-click a relationship for cardinality / ON DELETE / ON UPDATE' },
+  { keys: ['Drag', ''], label: 'Drag from a column handle to create a relationship' },
+  { keys: ['Click', ''], label: 'Click a table to inspect & edit its columns' },
 ];
 
 export function ShortcutsOverlay({ open, onOpenChange }: ShortcutsOverlayProps) {

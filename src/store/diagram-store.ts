@@ -52,9 +52,12 @@ interface DiagramStoreState {
   updateField: (tableName: string, oldFieldName: string, field: SchemaField) => void;
   deleteField: (tableName: string, fieldName: string) => void;
   addReference: (ref: SchemaReference) => void;
+  updateReference: (refId: string, patch: Partial<SchemaReference>) => void;
   deleteReference: (refId: string) => void;
   setTableColor: (tableName: string, color: string) => void;
   renameTable: (oldName: string, newName: string) => void;
+  setTableNote: (tableName: string, note: string) => void;
+  setFieldNote: (tableName: string, fieldName: string, note: string) => void;
 }
 
 export const useDiagramStore = create<DiagramStoreState>((set, get) => ({
@@ -302,6 +305,33 @@ export const useDiagramStore = create<DiagramStoreState>((set, get) => ({
     });
   },
 
+  updateReference: (refId: string, patch: Partial<SchemaReference>) => {
+    const { ast } = get();
+    const ref = ast.references[refId];
+    if (!ref) return;
+    const updated: SchemaReference = { ...ref, ...patch };
+    const newRefs = { ...ast.references, [refId]: updated };
+    const newAST = { ...ast, references: newRefs };
+    const newEdge: Edge = {
+      id: refId,
+      source: updated.sourceTable,
+      target: updated.targetTable,
+      sourceHandle: `${updated.sourceTable}.${updated.sourceField}-source`,
+      targetHandle: `${updated.targetTable}.${updated.targetField}-target`,
+      type: 'smoothstep',
+      animated: true,
+      style: { stroke: '#6366F1', strokeWidth: 2 },
+      label: updated.cardinality,
+    };
+    set({
+      ast: newAST,
+      edges: get().edges.map((e) => (e.id === refId ? newEdge : e)),
+      rawText: serializeDBML(newAST),
+      sourceOrigin: 'canvas',
+      statusMessage: `Updated relationship`,
+    });
+  },
+
   setTableColor: (tableName: string, color: string) => {
     const { ast } = get();
     if (!ast.tables[tableName]) return;
@@ -316,6 +346,45 @@ export const useDiagramStore = create<DiagramStoreState>((set, get) => ({
         n.id === tableName
           ? { ...n, data: { table: updatedTables[tableName] } }
           : n,
+      ),
+      sourceOrigin: 'canvas',
+    }));
+  },
+
+  setTableNote: (tableName: string, note: string) => {
+    const { ast } = get();
+    if (!ast.tables[tableName]) return;
+    const updatedTables = {
+      ...ast.tables,
+      [tableName]: { ...ast.tables[tableName], note },
+    };
+    const newAST = { ...ast, tables: updatedTables };
+    set((state) => ({
+      ast: newAST,
+      nodes: state.nodes.map((n) =>
+        n.id === tableName
+          ? { ...n, data: { table: updatedTables[tableName] } }
+          : n,
+      ),
+      sourceOrigin: 'canvas',
+    }));
+  },
+
+  setFieldNote: (tableName: string, fieldName: string, note: string) => {
+    const { ast } = get();
+    if (!ast.tables[tableName]) return;
+    const table = ast.tables[tableName];
+    const updatedTable = {
+      ...table,
+      fields: table.fields.map((f) =>
+        f.name === fieldName ? { ...f, note } : f,
+      ),
+    };
+    const newAST = { ...ast, tables: { ...ast.tables, [tableName]: updatedTable } };
+    set((state) => ({
+      ast: newAST,
+      nodes: state.nodes.map((n) =>
+        n.id === tableName ? { ...n, data: { table: updatedTable } } : n,
       ),
       sourceOrigin: 'canvas',
     }));

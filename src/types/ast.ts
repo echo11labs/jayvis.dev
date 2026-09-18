@@ -58,6 +58,8 @@ export interface SchemaTable {
   indexes?: SchemaIndex[];
   /** Cached canvas position, persisted so reloads keep layout. */
   position?: { x: number; y: number };
+  /** Optional descriptive note rendered as a tooltip on the table header. */
+  note?: string;
 }
 
 export type Cardinality = '1:1' | '1:N' | 'N:M';

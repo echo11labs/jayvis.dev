@@ -13,7 +13,12 @@ export function serializeDBML(ast: DatabaseAST): string {
   const lines: string[] = [];
 
   for (const table of Object.values(ast.tables)) {
-    lines.push(`Table ${table.name} {`);
+    if (table.note) {
+      lines.push(`Table ${table.name} {`);
+      lines.push(`  note: '${table.note.replace(/'/g, "\\'")}'`);
+    } else {
+      lines.push(`Table ${table.name} {`);
+    }
     for (const f of table.fields) {
       const settings: string[] = [];
       if (f.constraints.isPrimaryKey) settings.push('pk');
@@ -23,6 +28,7 @@ export function serializeDBML(ast: DatabaseAST): string {
       if (f.constraints.isAutoincrement) settings.push('increment');
       if (f.constraints.defaultValue)
         settings.push(`default: ${f.constraints.defaultValue}`);
+      if (f.note) settings.push(`note: '${f.note.replace(/'/g, "\\'")}'`);
       const settingStr = settings.length > 0 ? ` [${settings.join(', ')}]` : '';
       lines.push(`  ${f.name} ${f.type}${settingStr}`);
     }
@@ -38,9 +44,13 @@ export function serializeDBML(ast: DatabaseAST): string {
   }
 
   for (const ref of Object.values(ast.references)) {
-    const del = ref.onDelete ? ` [delete: ${ref.onDelete.toLowerCase()}]` : '';
+    const refSettings: string[] = [];
+    if (ref.onDelete) refSettings.push(`delete: ${ref.onDelete.toLowerCase()}`);
+    if (ref.onUpdate) refSettings.push(`update: ${ref.onUpdate.toLowerCase()}`);
+    const settingStr =
+      refSettings.length > 0 ? ` [${refSettings.join(', ')}]` : '';
     lines.push(
-      `Ref: ${ref.sourceTable}.${ref.sourceField} > ${ref.targetTable}.${ref.targetField}${del}`,
+      `Ref: ${ref.sourceTable}.${ref.sourceField} > ${ref.targetTable}.${ref.targetField}${settingStr}`,
     );
   }
 
