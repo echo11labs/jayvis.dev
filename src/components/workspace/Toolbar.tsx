@@ -31,9 +31,12 @@ import {
   Plus,
   Keyboard,
   Trash2,
+  Code2,
+  Command,
 } from 'lucide-react';
 import { useDiagramStore } from '@/store/diagram-store';
 import { serializeDBML } from '@/lib/parser/dbml';
+import { exportDDL } from '@/lib/export/ddl';
 import { toast } from 'sonner';
 
 interface ToolbarProps {
@@ -43,6 +46,7 @@ interface ToolbarProps {
   onLoadSample: (name: SampleName) => void;
   onAddTableOpenChange: (open: boolean) => void;
   onShortcutsOpenChange: (open: boolean) => void;
+  onCommandPaletteOpenChange: (open: boolean) => void;
   isLayouting: boolean;
 }
 
@@ -70,6 +74,7 @@ export function Toolbar({
   onLoadSample,
   onAddTableOpenChange,
   onShortcutsOpenChange,
+  onCommandPaletteOpenChange,
   isLayouting,
 }: ToolbarProps) {
   const sourceOrigin = useDiagramStore((s) => s.sourceOrigin);
@@ -109,6 +114,18 @@ export function Toolbar({
     a.click();
     URL.revokeObjectURL(url);
     toast.success('Exported schema.json');
+  };
+
+  const handleExportDDL = () => {
+    const ddl = exportDDL(ast);
+    const blob = new Blob([ddl], { type: 'text/sql' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'schema.sql';
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Exported schema.sql (DDL)');
   };
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -279,6 +296,13 @@ export function Toolbar({
                 <Database className="mr-2 h-4 w-4" />
                 Export as JSON AST
               </DropdownMenuItem>
+              <DropdownMenuItem
+                className="cursor-pointer text-zinc-300 focus:bg-zinc-800 focus:text-zinc-100"
+                onClick={handleExportDDL}
+              >
+                <Code2 className="mr-2 h-4 w-4" />
+                Export as SQL DDL
+              </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-zinc-800" />
               <DropdownMenuItem
                 className="cursor-pointer text-rose-400 focus:bg-rose-500/10 focus:text-rose-300"
@@ -329,6 +353,20 @@ export function Toolbar({
             <GitCompare className="h-4 w-4" />
             <span className="hidden sm:inline">Generate Migration</span>
           </Button>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
+                onClick={() => onCommandPaletteOpenChange(true)}
+              >
+                <Command className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Command palette (⌘K)</TooltipContent>
+          </Tooltip>
 
           <Tooltip>
             <TooltipTrigger asChild>

@@ -15,6 +15,7 @@ interface ShortcutsOverlayProps {
 }
 
 const SHORTCUTS = [
+  { keys: ['⌘', 'K'], label: 'Open command palette' },
   { keys: ['⌘', 'L'], label: 'Run auto-layout on the canvas' },
   { keys: ['⌘', 'M'], label: 'Open the migration diff panel' },
   { keys: ['⌘', 'T'], label: 'Create a new table (dialog)' },

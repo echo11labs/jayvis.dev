@@ -49,8 +49,12 @@ interface DiagramStoreState {
   addTable: (table: SchemaTable) => void;
   deleteTable: (tableName: string) => void;
   addFieldToTable: (tableName: string, field: SchemaField) => void;
+  updateField: (tableName: string, oldFieldName: string, field: SchemaField) => void;
   deleteField: (tableName: string, fieldName: string) => void;
   addReference: (ref: SchemaReference) => void;
+  deleteReference: (refId: string) => void;
+  setTableColor: (tableName: string, color: string) => void;
+  renameTable: (oldName: string, newName: string) => void;
 }
 
 export const useDiagramStore = create<DiagramStoreState>((set, get) => ({
@@ -234,6 +238,140 @@ export const useDiagramStore = create<DiagramStoreState>((set, get) => ({
       sourceOrigin: 'canvas',
       statusMessage: `Created relationship ${ref.sourceTable}.${ref.sourceField} → ${ref.targetTable}.${ref.targetField}`,
     });
+  },
+
+  updateField: (tableName: string, oldFieldName: string, field: SchemaField) => {
+    const { ast } = get();
+    if (!ast.tables[tableName]) return;
+    const table = ast.tables[tableName];
+    const updatedTable: SchemaTable = {
+      ...table,
+      fields: table.fields.map((f) => (f.name === oldFieldName ? field : f)),
+    };
+    const newAST = { ...ast, tables: { ...ast.tables, [tableName]: updatedTable } };
+
+    // Update references that referenced the old field name.
+    const newRefs: Record<string, SchemaReference> = {};
+    for (const [id, r] of Object.entries(newAST.references)) {
+      const nr = { ...r };
+      if (r.sourceTable === tableName && r.sourceField === oldFieldName) {
+        nr.sourceField = field.name;
+      }
+      if (r.targetTable === tableName && r.targetField === oldFieldName) {
+        nr.targetField = field.name;
+      }
+      const newId = `ref_${nr.sourceTable}.${nr.sourceField}__${nr.targetTable}.${nr.targetField}`;
+      newRefs[newId] = nr;
+    }
+    const finalAST = { ...newAST, references: newRefs };
+
+    set((state) => ({
+      ast: finalAST,
+      nodes: state.nodes.map((n) =>
+        n.id === tableName ? { ...n, data: { table: updatedTable } } : n,
+      ),
+      edges: Object.values(newRefs).map((r) => ({
+        id: r.id,
+        source: r.sourceTable,
+        target: r.targetTable,
+        sourceHandle: `${r.sourceTable}.${r.sourceField}-source`,
+        targetHandle: `${r.targetTable}.${r.targetField}-target`,
+        type: 'smoothstep',
+        animated: true,
+        style: { stroke: '#6366F1', strokeWidth: 2 },
+        label: r.cardinality,
+      })),
+      rawText: serializeDBML(finalAST),
+      sourceOrigin: 'canvas',
+      statusMessage: `Updated column "${field.name}" in ${tableName}`,
+    }));
+  },
+
+  deleteReference: (refId: string) => {
+    const { ast } = get();
+    if (!ast.references[refId]) return;
+    const newRefs = { ...ast.references };
+    delete newRefs[refId];
+    const newAST = { ...ast, references: newRefs };
+    set({
+      ast: newAST,
+      edges: get().edges.filter((e) => e.id !== refId),
+      rawText: serializeDBML(newAST),
+      sourceOrigin: 'canvas',
+      statusMessage: `Dropped relationship`,
+    });
+  },
+
+  setTableColor: (tableName: string, color: string) => {
+    const { ast } = get();
+    if (!ast.tables[tableName]) return;
+    const updatedTables = {
+      ...ast.tables,
+      [tableName]: { ...ast.tables[tableName], color },
+    };
+    const newAST = { ...ast, tables: updatedTables };
+    set((state) => ({
+      ast: newAST,
+      nodes: state.nodes.map((n) =>
+        n.id === tableName
+          ? { ...n, data: { table: updatedTables[tableName] } }
+          : n,
+      ),
+      sourceOrigin: 'canvas',
+    }));
+  },
+
+  renameTable: (oldName: string, newName: string) => {
+    const { ast } = get();
+    const table = ast.tables[oldName];
+    if (!table || ast.tables[newName] || !newName) return;
+
+    const newTables: Record<string, SchemaTable> = {};
+    for (const [name, t] of Object.entries(ast.tables)) {
+      if (name === oldName) {
+        newTables[newName] = { ...t, name: newName, id: newName };
+      } else {
+        newTables[name] = t;
+      }
+    }
+
+    const newRefs: Record<string, SchemaReference> = {};
+    for (const [, r] of Object.entries(ast.references)) {
+      const nr = { ...r };
+      if (nr.sourceTable === oldName) nr.sourceTable = newName;
+      if (nr.targetTable === oldName) nr.targetTable = newName;
+      const newId = `ref_${nr.sourceTable}.${nr.sourceField}__${nr.targetTable}.${nr.targetField}`;
+      newRefs[newId] = nr;
+    }
+
+    const newAST: DatabaseAST = { ...ast, tables: newTables, references: newRefs };
+    set((state) => ({
+      ast: newAST,
+      nodes: state.nodes.map((n) =>
+        n.id === oldName
+          ? {
+              ...n,
+              id: newName,
+              data: { table: newTables[newName] },
+            }
+          : n,
+      ),
+      edges: Object.values(newRefs).map((r) => ({
+        id: r.id,
+        source: r.sourceTable,
+        target: r.targetTable,
+        sourceHandle: `${r.sourceTable}.${r.sourceField}-source`,
+        targetHandle: `${r.targetTable}.${r.targetField}-target`,
+        type: 'smoothstep',
+        animated: true,
+        style: { stroke: '#6366F1', strokeWidth: 2 },
+        label: r.cardinality,
+      })),
+      rawText: serializeDBML(newAST),
+      selectedTable: newName,
+      sourceOrigin: 'canvas',
+      statusMessage: `Renamed table "${oldName}" → "${newName}"`,
+    }));
   },
 
   captureSnapshot: () => {
