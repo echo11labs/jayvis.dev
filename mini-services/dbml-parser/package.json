@@ -1,0 +1,11 @@
+{
+  "name": "stitchdb-dbml-parser",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --hot index.ts"
+  },
+  "dependencies": {
+    "@dbml/core": "^10.1.1"
+  }
+}

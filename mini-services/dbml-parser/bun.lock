@@ -1,0 +1,31 @@
+{
+  "lockfileVersion": 1,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "stitchdb-dbml-parser",
+      "dependencies": {
+        "@dbml/core": "^10.1.1",
+      },
+    },
+  },
+  "packages": {
+    "@dbml/core": ["@dbml/core@10.1.1", "", { "dependencies": { "@dbml/parse": "^10.1.1", "antlr4": "^4.13.1", "lodash": "^4.18.1", "lodash-es": "^4.18.1", "luxon": "^3.4.4", "parsimmon": "^1.13.0", "pluralize": "^8.0.0" } }, "sha512-okz4w1QMLOOqFXe7gEjBMMmbyNnVJrS/MNTECoMuGzWEibUplCRYuPzpuU4TxjQ/Ag1xf+fjnmJiQXM9dAo3+Q=="],
+
+    "@dbml/parse": ["@dbml/parse@10.1.1", "", { "dependencies": { "lodash-es": "^4.18.1", "luxon": "^3.7.2", "pathe": "^2.0.3" } }, "sha512-5diN/EBs7E3lud0vdQXcwv2CDWIB3Vhi0PyVOQv5F4UnGKjKuPnhSnSxQuxkrMSyd+nqK3ASrvuYzyVgVW3JfA=="],
+
+    "antlr4": ["antlr4@4.13.2", "", {}, "sha512-QiVbZhyy4xAZ17UPEuG3YTOt8ZaoeOR1CvEAqrEsDBsOqINslaB147i9xqljZqoyf5S+EUlGStaj+t22LT9MOg=="],
+
+    "lodash": ["lodash@4.18.1", "", {}, "sha512-dMInicTPVE8d1e5otfwmmjlxkZoUpiVLwyeTdUsi/Caj/gfzzblBcCE5sRHV/AsjuCmxWrte2TNGSYuCeCq+0Q=="],
+
+    "lodash-es": ["lodash-es@4.18.1", "", {}, "sha512-J8xewKD/Gk22OZbhpOVSwcs60zhd95ESDwezOFuA3/099925PdHJ7OFHNTGtajL3AlZkykD32HykiMo+BIBI8A=="],
+
+    "luxon": ["luxon@3.7.2", "", {}, "sha512-vtEhXh/gNjI9Yg1u4jX/0YVPMvxzHuGgCm6tC5kZyb08yjGWGnqAjGJvcXbqQR2P3MyMEFnRbpcdFS6PBcLqew=="],
+
+    "parsimmon": ["parsimmon@1.18.1", "", {}, "sha512-u7p959wLfGAhJpSDJVYXoyMCXWYwHia78HhRBWqk7AIbxdmlrfdp5wX0l3xv/iTSH5HvhN9K7o26hwwpgS5Nmw=="],
+
+    "pathe": ["pathe@2.0.3", "", {}, "sha512-WUjGcAqP1gQacoQe+OBJsFA7Ld4DyXuUIjZ5cc75cLHvJ7dtNsTugphxIADwspS+AraAUePCKrSVtPLFj/F88w=="],
+
+    "pluralize": ["pluralize@8.0.0", "", {}, "sha512-Nc3IT5yHzflTfbjgqWcCPpo7DaKy4FnpB0l/zCAW0Tc7jxAiuqSxHasntB3D7887LSrA93kDJ9IXovxJYxyLCA=="],
+  }
+}
