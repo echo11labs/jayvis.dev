@@ -2,6 +2,11 @@
 
 import React, { memo } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import type { SchemaTable, SchemaField } from '@/types/ast';
 
 export interface TableNodeData {
@@ -132,16 +137,21 @@ function TableNodeComponent({ id, data, selected }: NodeProps<TableNodeData>) {
                       ? 'font-semibold text-zinc-100'
                       : 'text-zinc-300'
                   }`}
+                  title={field.note ? `${field.name} — ${field.note}` : field.name}
                 >
                   {field.name}
                 </span>
                 {field.note && (
-                  <span
-                    className="flex-shrink-0 text-[10px] text-zinc-600"
-                    title={field.note}
-                  >
-                    ●
-                  </span>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="flex-shrink-0 cursor-help text-amber-500/60 hover:text-amber-400">
+                        ●
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <span className="text-xs">{field.note}</span>
+                    </TooltipContent>
+                  </Tooltip>
                 )}
               </div>
 

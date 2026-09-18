@@ -39,6 +39,7 @@ import { useDiagramStore } from '@/store/diagram-store';
 import { serializeDBML } from '@/lib/parser/dbml';
 import { exportDDL } from '@/lib/export/ddl';
 import { downloadErdSvg } from '@/lib/export/erd-svg';
+import { ThemeToggle } from '@/components/workspace/ThemeToggle';
 import { toast } from 'sonner';
 
 interface ToolbarProps {
@@ -399,6 +400,8 @@ export function Toolbar({
             </TooltipTrigger>
             <TooltipContent side="bottom">Keyboard shortcuts (⇧?)</TooltipContent>
           </Tooltip>
+
+          <ThemeToggle />
         </div>
       </header>
     </TooltipProvider>

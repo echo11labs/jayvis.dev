@@ -58,6 +58,12 @@ function FlowCanvasInner() {
       type: 'smoothstep',
       animated: true,
       style: { stroke: '#6366F1', strokeWidth: 2 },
+      markerEnd: {
+        type: 'arrowclosed' as const,
+        width: 16,
+        height: 16,
+        color: '#6366F1',
+      },
     }),
     [],
   );

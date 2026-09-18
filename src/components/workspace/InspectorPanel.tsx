@@ -22,6 +22,7 @@ import {
   X,
   Pencil,
   Check,
+  StickyNote,
 } from 'lucide-react';
 import { useDiagramStore } from '@/store/diagram-store';
 import { TABLE_COLORS } from '@/types/ast';
@@ -60,6 +61,8 @@ export function InspectorPanel() {
   const deleteTable = useDiagramStore((s) => s.deleteTable);
   const setTableColor = useDiagramStore((s) => s.setTableColor);
   const renameTable = useDiagramStore((s) => s.renameTable);
+  const setTableNote = useDiagramStore((s) => s.setTableNote);
+  const setFieldNote = useDiagramStore((s) => s.setFieldNote);
 
   const [newFieldName, setNewFieldName] = useState('');
   const [newFieldType, setNewFieldType] = useState('varchar');
@@ -67,6 +70,10 @@ export function InspectorPanel() {
   const [tableNameDraft, setTableNameDraft] = useState('');
   const [editingField, setEditingField] = useState<string | null>(null);
   const [fieldDraft, setFieldDraft] = useState<SchemaField | null>(null);
+  const [tableNoteDraft, setTableNoteDraft] = useState('');
+  const [editingTableNote, setEditingTableNote] = useState(false);
+  const [editingFieldNote, setEditingFieldNote] = useState<string | null>(null);
+  const [fieldNoteDraft, setFieldNoteDraft] = useState('');
 
   const table = selectedTable ? ast.tables[selectedTable] : null;
 
@@ -205,6 +212,67 @@ export function InspectorPanel() {
               />
             ))}
           </div>
+        </div>
+
+        {/* Table note */}
+        <div className="shrink-0 border-b border-zinc-800 px-3 py-2">
+          <div className="mb-1 flex items-center gap-1.5">
+            <StickyNote className="h-3.5 w-3.5 text-zinc-500" />
+            <span className="text-[11px] text-zinc-500">Table note</span>
+            {!editingTableNote && (
+              <button
+                onClick={() => {
+                  setTableNoteDraft(table.note || '');
+                  setEditingTableNote(true);
+                }}
+                className="ml-auto text-[10px] text-zinc-600 hover:text-indigo-300"
+              >
+                {table.note ? 'Edit' : '+ Add'}
+              </button>
+            )}
+          </div>
+          {editingTableNote ? (
+            <div className="space-y-1.5">
+              <textarea
+                autoFocus
+                value={tableNoteDraft}
+                onChange={(e) => setTableNoteDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                    setTableNote(table.name, tableNoteDraft.trim());
+                    setEditingTableNote(false);
+                    toast.success('Note saved');
+                  }
+                  if (e.key === 'Escape') setEditingTableNote(false);
+                }}
+                placeholder="Describe this table…"
+                rows={2}
+                className="w-full resize-none rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-[11px] text-zinc-200 outline-none focus:border-indigo-500"
+              />
+              <div className="flex gap-1.5">
+                <button
+                  onClick={() => {
+                    setTableNote(table.name, tableNoteDraft.trim());
+                    setEditingTableNote(false);
+                    toast.success('Note saved');
+                  }}
+                  className="rounded bg-indigo-600/80 px-2 py-0.5 text-[10px] text-white hover:bg-indigo-500"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => setEditingTableNote(false)}
+                  className="rounded px-2 py-0.5 text-[10px] text-zinc-500 hover:text-zinc-300"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className={`text-[11px] ${table.note ? 'text-zinc-400' : 'italic text-zinc-600'}`}>
+              {table.note || 'No note'}
+            </p>
+          )}
         </div>
 
         {/* Fields */}
@@ -370,6 +438,28 @@ export function InspectorPanel() {
                               *
                             </span>
                           )}
+                          {f.note && (
+                            <span
+                              title={f.note}
+                              className="text-amber-500/70"
+                            >
+                              <StickyNote className="h-3 w-3" />
+                            </span>
+                          )}
+                          <button
+                            onClick={() => {
+                              setEditingFieldNote(editingFieldNote === f.name ? null : f.name);
+                              setFieldNoteDraft(f.note || '');
+                            }}
+                            className={`rounded p-0.5 transition-opacity hover:bg-zinc-800 hover:text-amber-300 ${
+                              editingFieldNote === f.name
+                                ? 'text-amber-400 opacity-100'
+                                : 'text-zinc-600 opacity-0 group-hover:opacity-100'
+                            }`}
+                            title="Edit column note"
+                          >
+                            <StickyNote className="h-3 w-3" />
+                          </button>
                           <button
                             onClick={() => startEditField(f)}
                             className="rounded p-0.5 text-zinc-600 opacity-0 transition-opacity hover:bg-zinc-800 hover:text-indigo-300 group-hover:opacity-100"
@@ -386,6 +476,44 @@ export function InspectorPanel() {
                             <Trash2 className="h-3 w-3" />
                           </button>
                         </div>
+                        {editingFieldNote === f.name && (
+                          <div className="mt-1.5 space-y-1.5">
+                            <textarea
+                              autoFocus
+                              value={fieldNoteDraft}
+                              onChange={(e) => setFieldNoteDraft(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                                  setFieldNote(table.name, f.name, fieldNoteDraft.trim());
+                                  setEditingFieldNote(null);
+                                  toast.success('Column note saved');
+                                }
+                                if (e.key === 'Escape') setEditingFieldNote(null);
+                              }}
+                              placeholder={`Describe column "${f.name}"…`}
+                              rows={2}
+                              className="w-full resize-none rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-[11px] text-zinc-200 outline-none focus:border-indigo-500"
+                            />
+                            <div className="flex gap-1.5">
+                              <button
+                                onClick={() => {
+                                  setFieldNote(table.name, f.name, fieldNoteDraft.trim());
+                                  setEditingFieldNote(null);
+                                  toast.success('Column note saved');
+                                }}
+                                className="rounded bg-indigo-600/80 px-2 py-0.5 text-[10px] text-white hover:bg-indigo-500"
+                              >
+                                Save
+                              </button>
+                              <button
+                                onClick={() => setEditingFieldNote(null)}
+                                className="rounded px-2 py-0.5 text-[10px] text-zinc-500 hover:text-zinc-300"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

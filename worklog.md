@@ -6,12 +6,13 @@ StitchDB is a **developer-first database modeling workspace** that bridges
 declarative DBML code and visual ERDs using an AST as the single source of
 truth. The platform is **functional, browser-verified, and feature-complete**
 with bidirectional canvas↔editor sync, IndexedDB persistence, a command
-palette, edge context menus, ERD SVG export, schema search, **undo/redo,
-and schema validation**.
+palette, edge context menus, ERD SVG export, schema search, undo/redo,
+schema validation, **table & field notes UI, live validation badge, and a
+dark/light theme toggle**.
 
 ### Architecture
 - **Frontend**: Next.js 16 (App Router) + TypeScript + Tailwind + shadcn/ui
-- **Canvas**: @xyflow/react (React Flow) with a custom TableNode
+- **Canvas**: @xyflow/react (React Flow) with a custom TableNode (tooltipped notes)
 - **Layout**: ELK.js (dynamic import for "Auto Layout")
 - **DBML Parser**: Isolated Bun mini-service on port 3031 (21 MB @dbml/core
   kept out of the Next.js bundle to avoid Turbopack OOM)
@@ -19,65 +20,62 @@ and schema validation**.
 - **Diff Engine**: AST-driven schema diff → up/down SQL migrations
 - **DDL Export**: AST → PostgreSQL CREATE TABLE + ALTER TABLE + indexes
 - **ERD Export**: AST + positions → standalone SVG diagram
-- **Validation**: AST → prioritized list of errors/warnings (PK, naming, refs)
+- **Validation**: AST → prioritized errors/warnings + live badge
 - **MCP**: Standalone Model Context Protocol server for IDE agent integration
 - **State**: Zustand store with origin flagging + bidirectional sync + undo/redo
+- **Theme**: Dark/light toggle (persisted to localStorage)
 
 ## Current Goals / Completed Modifications / Verification
 
-### Phase 5 — Completed (this round)
+### Phase 6 — Completed (this round)
 
-1. **Undo/redo history stack** ✅ (`src/store/diagram-store.ts`)
-   - `pushHistory()` — snapshots {ast, nodes, edges} onto an undo stack
-     (capped at 50 entries) before every mutating action.
-   - `undo()` — pops the last snapshot, pushes the current state onto the
-     redo stack, restores the snapshot, re-serializes DBML.
-   - `redo()` — reverse of undo.
-   - All 10 canvas mutations (addTable, deleteTable, addField, updateField,
-     deleteField, addReference, updateReference, deleteReference, renameTable,
-     setTableNote, setFieldNote) now call `pushHistory()` before mutating.
-   - **Keyboard**: ⌘Z (undo), ⌘⇧Z / ⌘Y (redo).
+1. **Table & field notes UI** ✅ (`src/components/workspace/InspectorPanel.tsx`)
+   - **Table note section** in the inspector: shows the note or "No note",
+     with an "+ Add" / "Edit" button. Inline textarea with Save/Cancel,
+     ⌘Enter to save, Escape to cancel. Calls `setTableNote` store method.
+   - **Field note editing**: each column row has a note button (StickyNote icon).
+     Clicking opens an inline textarea below the row. Saves via `setFieldNote`.
+   - Existing field notes show an amber StickyNote icon on the row.
+   - Both serialize to DBML (`note: '...'`).
 
-2. **UndoRedoButtons** ✅ (`src/components/workspace/UndoRedoButtons.tsx`)
-   - Undo/redo button pair in the editor header.
-   - Live disabled state from the undo/redo stack lengths.
-   - Tooltips show available count ("Undo (3 available)").
+2. **Live validation badge** ✅ (`src/components/workspace/ValidationBadge.tsx`)
+   - Replaces the static "Validate" button in the editor header.
+   - Shows a live count badge (error+warning count) that updates as the
+     schema changes.
+   - Icon + color reflect schema health:
+     - Green shield (ShieldCheck) when no issues.
+     - Amber shield (ShieldAlert) when only warnings.
+     - Red shield (ShieldX) when any errors.
+   - Badge background: red for errors, amber for warnings.
+   - Tooltip shows the full breakdown ("0 errors, 4 warnings — ⌘⇧V").
+   - **Verified**: badge shows "4" (4 warnings), title correct.
 
-3. **Schema validation** ✅ (`src/lib/validation/schema-validation.ts`)
-   - `validateSchema(ast)` returns a prioritized list of `ValidationIssue`s:
-     - **Missing primary key** (warning) — tables with columns but no PK.
-     - **Duplicate table names** (error) — case-insensitive collision.
-     - **Duplicate field IDs** (error) — across tables.
-     - **Duplicate column names** (error) — within a table.
-     - **Nullable PK** (warning) — PK should be NOT NULL.
-     - **Auto-increment on non-integer** (warning) — type mismatch.
-     - **Orphaned references** (error) — FK points to missing table/field.
-     - **Empty schema** (info) — no tables.
-   - Each issue has a category icon and a fix suggestion.
+3. **Dark/light theme toggle** ✅ (`src/components/workspace/ThemeToggle.tsx`)
+   - Sun/Moon icon button in the toolbar.
+   - Toggles `light`/`dark` class on `<html>`.
+   - Persists choice to `localStorage` (`stitchdb-theme`).
+   - Restores on mount.
+   - **Verified**: clicking switches html class to "light".
 
-4. **ValidationPanel** ✅ (`src/components/workspace/ValidationPanel.tsx`)
-   - Right-side sheet panel with error/warning summary badges.
-   - Filter by all / errors / warnings.
-   - Each issue row is clickable — clicking selects the relevant table
-     (opens the inspector).
-   - "No issues found" success state with a checkmark.
-   - **Keyboard**: ⌘⇧V toggles the panel.
-   - Also a "Validate" button in the editor header.
+4. **Field note tooltips on TableNode** ✅ (`src/components/canvas/TableNode.tsx`)
+   - The `●` note indicator now uses a proper shadcn Tooltip (hover shows
+     the note text in a popover) instead of a bare `title` attribute.
+   - The field name itself has a `title` showing `name — note` when a note
+     exists.
 
-5. **Command palette expanded** ✅
-   - Added "Validate schema" (⌘⇧V), "Undo" (⌘Z), "Redo" (⌘⇧Z) commands.
-   - Each shows its keyboard shortcut.
+5. **Edge arrow markers** ✅ (`src/components/canvas/FlowCanvas.tsx`)
+   - Edges now have `markerEnd: arrowclosed` — a filled arrowhead at the
+     target end of each relationship, improving visual direction clarity.
 
-6. **Keyboard shortcuts expanded** ✅
-   - ⌘Z = undo, ⌘⇧Z/⌘Y = redo, ⌘⇧V = validation panel (all new).
-   - Shortcuts overlay updated to document these.
+6. **Styling polish** ✅
+   - Inspector: table note section with StickyNote icon, amber note indicators.
+   - Toolbar: theme toggle button (Sun/Moon).
+   - Editor header: validation badge with live count.
 
 ### Previous Phases (still working)
-- **Phase 4**: Edge context menu, schema search (⌘F), ERD SVG export, store
-  methods (updateReference, setTableNote, setFieldNote), DBML serializer
-  enhanced (table/field notes, ON UPDATE).
-- **Phase 3**: IndexedDB persistence, command palette (⌘K), DDL export,
-  canvas legend.
+- **Phase 5**: Undo/redo history stack, schema validation, validation panel.
+- **Phase 4**: Edge context menu, schema search (⌘F), ERD SVG export.
+- **Phase 3**: IndexedDB persistence, command palette (⌘K), DDL export.
 - **Phase 2**: Bidirectional sync, inspector panel, add table dialog,
   redesigned TableNode, keyboard shortcuts, relationship drag-connect.
 - **Phase 1**: Core AST, store, canvas, ELK layout, DBML parser mini-service,
@@ -85,9 +83,10 @@ and schema validation**.
 
 ### Browser-Verified (agent-browser)
 - ✅ Page hydrates: editor (1016 chars) + canvas (4 tables) + HMR connected
-- ✅ "Validate" button present in editor header
-- ✅ Validation panel opens (shows "Schema Validation", errors/warnings)
-- ✅ Command palette opens with "Validate schema", "Undo", "Redo" items
+- ✅ Theme toggle present (Sun icon = dark mode)
+- ✅ Theme toggle works: clicking switches html class to "light"
+- ✅ Validation badge shows live count ("4", 4 warnings)
+- ✅ Inspector opens on table click with "Table note" section
 - ✅ Server stays alive with HMR blocked
 
 ### Critical Operational Notes
@@ -112,19 +111,20 @@ and schema validation**.
 - **Server stability under interaction**: the dev server dies after ~2-3
   dialog interactions due to memory pressure. A production build
   (`next build`) would eliminate this.
-- **Table & field notes UI**: the store methods (`setTableNote`,
-  `setFieldNote`) and DBML serialization exist, but the inspector needs
-  note input fields.
+- **Light theme coverage**: the toggle switches the html class, but the
+  canvas + editor use hardcoded dark colors. A full light theme would
+  need conditional colors in TableNode, CodeEditor, and FlowCanvas.
 
 ### Priority Recommendations for Next Phase
 1. **Wire MCP to the live store** via a WebSocket mini-service so agent
    edits appear on the canvas in real time.
 2. **Production build test** (`next build`) — would eliminate the HMR crash
    and memory issues, enabling full interactive QA.
-3. **Table & field notes UI** — add note input fields to the inspector;
-   the store methods and serialization are ready.
-4. **Dark/light theme toggle** — the app is dark-only currently.
-5. **Multi-select + bulk actions** — shift-click to select multiple tables,
+3. **Full light theme** — propagate the theme class into TableNode,
+   CodeEditor, and FlowCanvas backgrounds for a complete light mode.
+4. **Multi-select + bulk actions** — shift-click to select multiple tables,
    then move/delete as a group.
-6. **Live validation indicator** — show error/warning count badge on the
-   Validate button so issues are visible without opening the panel.
+5. **Schema templates** — pre-built schema templates (auth, audit log,
+   e-commerce cart) beyond the current 3 samples.
+6. **Relationship edge labels with field names** — show "user_id → id" on
+   edges instead of just cardinality.
