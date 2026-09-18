@@ -29,6 +29,9 @@ interface DiagramStoreState {
   parseError: string | null;
   selectedTable: string | null;
   hydrated: boolean;
+  /** Undo/redo history stacks (store snapshots of {ast, nodes, edges}). */
+  undoStack: Array<{ ast: DatabaseAST; nodes: Node[]; edges: Edge[] }>;
+  redoStack: Array<{ ast: DatabaseAST; nodes: Node[]; edges: Edge[] }>;
 
   setRawText: (text: string) => void;
   onNodesChange: (changes: NodeChange[]) => void;
@@ -58,6 +61,10 @@ interface DiagramStoreState {
   renameTable: (oldName: string, newName: string) => void;
   setTableNote: (tableName: string, note: string) => void;
   setFieldNote: (tableName: string, fieldName: string, note: string) => void;
+  /** Push the current state onto the undo stack before a mutation. */
+  pushHistory: () => void;
+  undo: () => void;
+  redo: () => void;
 }
 
 export const useDiagramStore = create<DiagramStoreState>((set, get) => ({
@@ -72,6 +79,8 @@ export const useDiagramStore = create<DiagramStoreState>((set, get) => ({
   parseError: null,
   selectedTable: null,
   hydrated: false,
+  undoStack: [],
+  redoStack: [],
 
   setRawText: (rawText: string) => {
     set({ rawText, sourceOrigin: 'editor' });
@@ -143,6 +152,7 @@ export const useDiagramStore = create<DiagramStoreState>((set, get) => ({
       set({ statusMessage: `Table "${table.name}" already exists` });
       return;
     }
+    get().pushHistory();
     const color = table.color || TABLE_COLORS[Object.keys(ast.tables).length % TABLE_COLORS.length];
     const newTable = { ...table, color };
     const newAST = { ...ast, tables: { ...ast.tables, [table.name]: newTable } };
@@ -163,6 +173,7 @@ export const useDiagramStore = create<DiagramStoreState>((set, get) => ({
   },
 
   deleteTable: (tableName: string) => {
+    get().pushHistory();
     const { ast, nodes, edges } = get();
     const newTables = { ...ast.tables };
     delete newTables[tableName];
@@ -187,6 +198,7 @@ export const useDiagramStore = create<DiagramStoreState>((set, get) => ({
   addFieldToTable: (tableName: string, field: SchemaField) => {
     const { ast } = get();
     if (!ast.tables[tableName]) return;
+    get().pushHistory();
     const table = ast.tables[tableName];
     const updatedTable = { ...table, fields: [...table.fields, field] };
     const newAST = { ...ast, tables: { ...ast.tables, [tableName]: updatedTable } };
@@ -204,6 +216,7 @@ export const useDiagramStore = create<DiagramStoreState>((set, get) => ({
   deleteField: (tableName: string, fieldName: string) => {
     const { ast } = get();
     if (!ast.tables[tableName]) return;
+    get().pushHistory();
     const table = ast.tables[tableName];
     const updatedTable = { ...table, fields: table.fields.filter((f) => f.name !== fieldName) };
     const newAST = { ...ast, tables: { ...ast.tables, [tableName]: updatedTable } };
@@ -221,6 +234,7 @@ export const useDiagramStore = create<DiagramStoreState>((set, get) => ({
   addReference: (ref: SchemaReference) => {
     const { ast } = get();
     if (ast.references[ref.id]) return;
+    get().pushHistory();
     const newRefs = { ...ast.references, [ref.id]: ref };
     const newEdge: Edge = {
       id: ref.id,
@@ -246,6 +260,7 @@ export const useDiagramStore = create<DiagramStoreState>((set, get) => ({
   updateField: (tableName: string, oldFieldName: string, field: SchemaField) => {
     const { ast } = get();
     if (!ast.tables[tableName]) return;
+    get().pushHistory();
     const table = ast.tables[tableName];
     const updatedTable: SchemaTable = {
       ...table,
@@ -293,6 +308,7 @@ export const useDiagramStore = create<DiagramStoreState>((set, get) => ({
   deleteReference: (refId: string) => {
     const { ast } = get();
     if (!ast.references[refId]) return;
+    get().pushHistory();
     const newRefs = { ...ast.references };
     delete newRefs[refId];
     const newAST = { ...ast, references: newRefs };
@@ -309,6 +325,7 @@ export const useDiagramStore = create<DiagramStoreState>((set, get) => ({
     const { ast } = get();
     const ref = ast.references[refId];
     if (!ref) return;
+    get().pushHistory();
     const updated: SchemaReference = { ...ref, ...patch };
     const newRefs = { ...ast.references, [refId]: updated };
     const newAST = { ...ast, references: newRefs };
@@ -354,6 +371,7 @@ export const useDiagramStore = create<DiagramStoreState>((set, get) => ({
   setTableNote: (tableName: string, note: string) => {
     const { ast } = get();
     if (!ast.tables[tableName]) return;
+    get().pushHistory();
     const updatedTables = {
       ...ast.tables,
       [tableName]: { ...ast.tables[tableName], note },
@@ -373,6 +391,7 @@ export const useDiagramStore = create<DiagramStoreState>((set, get) => ({
   setFieldNote: (tableName: string, fieldName: string, note: string) => {
     const { ast } = get();
     if (!ast.tables[tableName]) return;
+    get().pushHistory();
     const table = ast.tables[tableName];
     const updatedTable = {
       ...table,
@@ -394,6 +413,7 @@ export const useDiagramStore = create<DiagramStoreState>((set, get) => ({
     const { ast } = get();
     const table = ast.tables[oldName];
     if (!table || ast.tables[newName] || !newName) return;
+    get().pushHistory();
 
     const newTables: Record<string, SchemaTable> = {};
     for (const [name, t] of Object.entries(ast.tables)) {
@@ -465,6 +485,60 @@ export const useDiagramStore = create<DiagramStoreState>((set, get) => ({
 
   resetTo: (ast: DatabaseAST, nodes: Node[], edges: Edge[]) => {
     set({ ast, nodes, edges, sourceOrigin: 'none' });
+  },
+
+  pushHistory: () => {
+    const { ast, nodes, edges, undoStack } = get();
+    const snapshot = {
+      ast: JSON.parse(JSON.stringify(ast)) as DatabaseAST,
+      nodes: JSON.parse(JSON.stringify(nodes)) as Node[],
+      edges: JSON.parse(JSON.stringify(edges)) as Edge[],
+    };
+    // Cap history at 50 entries to avoid memory growth.
+    const next = [...undoStack, snapshot].slice(-50);
+    set({ undoStack: next, redoStack: [] });
+  },
+
+  undo: () => {
+    const { undoStack, redoStack, ast, nodes, edges } = get();
+    if (undoStack.length === 0) return;
+    const prev = undoStack[undoStack.length - 1];
+    const current = {
+      ast: JSON.parse(JSON.stringify(ast)) as DatabaseAST,
+      nodes: JSON.parse(JSON.stringify(nodes)) as Node[],
+      edges: JSON.parse(JSON.stringify(edges)) as Edge[],
+    };
+    set({
+      ast: prev.ast,
+      nodes: prev.nodes,
+      edges: prev.edges,
+      rawText: serializeDBML(prev.ast),
+      sourceOrigin: 'canvas',
+      undoStack: undoStack.slice(0, -1),
+      redoStack: [...redoStack, current],
+      statusMessage: 'Undid last action',
+    });
+  },
+
+  redo: () => {
+    const { undoStack, redoStack, ast, nodes, edges } = get();
+    if (redoStack.length === 0) return;
+    const next = redoStack[redoStack.length - 1];
+    const current = {
+      ast: JSON.parse(JSON.stringify(ast)) as DatabaseAST,
+      nodes: JSON.parse(JSON.stringify(nodes)) as Node[],
+      edges: JSON.parse(JSON.stringify(edges)) as Edge[],
+    };
+    set({
+      ast: next.ast,
+      nodes: next.nodes,
+      edges: next.edges,
+      rawText: serializeDBML(next.ast),
+      sourceOrigin: 'canvas',
+      undoStack: [...undoStack, current],
+      redoStack: redoStack.slice(0, -1),
+      statusMessage: 'Redid action',
+    });
   },
 
   loadAST: (ast: DatabaseAST) => {

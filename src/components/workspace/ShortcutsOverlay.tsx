@@ -16,6 +16,9 @@ interface ShortcutsOverlayProps {
 
 const SHORTCUTS = [
   { keys: ['⌘', 'K'], label: 'Open command palette' },
+  { keys: ['⌘', 'Z'], label: 'Undo last action' },
+  { keys: ['⌘', '⇧', 'Z'], label: 'Redo (or ⌘Y)' },
+  { keys: ['⌘', '⇧', 'V'], label: 'Toggle schema validation panel' },
   { keys: ['⌘', 'F'], label: 'Search tables on the canvas' },
   { keys: ['⌘', 'L'], label: 'Run auto-layout on the canvas' },
   { keys: ['⌘', 'M'], label: 'Open the migration diff panel' },

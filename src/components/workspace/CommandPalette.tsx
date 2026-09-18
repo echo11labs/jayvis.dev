@@ -24,6 +24,9 @@ import {
   Sparkles,
   Boxes,
   Image as ImageIcon,
+  ShieldCheck,
+  Undo2,
+  Redo2,
 } from 'lucide-react';
 import { useDiagramStore } from '@/store/diagram-store';
 import { serializeDBML } from '@/lib/parser/dbml';
@@ -38,6 +41,7 @@ interface CommandPaletteProps {
   onGenerateMigration: () => void;
   onAddTableOpenChange: (open: boolean) => void;
   onShortcutsOpenChange: (open: boolean) => void;
+  onValidationOpenChange: (open: boolean) => void;
   onLoadSample: (name: 'ecommerce' | 'blog' | 'saas') => void;
 }
 
@@ -48,6 +52,7 @@ export function CommandPalette({
   onGenerateMigration,
   onAddTableOpenChange,
   onShortcutsOpenChange,
+  onValidationOpenChange,
   onLoadSample,
 }: CommandPaletteProps) {
   const ast = useDiagramStore((s) => s.ast);
@@ -130,6 +135,21 @@ export function CommandPalette({
           <CommandItem onSelect={run(() => onShortcutsOpenChange(true))}>
             <Keyboard className="mr-2 h-4 w-4 text-sky-400" />
             Show keyboard shortcuts
+          </CommandItem>
+          <CommandItem onSelect={run(() => onValidationOpenChange(true))}>
+            <ShieldCheck className="mr-2 h-4 w-4 text-indigo-400" />
+            Validate schema
+            <kbd className="ml-auto font-mono text-[10px] text-zinc-500">⌘⇧V</kbd>
+          </CommandItem>
+          <CommandItem onSelect={run(() => useDiagramStore.getState().undo())}>
+            <Undo2 className="mr-2 h-4 w-4 text-zinc-400" />
+            Undo
+            <kbd className="ml-auto font-mono text-[10px] text-zinc-500">⌘Z</kbd>
+          </CommandItem>
+          <CommandItem onSelect={run(() => useDiagramStore.getState().redo())}>
+            <Redo2 className="mr-2 h-4 w-4 text-zinc-400" />
+            Redo
+            <kbd className="ml-auto font-mono text-[10px] text-zinc-500">⌘⇧Z</kbd>
           </CommandItem>
         </CommandGroup>
 

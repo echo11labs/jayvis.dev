@@ -19,13 +19,15 @@ import { InspectorPanel } from '@/components/workspace/InspectorPanel';
 import { AddTableDialog } from '@/components/workspace/AddTableDialog';
 import { ShortcutsOverlay } from '@/components/workspace/ShortcutsOverlay';
 import { CommandPalette } from '@/components/workspace/CommandPalette';
+import { ValidationPanel } from '@/components/workspace/ValidationPanel';
+import { UndoRedoButtons } from '@/components/workspace/UndoRedoButtons';
 import { CanvasLegend } from '@/components/canvas/CanvasLegend';
 import { CodeEditor } from '@/components/editor/CodeEditor';
 import { useDiagramStore } from '@/store/diagram-store';
 import { layoutDiagram } from '@/lib/layout/elk-layout';
 import { SAMPLE_SCHEMAS } from '@/lib/samples';
 import { loadSchema, saveSchema } from '@/lib/persistence';
-import { FileCode2, Database, Loader2, Sparkles } from 'lucide-react';
+import { FileCode2, Database, Loader2, Sparkles, ShieldCheck } from 'lucide-react';
 
 const FlowCanvas = lazy(() =>
   import('@/components/canvas/FlowCanvas').then((m) => ({ default: m.FlowCanvas })),
@@ -62,6 +64,7 @@ export default function Home() {
   const [addTableOpen, setAddTableOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [validationOpen, setValidationOpen] = useState(false);
   const parseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Bootstrap: load persisted schema from IndexedDB, else the default sample.
@@ -181,6 +184,17 @@ export default function Home() {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const cmd = e.metaKey || e.ctrlKey;
+      // ⌘Z / ⌃Z = undo, ⌘⇧Z / ⌃⇧Z = redo
+      if (cmd && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        useDiagramStore.getState().undo();
+        return;
+      }
+      if (cmd && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        useDiagramStore.getState().redo();
+        return;
+      }
       if (cmd && e.key.toLowerCase() === 'l') {
         e.preventDefault();
         handleAutoLayout();
@@ -196,6 +210,10 @@ export default function Home() {
       if (cmd && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setPaletteOpen((v) => !v);
+      }
+      if (cmd && e.shiftKey && e.key.toLowerCase() === 'v') {
+        e.preventDefault();
+        setValidationOpen((v) => !v);
       }
       if (e.key === '?' && e.shiftKey) {
         e.preventDefault();
@@ -240,6 +258,15 @@ export default function Home() {
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
+                  <UndoRedoButtons />
+                  <button
+                    onClick={() => setValidationOpen(true)}
+                    className="flex items-center gap-1 rounded border border-zinc-800 bg-zinc-900/60 px-1.5 py-0.5 text-[10px] text-zinc-500 transition-colors hover:border-indigo-600/40 hover:text-indigo-300"
+                    title="Validate schema (⌘⇧V)"
+                  >
+                    <ShieldCheck className="h-3 w-3" />
+                    <span className="hidden sm:inline">Validate</span>
+                  </button>
                   <button
                     onClick={() => setPaletteOpen(true)}
                     className="flex items-center gap-1 rounded border border-zinc-800 bg-zinc-900/60 px-1.5 py-0.5 text-[10px] text-zinc-500 transition-colors hover:border-zinc-700 hover:text-zinc-300"
@@ -340,6 +367,7 @@ export default function Home() {
       </main>
 
       <MigrationPanel open={migrationOpen} onOpenChange={setMigrationOpen} />
+      <ValidationPanel open={validationOpen} onOpenChange={setValidationOpen} />
       <AddTableDialog open={addTableOpen} onOpenChange={setAddTableOpen} />
       <ShortcutsOverlay open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
       <CommandPalette
@@ -350,6 +378,7 @@ export default function Home() {
         onAddTableOpenChange={setAddTableOpen}
         onShortcutsOpenChange={setShortcutsOpen}
         onLoadSample={handleLoadSample}
+        onValidationOpenChange={setValidationOpen}
       />
     </div>
   );
