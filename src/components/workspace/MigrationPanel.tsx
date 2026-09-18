@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Copy, Check, ArrowUp, ArrowDown, Database, GitCompare } from 'lucide-react';
 import { useDiagramStore } from '@/store/diagram-store';
+import { useTheme as useThemeState } from '@/hooks/use-theme-state';
 import { SchemaDiffEngine } from '@/lib/diff/schema-diff';
 import type { TableDiff, ColumnDiff } from '@/types/ast';
 import { toast } from 'sonner';
@@ -180,6 +181,15 @@ function DiffTree({ tables }: { tables: TableDiff[] }) {
 export function MigrationPanel({ open, onOpenChange }: MigrationPanelProps) {
   const ast = useDiagramStore((s) => s.ast);
   const previousAST = useDiagramStore((s) => s.previousAST);
+  const theme = useThemeState();
+  const isDark = theme === 'dark';
+  const sheetCls = isDark
+    ? 'border-zinc-800 bg-zinc-950'
+    : 'border-zinc-200 bg-white';
+  const titleCls = isDark ? 'text-zinc-100' : 'text-zinc-900';
+  const tabActive = isDark
+    ? 'data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100'
+    : 'data-[state=active]:bg-zinc-200 data-[state=active]:text-zinc-900';
 
   const diff = useMemo(() => {
     if (!previousAST) return null;
@@ -192,10 +202,10 @@ export function MigrationPanel({ open, onOpenChange }: MigrationPanelProps) {
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="w-full border-zinc-800 bg-zinc-950 p-0 sm:max-w-2xl"
+        className={`w-full p-0 sm:max-w-2xl ${sheetCls}`}
       >
-        <SheetHeader className="border-b border-zinc-800 px-4 py-3">
-          <SheetTitle className="flex items-center gap-2 text-zinc-100">
+        <SheetHeader className={`border-b ${isDark ? 'border-zinc-800' : 'border-zinc-200'} px-4 py-3`}>
+          <SheetTitle className={`flex items-center gap-2 ${titleCls}`}>
             <GitCompare className="h-4 w-4 text-indigo-400" />
             Migration Preview
           </SheetTitle>
@@ -248,20 +258,20 @@ export function MigrationPanel({ open, onOpenChange }: MigrationPanelProps) {
               <TabsList className="m-3 grid grid-cols-3 bg-zinc-900">
                 <TabsTrigger
                   value="diff"
-                  className="data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100"
+                  className={tabActive}
                 >
                   Diff Tree
                 </TabsTrigger>
                 <TabsTrigger
                   value="up"
-                  className="data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100"
+                  className={tabActive}
                 >
                   <ArrowUp className="mr-1.5 h-3.5 w-3.5 text-emerald-400" />
                   UP SQL
                 </TabsTrigger>
                 <TabsTrigger
                   value="down"
-                  className="data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100"
+                  className={tabActive}
                 >
                   <ArrowDown className="mr-1.5 h-3.5 w-3.5 text-rose-400" />
                   DOWN SQL

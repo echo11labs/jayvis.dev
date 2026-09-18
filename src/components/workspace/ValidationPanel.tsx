@@ -28,6 +28,7 @@ import {
   severityBg,
   type ValidationIssue,
 } from '@/lib/validation/schema-validation';
+import { useTheme as useThemeState } from '@/hooks/use-theme-state';
 
 interface ValidationPanelProps {
   open: boolean;
@@ -92,6 +93,12 @@ function IssueRow({ issue }: { issue: ValidationIssue }) {
 export function ValidationPanel({ open, onOpenChange }: ValidationPanelProps) {
   const ast = useDiagramStore((s) => s.ast);
   const [filter, setFilter] = useState<'all' | 'error' | 'warning'>('all');
+  const theme = useThemeState();
+  const isDark = theme === 'dark';
+  const sheetCls = isDark
+    ? 'border-zinc-800 bg-zinc-950'
+    : 'border-zinc-200 bg-white';
+  const titleCls = isDark ? 'text-zinc-100' : 'text-zinc-900';
 
   const issues = useMemo(() => validateSchema(ast), [ast]);
   const filtered = useMemo(
@@ -106,10 +113,10 @@ export function ValidationPanel({ open, onOpenChange }: ValidationPanelProps) {
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="w-full border-zinc-800 bg-zinc-950 p-0 sm:max-w-md"
+        className={`w-full p-0 sm:max-w-md ${sheetCls}`}
       >
-        <SheetHeader className="border-b border-zinc-800 px-4 py-3">
-          <SheetTitle className="flex items-center gap-2 text-zinc-100">
+        <SheetHeader className={`border-b ${isDark ? 'border-zinc-800' : 'border-zinc-200'} px-4 py-3`}>
+          <SheetTitle className={`flex items-center gap-2 ${titleCls}`}>
             <ShieldCheck className="h-4 w-4 text-indigo-400" />
             Schema Validation
           </SheetTitle>

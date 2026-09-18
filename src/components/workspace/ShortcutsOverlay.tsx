@@ -8,6 +8,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Keyboard } from 'lucide-react';
+import { useTheme } from '@/hooks/use-theme-state';
 
 interface ShortcutsOverlayProps {
   open: boolean;
@@ -33,9 +34,20 @@ const SHORTCUTS = [
 ];
 
 export function ShortcutsOverlay({ open, onOpenChange }: ShortcutsOverlayProps) {
+  const theme = useTheme();
+  const isDark = theme === 'dark';
+  const dialogCls = isDark
+    ? 'border-zinc-800 bg-zinc-950 text-zinc-100'
+    : 'border-zinc-200 bg-white text-zinc-900';
+  const rowHover = isDark ? 'hover:bg-zinc-900' : 'hover:bg-zinc-100';
+  const labelText = isDark ? 'text-zinc-400' : 'text-zinc-600';
+  const kbdCls = isDark
+    ? 'border-zinc-700 bg-zinc-900 text-zinc-300'
+    : 'border-zinc-300 bg-zinc-100 text-zinc-600';
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="border-zinc-800 bg-zinc-950 text-zinc-100 sm:max-w-md">
+      <DialogContent className={`${dialogCls} sm:max-w-md`}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Keyboard className="h-4 w-4 text-indigo-400" />
@@ -49,14 +61,14 @@ export function ShortcutsOverlay({ open, onOpenChange }: ShortcutsOverlayProps) 
           {SHORTCUTS.map((s) => (
             <div
               key={s.label}
-              className="flex items-center justify-between rounded-md px-2 py-1.5 hover:bg-zinc-900"
+              className={`flex items-center justify-between rounded-md px-2 py-1.5 ${rowHover}`}
             >
-              <span className="text-xs text-zinc-400">{s.label}</span>
+              <span className={`text-xs ${labelText}`}>{s.label}</span>
               <div className="flex items-center gap-1">
-                {s.keys.map((k, i) => (
+                {s.keys.filter(Boolean).map((k, i) => (
                   <kbd
                     key={i}
-                    className="min-w-[20px] rounded border border-zinc-700 bg-zinc-900 px-1.5 py-0.5 text-center font-mono text-[10px] text-zinc-300"
+                    className={`min-w-[20px] rounded border px-1.5 py-0.5 text-center font-mono text-[10px] ${kbdCls}`}
                   >
                     {k}
                   </kbd>

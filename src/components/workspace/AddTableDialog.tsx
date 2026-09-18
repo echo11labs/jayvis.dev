@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useTheme } from '@/hooks/use-theme-state';
 import { Plus, Trash2, Table2 } from 'lucide-react';
 import { useDiagramStore } from '@/store/diagram-store';
 import type { SchemaField, SchemaTable } from '@/types/ast';
@@ -42,6 +43,18 @@ const DEFAULT_FIELDS: FieldDraft[] = [
 
 export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
   const addTable = useDiagramStore((s) => s.addTable);
+  const theme = useTheme();
+  const isDark = theme === 'dark';
+  const dialogCls = isDark
+    ? 'border-zinc-800 bg-zinc-950 text-zinc-100'
+    : 'border-zinc-200 bg-white text-zinc-900';
+  const descCls = isDark ? 'text-zinc-500' : 'text-zinc-500';
+  const inputCls = isDark
+    ? 'border-zinc-800 bg-zinc-900 font-mono text-sm text-zinc-100 focus:border-indigo-500'
+    : 'border-zinc-300 bg-white font-mono text-sm text-zinc-900 focus:border-indigo-500';
+  const fieldRowCls = isDark ? 'border-zinc-800 bg-zinc-950' : 'border-zinc-300 bg-white';
+  const selectCls = isDark ? 'border-zinc-800 bg-zinc-950 text-zinc-100' : 'border-zinc-300 bg-white text-zinc-900';
+  const fieldsContainerCls = isDark ? 'border-zinc-800 bg-zinc-900/40' : 'border-zinc-200 bg-zinc-50';
   const [tableName, setTableName] = useState('');
   const [schema, setSchema] = useState('public');
   const [fields, setFields] = useState<FieldDraft[]>(DEFAULT_FIELDS.map((f) => ({ ...f })));
@@ -124,13 +137,13 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
         onOpenChange(v);
       }}
     >
-      <DialogContent className="border-zinc-800 bg-zinc-950 text-zinc-100 sm:max-w-[560px]">
+      <DialogContent className={`${dialogCls} sm:max-w-[560px]`}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Table2 className="h-4 w-4 text-indigo-400" />
             Create Table
           </DialogTitle>
-          <DialogDescription className="text-zinc-500">
+          <DialogDescription className={descCls}>
             Add a new table to the schema. It will appear on the canvas and
             sync to the DBML editor instantly.
           </DialogDescription>
@@ -150,7 +163,7 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
                 if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSubmit();
               }}
               placeholder="e.g. orders, users"
-              className="border-zinc-800 bg-zinc-900 font-mono text-sm text-zinc-100 focus:border-indigo-500"
+              className={`font-mono text-sm focus:border-indigo-500 ${inputCls}`}
             />
           </div>
           <div className="space-y-1.5">
@@ -162,7 +175,7 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
               value={schema}
               onChange={(e) => setSchema(e.target.value)}
               placeholder="public"
-              className="border-zinc-800 bg-zinc-900 font-mono text-sm text-zinc-100 focus:border-indigo-500"
+              className={`font-mono text-sm focus:border-indigo-500 ${inputCls}`}
             />
           </div>
         </div>
@@ -181,7 +194,7 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
             </Button>
           </div>
 
-          <div className="max-h-[260px] space-y-2 overflow-y-auto rounded-lg border border-zinc-800 bg-zinc-900/40 p-2">
+          <div className={`max-h-[260px] space-y-2 overflow-y-auto rounded-lg border p-2 ${fieldsContainerCls}`}>
             {fields.map((f, idx) => (
               <div
                 key={idx}
@@ -191,12 +204,12 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
                   value={f.name}
                   onChange={(e) => updateField(idx, { name: e.target.value })}
                   placeholder="column name"
-                  className="h-8 border-zinc-800 bg-zinc-950 font-mono text-xs text-zinc-100 focus:border-indigo-500"
+                  className={`h-8 font-mono text-xs focus:border-indigo-500 ${fieldRowCls}`}
                 />
                 <select
                   value={f.type}
                   onChange={(e) => updateField(idx, { type: e.target.value })}
-                  className="h-8 rounded border border-zinc-800 bg-zinc-950 px-2 font-mono text-xs text-zinc-100 focus:border-indigo-500"
+                  className={`h-8 rounded border px-2 font-mono text-xs focus:border-indigo-500 ${selectCls}`}
                 >
                   {COMMON_TYPES.map((t) => (
                     <option key={t} value={t}>

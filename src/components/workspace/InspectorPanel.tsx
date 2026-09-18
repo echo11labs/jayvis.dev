@@ -24,6 +24,8 @@ import {
   Check,
   StickyNote,
   Copy,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import { useDiagramStore } from '@/store/diagram-store';
 import { TABLE_COLORS } from '@/types/ast';
@@ -66,6 +68,7 @@ export function InspectorPanel() {
   const setTableNote = useDiagramStore((s) => s.setTableNote);
   const setFieldNote = useDiagramStore((s) => s.setFieldNote);
   const addTable = useDiagramStore((s) => s.addTable);
+  const moveField = useDiagramStore((s) => s.moveField);
 
   const [newFieldName, setNewFieldName] = useState('');
   const [newFieldType, setNewFieldType] = useState('varchar');
@@ -329,7 +332,7 @@ export function InspectorPanel() {
               Columns
             </div>
             <div className="space-y-1">
-              {table.fields.map((f) => {
+              {table.fields.map((f, fieldIdx) => {
                 const isEditing = editingField === f.name;
                 const draft = isEditing && fieldDraft ? fieldDraft : f;
                 const isPK = !!draft.constraints.isPrimaryKey;
@@ -339,6 +342,8 @@ export function InspectorPanel() {
                     (r.sourceTable === table.name && r.sourceField === f.name) ||
                     (r.targetTable === table.name && r.targetField === f.name),
                 );
+                const canMoveUp = fieldIdx > 0;
+                const canMoveDown = fieldIdx < table.fields.length - 1;
 
                 return (
                   <div
@@ -506,6 +511,22 @@ export function InspectorPanel() {
                             title="Edit column note"
                           >
                             <StickyNote className="h-3 w-3" />
+                          </button>
+                          <button
+                            onClick={() => moveField(table.name, fieldIdx, fieldIdx - 1)}
+                            disabled={!canMoveUp}
+                            className="rounded p-0.5 text-zinc-600 opacity-0 transition-opacity hover:bg-zinc-800 hover:text-zinc-200 group-hover:opacity-100 disabled:opacity-0"
+                            title="Move up"
+                          >
+                            <ArrowUp className="h-3 w-3" />
+                          </button>
+                          <button
+                            onClick={() => moveField(table.name, fieldIdx, fieldIdx + 1)}
+                            disabled={!canMoveDown}
+                            className="rounded p-0.5 text-zinc-600 opacity-0 transition-opacity hover:bg-zinc-800 hover:text-zinc-200 group-hover:opacity-100 disabled:opacity-0"
+                            title="Move down"
+                          >
+                            <ArrowDown className="h-3 w-3" />
                           </button>
                           <button
                             onClick={() => startEditField(f)}

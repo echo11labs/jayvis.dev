@@ -239,6 +239,10 @@ export default function Home() {
   }, [handleAutoLayout, handleGenerateMigration]);
 
   const tableCount = useDiagramStore((s) => Object.keys(s.ast.tables).length);
+  const fieldCount = useDiagramStore(
+    (s) =>
+      Object.values(s.ast.tables).reduce((acc, t) => acc + t.fields.length, 0),
+  );
 
   return (
     <div className={`flex h-screen w-screen flex-col overflow-hidden ${shellBg}`}>
@@ -315,6 +319,9 @@ export default function Home() {
                   <span className={`flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[10px] ${isDark ? 'bg-zinc-900 text-zinc-400' : 'bg-zinc-100 text-zinc-500'}`}>
                     <Database className="h-2.5 w-2.5 text-indigo-400/70" />
                     {nodes.length} tables
+                  </span>
+                  <span className={`hidden rounded px-1.5 py-0.5 font-mono text-[10px] sm:inline ${isDark ? 'bg-zinc-900 text-zinc-400' : 'bg-zinc-100 text-zinc-500'}`}>
+                    {fieldCount} cols
                   </span>
                   <span className={`rounded px-1.5 py-0.5 font-mono text-[10px] ${isDark ? 'bg-zinc-900 text-zinc-400' : 'bg-zinc-100 text-zinc-500'}`}>
                     {useDiagramStore.getState().edges.length} refs

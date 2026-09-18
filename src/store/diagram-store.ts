@@ -86,6 +86,7 @@ interface DiagramStoreState {
   renameTable: (oldName: string, newName: string) => void;
   setTableNote: (tableName: string, note: string) => void;
   setFieldNote: (tableName: string, fieldName: string, note: string) => void;
+  moveField: (tableName: string, fromIndex: number, toIndex: number) => void;
   /** Push the current state onto the undo stack before a mutation. */
   pushHistory: () => void;
   undo: () => void;
@@ -401,6 +402,35 @@ export const useDiagramStore = create<DiagramStoreState>((set, get) => ({
         n.id === tableName ? { ...n, data: { table: updatedTable } } : n,
       ),
       sourceOrigin: 'canvas',
+    }));
+  },
+
+  moveField: (tableName: string, fromIndex: number, toIndex: number) => {
+    const { ast } = get();
+    if (!ast.tables[tableName]) return;
+    const table = ast.tables[tableName];
+    if (
+      fromIndex < 0 ||
+      toIndex < 0 ||
+      fromIndex >= table.fields.length ||
+      toIndex >= table.fields.length ||
+      fromIndex === toIndex
+    )
+      return;
+    get().pushHistory();
+    const newFields = [...table.fields];
+    const [moved] = newFields.splice(fromIndex, 1);
+    newFields.splice(toIndex, 0, moved);
+    const updatedTable = { ...table, fields: newFields };
+    const newAST = { ...ast, tables: { ...ast.tables, [tableName]: updatedTable } };
+    set((state) => ({
+      ast: newAST,
+      rawText: serializeDBML(newAST),
+      nodes: state.nodes.map((n) =>
+        n.id === tableName ? { ...n, data: { table: updatedTable } } : n,
+      ),
+      sourceOrigin: 'canvas',
+      statusMessage: `Moved column in ${tableName}`,
     }));
   },
 
