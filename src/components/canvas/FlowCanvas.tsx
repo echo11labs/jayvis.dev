@@ -18,12 +18,19 @@ import { useDiagramStore } from '@/store/diagram-store';
 import { TableNode, type TableNodeData } from '@/components/canvas/TableNode';
 import { EdgeContextMenu } from '@/components/canvas/EdgeContextMenu';
 import { SchemaSearch } from '@/components/canvas/SchemaSearch';
+import { PaneContextMenu } from '@/components/canvas/PaneContextMenu';
 import { useTheme } from '@/hooks/use-theme-state';
 
 const nodeTypes = { table: TableNode };
 
 interface EdgeMenuState {
   edgeId: string | null;
+  x: number;
+  y: number;
+}
+
+interface PaneMenuState {
+  open: boolean;
   x: number;
   y: number;
 }
@@ -57,6 +64,11 @@ function FlowCanvasInner() {
 
   const [edgeMenu, setEdgeMenu] = useState<EdgeMenuState>({
     edgeId: null,
+    x: 0,
+    y: 0,
+  });
+  const [paneMenu, setPaneMenu] = useState<PaneMenuState>({
+    open: false,
     x: 0,
     y: 0,
   });
@@ -104,7 +116,13 @@ function FlowCanvasInner() {
   const onPaneClick = useCallback(() => {
     setSelectedTable(null);
     setEdgeMenu({ edgeId: null, x: 0, y: 0 });
+    setPaneMenu({ open: false, x: 0, y: 0 });
   }, [setSelectedTable]);
+
+  const onPaneContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setPaneMenu({ open: true, x: e.clientX, y: e.clientY });
+  }, []);
 
   const onEdgeContextMenu = useCallback(
     (e: React.MouseEvent, edge: Edge) => {
@@ -150,6 +168,7 @@ function FlowCanvasInner() {
         onConnect={onConnect}
         onNodeClick={onNodeClick}
         onPaneClick={onPaneClick}
+        onPaneContextMenu={onPaneContextMenu}
         onEdgeContextMenu={onEdgeContextMenu}
         onEdgeMouseEnter={onEdgeEnter}
         onEdgeMouseLeave={onEdgeLeave}
@@ -211,6 +230,16 @@ function FlowCanvasInner() {
         x={edgeMenu.x}
         y={edgeMenu.y}
         onClose={() => setEdgeMenu({ edgeId: null, x: 0, y: 0 })}
+      />
+
+      <PaneContextMenu
+        open={paneMenu.open}
+        x={paneMenu.x}
+        y={paneMenu.y}
+        onClose={() => setPaneMenu({ open: false, x: 0, y: 0 })}
+        onAddTable={() => window.dispatchEvent(new CustomEvent('stitchdb:add-table'))}
+        onAutoLayout={() => window.dispatchEvent(new CustomEvent('stitchdb:auto-layout'))}
+        onFitView={() => window.dispatchEvent(new CustomEvent('stitchdb:fit-view'))}
       />
     </div>
   );

@@ -25,8 +25,23 @@ function edgeLabel(ref: SchemaReference): string {
   return `${ref.sourceField} → ${ref.targetField}  ·  ${ref.cardinality}`;
 }
 
+/** Stroke color per cardinality for visual distinction. */
+function cardinalityStroke(cardinality: string): string {
+  switch (cardinality) {
+    case '1:1':
+      return '#10B981'; // emerald — one-to-one
+    case '1:N':
+      return '#6366F1'; // indigo — one-to-many (default)
+    case 'N:M':
+      return '#EC4899'; // pink — many-to-many
+    default:
+      return '#6366F1';
+  }
+}
+
 /** Build a full Edge object from a SchemaReference. */
 function refToEdge(ref: SchemaReference): Edge {
+  const stroke = cardinalityStroke(ref.cardinality);
   return {
     id: ref.id,
     source: ref.sourceTable,
@@ -35,10 +50,16 @@ function refToEdge(ref: SchemaReference): Edge {
     targetHandle: `${ref.targetTable}.${ref.targetField}-target`,
     type: 'smoothstep',
     animated: true,
-    style: { stroke: '#6366F1', strokeWidth: 2 },
+    style: { stroke, strokeWidth: 2 },
     label: edgeLabel(ref),
     labelStyle: { fontSize: 10, fill: '#a1a1aa' },
     labelBgStyle: { fill: '#18181b' },
+    markerEnd: {
+      type: 'arrowclosed' as const,
+      width: 16,
+      height: 16,
+      color: stroke,
+    },
   };
 }
 

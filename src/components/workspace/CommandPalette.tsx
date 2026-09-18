@@ -32,6 +32,7 @@ import { useDiagramStore } from '@/store/diagram-store';
 import { serializeDBML } from '@/lib/parser/dbml';
 import { exportDDL } from '@/lib/export/ddl';
 import { downloadErdSvg } from '@/lib/export/erd-svg';
+import { useTheme } from '@/hooks/use-theme-state';
 import { toast } from 'sonner';
 
 interface CommandPaletteProps {
@@ -57,6 +58,12 @@ export function CommandPalette({
 }: CommandPaletteProps) {
   const ast = useDiagramStore((s) => s.ast);
   const loadAST = useDiagramStore((s) => s.loadAST);
+  const theme = useTheme();
+  const isDark = theme === 'dark';
+  const dialogCls = isDark
+    ? 'border-zinc-800 bg-zinc-950 text-zinc-100'
+    : 'border-zinc-200 bg-white text-zinc-900';
+  const kbdCls = isDark ? 'text-zinc-500' : 'text-zinc-400';
 
   const close = useCallback(() => onOpenChange(false), [onOpenChange]);
 
@@ -111,7 +118,7 @@ export function CommandPalette({
   );
 
   return (
-    <CommandDialog open={open} onOpenChange={onOpenChange}>
+    <CommandDialog open={open} onOpenChange={onOpenChange} className={dialogCls}>
       <CommandInput placeholder="Type a command or search…" />
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
@@ -120,17 +127,17 @@ export function CommandPalette({
           <CommandItem onSelect={run(() => onAddTableOpenChange(true))}>
             <Plus className="mr-2 h-4 w-4 text-indigo-400" />
             Create table
-            <kbd className="ml-auto font-mono text-[10px] text-zinc-500">⌘T</kbd>
+            <kbd className={`ml-auto font-mono text-[10px] ${kbdCls}`}>⌘T</kbd>
           </CommandItem>
           <CommandItem onSelect={run(onAutoLayout)}>
             <LayoutGrid className="mr-2 h-4 w-4 text-emerald-400" />
             Auto layout
-            <kbd className="ml-auto font-mono text-[10px] text-zinc-500">⌘L</kbd>
+            <kbd className={`ml-auto font-mono text-[10px] ${kbdCls}`}>⌘L</kbd>
           </CommandItem>
           <CommandItem onSelect={run(onGenerateMigration)}>
             <GitCompare className="mr-2 h-4 w-4 text-amber-400" />
             Generate migration
-            <kbd className="ml-auto font-mono text-[10px] text-zinc-500">⌘M</kbd>
+            <kbd className={`ml-auto font-mono text-[10px] ${kbdCls}`}>⌘M</kbd>
           </CommandItem>
           <CommandItem onSelect={run(() => onShortcutsOpenChange(true))}>
             <Keyboard className="mr-2 h-4 w-4 text-sky-400" />
@@ -139,17 +146,17 @@ export function CommandPalette({
           <CommandItem onSelect={run(() => onValidationOpenChange(true))}>
             <ShieldCheck className="mr-2 h-4 w-4 text-indigo-400" />
             Validate schema
-            <kbd className="ml-auto font-mono text-[10px] text-zinc-500">⌘⇧V</kbd>
+            <kbd className={`ml-auto font-mono text-[10px] ${kbdCls}`}>⌘⇧V</kbd>
           </CommandItem>
           <CommandItem onSelect={run(() => useDiagramStore.getState().undo())}>
             <Undo2 className="mr-2 h-4 w-4 text-zinc-400" />
             Undo
-            <kbd className="ml-auto font-mono text-[10px] text-zinc-500">⌘Z</kbd>
+            <kbd className={`ml-auto font-mono text-[10px] ${kbdCls}`}>⌘Z</kbd>
           </CommandItem>
           <CommandItem onSelect={run(() => useDiagramStore.getState().redo())}>
             <Redo2 className="mr-2 h-4 w-4 text-zinc-400" />
             Redo
-            <kbd className="ml-auto font-mono text-[10px] text-zinc-500">⌘⇧Z</kbd>
+            <kbd className={`ml-auto font-mono text-[10px] ${kbdCls}`}>⌘⇧Z</kbd>
           </CommandItem>
         </CommandGroup>
 

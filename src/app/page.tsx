@@ -238,6 +238,18 @@ export default function Home() {
     return () => window.removeEventListener('keydown', handler);
   }, [handleAutoLayout, handleGenerateMigration]);
 
+  // Listen for canvas context-menu actions (right-click pane).
+  useEffect(() => {
+    const addTableHandler = () => setAddTableOpen(true);
+    const autoLayoutHandler = () => handleAutoLayout();
+    window.addEventListener('stitchdb:add-table', addTableHandler);
+    window.addEventListener('stitchdb:auto-layout', autoLayoutHandler);
+    return () => {
+      window.removeEventListener('stitchdb:add-table', addTableHandler);
+      window.removeEventListener('stitchdb:auto-layout', autoLayoutHandler);
+    };
+  }, [handleAutoLayout]);
+
   const tableCount = useDiagramStore((s) => Object.keys(s.ast.tables).length);
   const fieldCount = useDiagramStore(
     (s) =>

@@ -8,8 +8,10 @@ truth. The platform is **functional, browser-verified, and feature-complete**
 with bidirectional canvas↔editor sync, IndexedDB persistence, a command
 palette, edge context menus, ERD SVG export, schema search, undo/redo,
 schema validation, table & field notes UI, live validation badge, full
-dark/light theme coverage (canvas + editor + toolbar + inspector + **dialogs**),
-table duplicate, copy-to-clipboard, column reordering, and fit-view shortcut.
+dark/light theme coverage (canvas + editor + toolbar + inspector + all
+dialogs + **command palette**), table duplicate, copy-to-clipboard, column
+reordering, **canvas pane context menu, cardinality-colored edges**, and
+fit-view shortcut.
 
 ### Architecture
 - **Frontend**: Next.js 16 (App Router) + TypeScript + Tailwind + shadcn/ui
@@ -26,37 +28,39 @@ table duplicate, copy-to-clipboard, column reordering, and fit-view shortcut.
 - **State**: Zustand store with origin flagging + bidirectional sync + undo/redo
 - **Theme**: Full dark/light toggle (TableNode, CodeEditor, FlowCanvas, Toolbar,
   Inspector, AddTableDialog, ShortcutsOverlay, ValidationPanel, MigrationPanel,
-  app shell)
+  CommandPalette, app shell)
 
 ## Current Goals / Completed Modifications / Verification
 
-### Phase 10 — Completed (this round)
+### Phase 11 — Completed (this round)
 
-1. **Dialog theming** ✅
-   - **AddTableDialog** (`src/components/workspace/AddTableDialog.tsx`):
-     theme-aware dialog background, text, description, inputs, selects,
-     field rows, fields container.
-   - **ShortcutsOverlay** (`src/components/workspace/ShortcutsOverlay.tsx`):
-     theme-aware dialog background, text, row hover, kbd badges.
-   - **ValidationPanel** (`src/components/workspace/ValidationPanel.tsx`):
-     theme-aware sheet background, title, borders.
-   - **MigrationPanel** (`src/components/workspace/MigrationPanel.tsx`):
-     theme-aware sheet background, title, borders, tab active states.
-   - All use the `useTheme` hook with MutationObserver for live re-rendering.
+1. **CommandPalette theming** ✅ (`src/components/workspace/CommandPalette.tsx`)
+   - Added `useTheme` hook; theme-aware dialog background (zinc-950/white),
+     text (zinc-100/zinc-900), and kbd shortcut colors.
+   - Passes `className` override to the `CommandDialog`.
+   - All 7+ command items now render with correct theme colors.
 
-2. **Column reordering** ✅ (inspector + store)
-   - Added `moveField(tableName, fromIndex, toIndex)` store method that
-     splices the fields array, pushes history for undo, and re-serializes DBML.
-   - Added ArrowUp / ArrowDown buttons to each field row in the inspector
-     (disabled at the first/last position).
-   - Buttons appear on hover with the other action buttons.
+2. **Canvas pane context menu** ✅ (`src/components/canvas/PaneContextMenu.tsx`)
+   - Right-click the empty canvas → floating menu with:
+     - "Add table" (⌘T) — opens the Add Table dialog.
+     - "Auto layout" (⌘L) — runs ELK layout.
+     - "Fit view" (⌘0) — fits the canvas to all nodes.
+     - "Clear schema" (danger, disabled when empty) — drops all tables.
+   - Closes on outside-click or Escape.
+   - Wired via `onPaneContextMenu` on ReactFlow + custom events for actions.
 
-3. **Canvas header stats badge** ✅ (`src/app/page.tsx`)
-   - Added a "N cols" badge to the canvas header (between tables and refs).
-   - All three badges (tables, cols, refs) are theme-aware and responsive
-     (cols hidden on small screens).
+3. **Cardinality-colored edges** ✅ (`src/store/diagram-store.ts`)
+   - Added `cardinalityStroke()` helper: 1:1 → emerald (#10B981), 1:N →
+     indigo (#6366F1), N:M → pink (#EC4899).
+   - The `refToEdge` helper now sets the edge stroke + markerEnd color based
+     on the reference's cardinality.
+   - Visual distinction between relationship types at a glance.
+   - **Verified**: 3 edges all show `rgb(99, 102, 241)` (#6366F1, 1:N) for
+     the e-commerce sample (all 1:N relationships).
 
 ### Previous Phases (still working)
+- **Phase 10**: Dialog theming (AddTable, Shortcuts, Validation, Migration),
+  column reordering, canvas header stats badge.
 - **Phase 9**: Themed toolbar + inspector, table duplicate, copy-to-clipboard.
 - **Phase 8**: Full light theme coverage (TableNode, CodeEditor, FlowCanvas,
   shell), fit-view shortcut (⌘0).
@@ -72,11 +76,10 @@ table duplicate, copy-to-clipboard, column reordering, and fit-view shortcut.
   migration diff engine, MCP server, split-pane UI, 3 sample schemas.
 
 ### Browser-Verified (agent-browser)
-- ✅ Page hydrates: editor (1016 chars) + canvas (4 tables) + HMR connected
-- ✅ Canvas header shows "4 tables" + "N cols" + "N refs" badges
+- ✅ Page hydrates: editor (1016 chars) + canvas (4 tables, 3 edges) + HMR connected
+- ✅ Command palette opens in light mode (themed background)
 - ✅ Theme toggle works (html class switches to "light")
-- ✅ AddTableDialog opens in light mode (themed background)
-- ✅ Inspector opens on table click with Duplicate/Drop buttons
+- ✅ Edge colors reflect cardinality (all 1:N = indigo #6366F1)
 - ✅ Lint clean (0 errors)
 
 ### Critical Operational Notes
@@ -101,18 +104,16 @@ table duplicate, copy-to-clipboard, column reordering, and fit-view shortcut.
 - **Server stability under interaction**: the dev server dies after ~2-3
   dialog interactions due to memory pressure. A production build
   (`next build`) would eliminate this.
-- **CommandPalette theming**: the CommandPalette uses shadcn's CommandDialog
-  which has its own dark defaults. A theme pass would update it too.
 
 ### Priority Recommendations for Next Phase
 1. **Wire MCP to the live store** via a WebSocket mini-service so agent
    edits appear on the canvas in real time.
 2. **Production build test** (`next build`) — would eliminate the HMR crash
    and memory issues, enabling full interactive QA.
-3. **Theme the CommandPalette** — propagate the theme class into the
-   CommandDialog component.
-4. **Multi-select + bulk actions** — shift-click to select multiple tables,
+3. **Multi-select + bulk actions** — shift-click to select multiple tables,
    then move/delete as a group.
-5. **Schema diff timeline** — show a visual history of schema changes with
+4. **Schema diff timeline** — show a visual history of schema changes with
    timestamps, clickable to restore any prior state.
-6. **Prisma schema import** — parse `schema.prisma` files into the AST.
+5. **Prisma schema import** — parse `schema.prisma` files into the AST.
+6. **Keyboard navigation in command palette** — arrow keys + enter to
+   select (cmdk supports this natively, verify it works).
