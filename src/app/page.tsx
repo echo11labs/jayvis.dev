@@ -28,6 +28,7 @@ import { useDiagramStore } from '@/store/diagram-store';
 import { layoutDiagram } from '@/lib/layout/elk-layout';
 import { SAMPLE_SCHEMAS } from '@/lib/samples';
 import { loadSchema, saveSchema } from '@/lib/persistence';
+import { useTheme } from '@/hooks/use-theme-state';
 import { FileCode2, Database, Loader2, Sparkles } from 'lucide-react';
 
 const FlowCanvas = lazy(() =>
@@ -67,6 +68,13 @@ export default function Home() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [validationOpen, setValidationOpen] = useState(false);
   const parseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const theme = useTheme();
+  const isDark = theme === 'dark';
+  const shellBg = isDark ? 'bg-zinc-950 text-zinc-100' : 'bg-zinc-50 text-zinc-900';
+  const editorPanelBg = isDark ? 'bg-[#0a0a0a]' : 'bg-white';
+  const headerBorder = isDark ? 'border-zinc-800' : 'border-zinc-200';
+  const headerText = isDark ? 'text-zinc-400' : 'text-zinc-500';
+  const statusBorder = isDark ? 'border-zinc-800 bg-zinc-950/90' : 'border-zinc-200 bg-white/90';
 
   // Bootstrap: load persisted schema from IndexedDB, else the default sample.
   useEffect(() => {
@@ -200,6 +208,11 @@ export default function Home() {
         e.preventDefault();
         handleAutoLayout();
       }
+      if (cmd && e.key === '0') {
+        e.preventDefault();
+        // Fit view — dispatched via a custom event the FlowCanvas listens for.
+        window.dispatchEvent(new CustomEvent('stitchdb:fit-view'));
+      }
       if (cmd && e.key.toLowerCase() === 't') {
         e.preventDefault();
         setAddTableOpen(true);
@@ -228,7 +241,7 @@ export default function Home() {
   const tableCount = useDiagramStore((s) => Object.keys(s.ast.tables).length);
 
   return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden bg-zinc-950 text-zinc-100">
+    <div className={`flex h-screen w-screen flex-col overflow-hidden ${shellBg}`}>
       <Toolbar
         onAutoLayout={handleAutoLayout}
         onGenerateMigration={handleGenerateMigration}
@@ -249,12 +262,12 @@ export default function Home() {
             maxSize={60}
             order={1}
           >
-            <div className="flex h-full flex-col bg-[#0a0a0a]">
-              <div className="flex h-9 shrink-0 items-center justify-between border-b border-zinc-800 px-3">
-                <div className="flex items-center gap-2 text-xs text-zinc-400">
+            <div className={`flex h-full flex-col ${editorPanelBg}`}>
+              <div className={`flex h-9 shrink-0 items-center justify-between border-b ${headerBorder} px-3`}>
+                <div className={`flex items-center gap-2 text-xs ${headerText}`}>
                   <FileCode2 className="h-3.5 w-3.5 text-indigo-400" />
                   <span className="font-medium">schema.dbml</span>
-                  <span className="ml-1 rounded bg-zinc-900 px-1.5 py-0.5 font-mono text-[9px] text-zinc-500">
+                  <span className={`ml-1 rounded px-1.5 py-0.5 font-mono text-[9px] ${isDark ? 'bg-zinc-900 text-zinc-500' : 'bg-zinc-100 text-zinc-500'}`}>
                     {rawText.length} chars
                   </span>
                 </div>
@@ -263,12 +276,12 @@ export default function Home() {
                   <ValidationBadge onClick={() => setValidationOpen(true)} />
                   <button
                     onClick={() => setPaletteOpen(true)}
-                    className="flex items-center gap-1 rounded border border-zinc-800 bg-zinc-900/60 px-1.5 py-0.5 text-[10px] text-zinc-500 transition-colors hover:border-zinc-700 hover:text-zinc-300"
+                    className={`flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] transition-colors ${isDark ? 'border-zinc-800 bg-zinc-900/60 text-zinc-500 hover:border-zinc-700 hover:text-zinc-300' : 'border-zinc-200 bg-zinc-50 text-zinc-500 hover:border-zinc-300 hover:text-zinc-700'}`}
                     title="Command palette"
                   >
                     ⌘K
                   </button>
-                  <span className="font-mono text-[10px] text-zinc-600">DBML v2</span>
+                  <span className={`font-mono text-[10px] ${isDark ? 'text-zinc-600' : 'text-zinc-400'}`}>DBML v2</span>
                 </div>
               </div>
               <div className="relative flex-1 overflow-hidden">
@@ -290,20 +303,20 @@ export default function Home() {
             order={2}
           >
             <div className="flex h-full flex-col">
-              <div className="flex h-9 shrink-0 items-center justify-between border-b border-zinc-800 px-3">
-                <div className="flex items-center gap-2 text-xs text-zinc-400">
+              <div className={`flex h-9 shrink-0 items-center justify-between border-b ${headerBorder} px-3`}>
+                <div className={`flex items-center gap-2 text-xs ${headerText}`}>
                   <Database className="h-3.5 w-3.5 text-indigo-400" />
                   <span className="font-medium">ERD Canvas</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="hidden font-mono text-[10px] text-zinc-600 sm:inline">
+                  <span className={`hidden font-mono text-[10px] sm:inline ${isDark ? 'text-zinc-600' : 'text-zinc-400'}`}>
                     ELK · layered
                   </span>
-                  <span className="flex items-center gap-1 rounded bg-zinc-900 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400">
+                  <span className={`flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[10px] ${isDark ? 'bg-zinc-900 text-zinc-400' : 'bg-zinc-100 text-zinc-500'}`}>
                     <Database className="h-2.5 w-2.5 text-indigo-400/70" />
                     {nodes.length} tables
                   </span>
-                  <span className="rounded bg-zinc-900 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400">
+                  <span className={`rounded px-1.5 py-0.5 font-mono text-[10px] ${isDark ? 'bg-zinc-900 text-zinc-400' : 'bg-zinc-100 text-zinc-500'}`}>
                     {useDiagramStore.getState().edges.length} refs
                   </span>
                 </div>
@@ -340,9 +353,9 @@ export default function Home() {
         </ResizablePanelGroup>
 
         {/* Status bar */}
-        <div className="absolute bottom-0 left-0 right-0 flex h-7 items-center justify-between border-t border-zinc-800 bg-zinc-950/90 px-3 text-[11px] backdrop-blur-sm">
+        <div className={`absolute bottom-0 left-0 right-0 flex h-7 items-center justify-between border-t ${statusBorder} px-3 text-[11px] backdrop-blur-sm`}>
           <div className="flex items-center gap-3">
-            <span className="font-mono text-zinc-500">{statusMessage}</span>
+            <span className={`font-mono ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{statusMessage}</span>
             {parseError && (
               <span className="flex items-center gap-1 font-mono text-rose-400">
                 <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
@@ -350,12 +363,12 @@ export default function Home() {
               </span>
             )}
           </div>
-          <div className="flex items-center gap-3 text-zinc-600">
+          <div className={`flex items-center gap-3 ${isDark ? 'text-zinc-600' : 'text-zinc-400'}`}>
             <span className="hidden sm:inline">
               <Sparkles className="mr-1 inline h-3 w-3 text-emerald-500" />
               MCP-ready
             </span>
-            <span className="hidden sm:inline font-mono text-zinc-700">·</span>
+            <span className={`hidden sm:inline font-mono ${isDark ? 'text-zinc-700' : 'text-zinc-300'}`}>·</span>
             <span className="hidden sm:inline font-mono">
               saved locally
             </span>

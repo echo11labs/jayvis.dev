@@ -7,6 +7,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useTheme } from '@/hooks/use-theme-state';
 import type { SchemaTable, SchemaField } from '@/types/ast';
 
 export interface TableNodeData {
@@ -44,18 +45,36 @@ function TableNodeComponent({ id, data, selected }: NodeProps<TableNodeData>) {
   const table = data.table;
   const headerColor = table.color || '#6366F1';
   const pkCount = table.fields.filter((f) => f.constraints.isPrimaryKey).length;
+  const theme = useTheme();
+  const isDark = theme === 'dark';
+
+  // Theme-aware tokens.
+  const cardBg = isDark ? 'bg-zinc-950' : 'bg-white';
+  const cardBorder = selected
+    ? 'border-indigo-500 ring-2 ring-indigo-500/40 shadow-indigo-500/10'
+    : isDark
+      ? 'border-zinc-800 hover:border-zinc-600'
+      : 'border-zinc-200 hover:border-zinc-300';
+  const headerBorder = isDark ? 'border-zinc-800/80' : 'border-zinc-200';
+  const schemaLabel = isDark ? 'text-zinc-500' : 'text-zinc-400';
+  const tableName = isDark ? 'text-zinc-100' : 'text-zinc-900';
+  const colBadge = isDark ? 'bg-zinc-900/80 text-zinc-500' : 'bg-zinc-100 text-zinc-500';
+  const rowAlt = isDark ? 'bg-zinc-900/20' : 'bg-zinc-50';
+  const rowHover = isDark ? 'hover:bg-zinc-800/60' : 'hover:bg-zinc-100';
+  const fieldText = isDark ? 'text-zinc-300' : 'text-zinc-700';
+  const pkFieldText = isDark ? 'text-zinc-100' : 'text-zinc-900';
+  const handleBorder = isDark ? '!border-zinc-950' : '!border-white';
+  const handleBg = isDark ? '!bg-zinc-700' : '!bg-zinc-400';
+  const emptyText = isDark ? 'text-zinc-600' : 'text-zinc-400';
+  const indexFooter = isDark ? 'border-zinc-800/60 text-zinc-600' : 'border-zinc-200 text-zinc-400';
 
   return (
     <div
-      className={`min-w-[270px] rounded-xl border bg-zinc-950 font-sans shadow-2xl shadow-black/40 transition-all duration-150 ${
-        selected
-          ? 'border-indigo-500 ring-2 ring-indigo-500/40 shadow-indigo-500/10'
-          : 'border-zinc-800 hover:border-zinc-600'
-      }`}
+      className={`min-w-[270px] rounded-xl border ${cardBg} font-sans shadow-2xl ${isDark ? 'shadow-black/40' : 'shadow-zinc-300/40'} transition-all duration-150 ${cardBorder}`}
     >
       {/* Table Header */}
       <div
-        className="relative flex items-center justify-between overflow-hidden rounded-t-xl border-b border-zinc-800/80 px-3 py-2"
+        className={`relative flex items-center justify-between overflow-hidden rounded-t-xl border-b ${headerBorder} px-3 py-2`}
         style={{
           background: `linear-gradient(135deg, ${headerColor}22 0%, transparent 60%)`,
         }}
@@ -71,14 +90,14 @@ function TableNodeComponent({ id, data, selected }: NodeProps<TableNodeData>) {
           >
             {table.name.slice(0, 2).toUpperCase()}
           </span>
-          <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 flex-shrink-0">
+          <span className={`text-[10px] font-bold uppercase tracking-wider ${schemaLabel} flex-shrink-0`}>
             {table.schema || 'public'}
           </span>
-          <span className="truncate text-sm font-semibold text-zinc-100">
+          <span className={`truncate text-sm font-semibold ${tableName}`}>
             {table.name}
           </span>
         </div>
-        <span className="flex-shrink-0 rounded-md bg-zinc-900/80 px-1.5 py-0.5 font-mono text-[10px] text-zinc-500">
+        <span className={`flex-shrink-0 rounded-md px-1.5 py-0.5 font-mono text-[10px] ${colBadge}`}>
           {table.fields.length} col
         </span>
       </div>
@@ -86,7 +105,7 @@ function TableNodeComponent({ id, data, selected }: NodeProps<TableNodeData>) {
       {/* Field List */}
       <div className="py-0.5">
         {table.fields.length === 0 && (
-          <div className="px-3 py-2 text-[10px] italic text-zinc-600">
+          <div className={`px-3 py-2 text-[10px] italic ${emptyText}`}>
             no columns
           </div>
         )}
@@ -102,15 +121,15 @@ function TableNodeComponent({ id, data, selected }: NodeProps<TableNodeData>) {
             <div
               key={field.id}
               className={`group relative flex items-center justify-between gap-2 px-3 py-1.5 text-xs transition-colors ${
-                idx % 2 === 1 ? 'bg-zinc-900/20' : ''
-              } hover:bg-zinc-800/60`}
+                idx % 2 === 1 ? rowAlt : ''
+              } ${rowHover}`}
             >
               {/* Target Handle */}
               <Handle
                 type="target"
                 position={Position.Left}
                 id={`${handleKey}-target`}
-                className="!h-2 !w-2 !-left-[6px] !rounded-full !border-2 !border-zinc-950 !bg-zinc-700 transition-all hover:!bg-indigo-400 hover:!scale-125"
+                className={`!h-2 !w-2 !-left-[6px] !rounded-full !border-2 ${handleBorder} ${handleBg} transition-all hover:!bg-indigo-400 hover:!scale-125`}
               />
 
               {/* Column Name & Badges */}
@@ -134,8 +153,8 @@ function TableNodeComponent({ id, data, selected }: NodeProps<TableNodeData>) {
                 <span
                   className={`truncate ${
                     isPK
-                      ? 'font-semibold text-zinc-100'
-                      : 'text-zinc-300'
+                      ? `font-semibold ${pkFieldText}`
+                      : fieldText
                   }`}
                   title={field.note ? `${field.name} — ${field.note}` : field.name}
                 >
@@ -195,7 +214,7 @@ function TableNodeComponent({ id, data, selected }: NodeProps<TableNodeData>) {
                 type="source"
                 position={Position.Right}
                 id={`${handleKey}-source`}
-                className="!h-2 !w-2 !-right-[6px] !rounded-full !border-2 !border-zinc-950 !bg-zinc-700 transition-all hover:!bg-indigo-400 hover:!scale-125"
+                className={`!h-2 !w-2 !-right-[6px] !rounded-full !border-2 ${handleBorder} ${handleBg} transition-all hover:!bg-indigo-400 hover:!scale-125`}
               />
             </div>
           );
@@ -204,7 +223,7 @@ function TableNodeComponent({ id, data, selected }: NodeProps<TableNodeData>) {
 
       {/* Footer: indexes summary */}
       {table.indexes && table.indexes.length > 0 && (
-        <div className="border-t border-zinc-800/60 px-3 py-1 text-[10px] text-zinc-600">
+        <div className={`border-t ${indexFooter} px-3 py-1 text-[10px]`}>
           <span className="font-mono">
             {table.indexes.length} index{table.indexes.length > 1 ? 'es' : ''}
           </span>

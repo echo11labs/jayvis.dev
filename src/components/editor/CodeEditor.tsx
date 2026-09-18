@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTheme } from '@/hooks/use-theme-state';
 
 interface CodeEditorProps {
   value: string;
@@ -21,6 +22,15 @@ export function CodeEditor({ value, onChange, errorMessage }: CodeEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const gutterRef = useRef<HTMLDivElement>(null);
   const [lineCount, setLineCount] = useState(1);
+  const theme = useTheme();
+  const isDark = theme === 'dark';
+
+  // Theme-aware color tokens.
+  const bg = isDark ? '#0a0a0a' : '#fafafa';
+  const borderColor = isDark ? 'border-zinc-800/80' : 'border-zinc-200';
+  const gutterText = isDark ? 'text-zinc-600' : 'text-zinc-400';
+  const editorText = isDark ? 'text-zinc-200' : 'text-zinc-800';
+  const placeholder = isDark ? 'placeholder:text-zinc-700' : 'placeholder:text-zinc-400';
 
   // Recompute line numbers whenever the document changes.
   useEffect(() => {
@@ -72,12 +82,12 @@ export function CodeEditor({ value, onChange, errorMessage }: CodeEditorProps) {
   const lines = Array.from({ length: lineCount }, (_, i) => i + 1);
 
   return (
-    <div className="relative flex h-full w-full overflow-hidden bg-[#0a0a0a]">
+    <div className="relative flex h-full w-full overflow-hidden" style={{ background: bg }}>
       {/* Line-number gutter */}
       <div
         ref={gutterRef}
-        className="flex-shrink-0 select-none overflow-hidden border-r border-zinc-800/80 bg-[#0a0a0a] py-3 pl-3 pr-2 text-right font-mono text-[13px] leading-[20px] text-zinc-600"
-        style={{ minWidth: '3rem' }}
+        className={`flex-shrink-0 select-none overflow-hidden border-r ${borderColor} py-3 pl-3 pr-2 text-right font-mono text-[13px] leading-[20px] ${gutterText}`}
+        style={{ minWidth: '3rem', background: bg }}
         aria-hidden="true"
       >
         {lines.map((n) => (
@@ -98,7 +108,7 @@ export function CodeEditor({ value, onChange, errorMessage }: CodeEditorProps) {
         autoCapitalize="off"
         autoCorrect="off"
         wrap="off"
-        className="flex-1 resize-none overflow-auto bg-transparent py-3 px-3 font-mono text-[13px] leading-[20px] text-zinc-200 outline-none placeholder:text-zinc-700 caret-indigo-400 selection:bg-indigo-500/30"
+        className={`flex-1 resize-none overflow-auto bg-transparent py-3 px-3 font-mono text-[13px] leading-[20px] ${editorText} ${placeholder} outline-none caret-indigo-400 selection:bg-indigo-500/30`}
         style={{ tabSize: 2 }}
         placeholder="// Write DBML here…"
       />

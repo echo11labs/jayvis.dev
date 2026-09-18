@@ -7,13 +7,13 @@ declarative DBML code and visual ERDs using an AST as the single source of
 truth. The platform is **functional, browser-verified, and feature-complete**
 with bidirectional canvas↔editor sync, IndexedDB persistence, a command
 palette, edge context menus, ERD SVG export, schema search, undo/redo,
-schema validation, table & field notes UI, live validation badge, dark/light
-theme toggle, **relationship edge labels with field names, edge hover
-highlighting, and 5 schema templates**.
+schema validation, table & field notes UI, live validation badge, **full
+dark/light theme coverage, fit-view shortcut (⌘0), and edge hover
+highlighting**.
 
 ### Architecture
 - **Frontend**: Next.js 16 (App Router) + TypeScript + Tailwind + shadcn/ui
-- **Canvas**: @xyflow/react (React Flow) with custom TableNode + edge labels
+- **Canvas**: @xyflow/react (React Flow) with theme-aware custom TableNode
 - **Layout**: ELK.js (dynamic import for "Auto Layout")
 - **DBML Parser**: Isolated Bun mini-service on port 3031 (21 MB @dbml/core
   kept out of the Next.js bundle to avoid Turbopack OOM)
@@ -24,45 +24,41 @@ highlighting, and 5 schema templates**.
 - **Validation**: AST → prioritized errors/warnings + live badge
 - **MCP**: Standalone Model Context Protocol server for IDE agent integration
 - **State**: Zustand store with origin flagging + bidirectional sync + undo/redo
-- **Theme**: Dark/light toggle (persisted to localStorage)
+- **Theme**: Full dark/light toggle (TableNode, CodeEditor, FlowCanvas, shell)
 
 ## Current Goals / Completed Modifications / Verification
 
-### Phase 7 — Completed (this round)
+### Phase 8 — Completed (this round)
 
-1. **Relationship edge labels with field names** ✅ (`src/store/diagram-store.ts`)
-   - Added `refToEdge(ref)` helper that builds a full Edge object with a
-     label showing `sourceField → targetField · cardinality` (e.g.
-     `user_id → id · 1:N`).
-   - Replaced all 5 inline edge constructions (addReference,
-     updateReference, renameTable ×2, loadAST) with the helper.
-   - Edges now have `labelStyle` + `labelBgStyle` for consistent dark
-     label backgrounds.
-   - **Verified**: 3 edges show `user_id → id · 1:N`, `order_id → id · 1:N`,
-     `product_id → id · 1:N`.
+1. **Full light theme coverage** ✅
+   - Created `useTheme` hook (`src/hooks/use-theme-state.ts`) that observes
+     the `<html>` class attribute via MutationObserver, so all components
+     re-render when the theme toggles.
+   - **CodeEditor** (`src/components/editor/CodeEditor.tsx`): theme-aware
+     background (`#0a0a0a` dark / `#fafafa` light), gutter border, gutter
+     text, editor text, and placeholder colors.
+   - **TableNode** (`src/components/canvas/TableNode.tsx`): theme-aware card
+     background (zinc-950 / white), card border, header border, schema label,
+     table name, col badge, alternating row backgrounds, row hover, field
+     text, PK field text, handle border/background, empty text, index footer.
+   - **FlowCanvas** (`src/components/canvas/FlowCanvas.tsx`): theme-aware
+     canvas background (`#0a0a0a` / `#f4f4f5`), ReactFlow bg class, dot color,
+     Controls styling, MiniMap styling + mask color, empty-state colors.
+   - **App shell** (`src/app/page.tsx`): theme-aware shell background, editor
+     panel background, header borders/text, status bar, badges.
+   - **Verified**: toggling theme switches html class to "light", body
+     background changes, both dark and light screenshots captured.
 
-2. **Edge hover highlighting** ✅ (`src/components/canvas/FlowCanvas.tsx`)
-   - `onEdgeMouseEnter` / `onEdgeMouseLeave` handlers track the hovered
-     edge ID.
-   - `displayEdges` memo thickens (strokeWidth 3) and brightens
-     (`#818CF8`) the hovered edge, making relationships easy to trace.
-
-3. **Schema templates expanded** ✅ (`src/lib/samples.ts`)
-   - Added **Auth & Sessions** template: users, sessions, oauth_accounts,
-     password_resets, roles, user_roles — with composite unique indexes
-     and cascade deletes.
-   - Added **Analytics & Events** template: events, event_properties,
-     funnels, cohorts, dashboards, dashboard_widgets — with jsonb columns
-     and cascade deletes.
-   - Updated `SampleName` type to include `'auth' | 'analytics'`.
-   - Added to toolbar Samples dropdown + command palette.
-
-4. **Canvas header badges** ✅ (`src/app/page.tsx`)
-   - Replaced generic "N nodes" with "N tables" (with Database icon) +
-     "N refs" badges for clearer schema stats.
-   - "ELK · layered" label hidden on small screens.
+2. **Fit-view keyboard shortcut (⌘0)** ✅
+   - Added ⌘0 handler in page.tsx that dispatches a `stitchdb:fit-view`
+     custom event.
+   - FlowCanvas listens for the event and calls `fitView({ padding: 0.2,
+     duration: 400 })`.
+   - Shortcuts overlay updated to document ⌘0.
 
 ### Previous Phases (still working)
+- **Phase 7**: Relationship edge labels with field names, edge hover
+  highlighting, 5 schema templates (added Auth & Analytics).
 - **Phase 6**: Table & field notes UI, live validation badge, theme toggle,
   field note tooltips, edge arrow markers.
 - **Phase 5**: Undo/redo history stack, schema validation, validation panel.
@@ -75,9 +71,9 @@ highlighting, and 5 schema templates**.
 
 ### Browser-Verified (agent-browser)
 - ✅ Page hydrates: editor (1016 chars) + canvas (4 tables) + HMR connected
-- ✅ Edge labels show field names: `user_id → id · 1:N`, `order_id → id · 1:N`, `product_id → id · 1:N`
-- ✅ Canvas header shows "4 tables" + "3 refs" badges
-- ✅ Command palette shows "Auth & Sessions" + "Analytics & Events" samples
+- ✅ Theme toggle works: clicking switches html class to "light"
+- ✅ Body background changes between dark and light
+- ✅ Dark + light mode screenshots captured
 - ✅ Server stays alive with HMR blocked
 
 ### Critical Operational Notes
@@ -102,17 +98,16 @@ highlighting, and 5 schema templates**.
 - **Server stability under interaction**: the dev server dies after ~2-3
   dialog interactions due to memory pressure. A production build
   (`next build`) would eliminate this.
-- **Light theme coverage**: the toggle switches the html class, but the
-  canvas + editor use hardcoded dark colors. A full light theme would
-  need conditional colors in TableNode, CodeEditor, and FlowCanvas.
+- **Toolbar/Inspector theme**: the toolbar and inspector panel still use
+  hardcoded dark classes. A full theme pass would update those too.
 
 ### Priority Recommendations for Next Phase
 1. **Wire MCP to the live store** via a WebSocket mini-service so agent
    edits appear on the canvas in real time.
 2. **Production build test** (`next build`) — would eliminate the HMR crash
    and memory issues, enabling full interactive QA.
-3. **Full light theme** — propagate the theme class into TableNode,
-   CodeEditor, and FlowCanvas backgrounds for a complete light mode.
+3. **Theme the Toolbar + Inspector** — propagate the theme class into the
+   toolbar, inspector panel, and dialogs for a complete light mode.
 4. **Multi-select + bulk actions** — shift-click to select multiple tables,
    then move/delete as a group.
 5. **Schema diff timeline** — show a visual history of schema changes with

@@ -20,6 +20,7 @@ const SHORTCUTS = [
   { keys: ['⌘', '⇧', 'Z'], label: 'Redo (or ⌘Y)' },
   { keys: ['⌘', '⇧', 'V'], label: 'Toggle schema validation panel' },
   { keys: ['⌘', 'F'], label: 'Search tables on the canvas' },
+  { keys: ['⌘', '0'], label: 'Fit canvas to view (zoom to fit)' },
   { keys: ['⌘', 'L'], label: 'Run auto-layout on the canvas' },
   { keys: ['⌘', 'M'], label: 'Open the migration diff panel' },
   { keys: ['⌘', 'T'], label: 'Create a new table (dialog)' },
