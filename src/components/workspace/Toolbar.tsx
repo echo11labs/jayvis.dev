@@ -34,12 +34,14 @@ import {
   Code2,
   Command,
   Image as ImageIcon,
+  Clipboard,
 } from 'lucide-react';
 import { useDiagramStore } from '@/store/diagram-store';
 import { serializeDBML } from '@/lib/parser/dbml';
 import { exportDDL } from '@/lib/export/ddl';
 import { downloadErdSvg } from '@/lib/export/erd-svg';
 import { ThemeToggle } from '@/components/workspace/ThemeToggle';
+import { useTheme } from '@/hooks/use-theme-state';
 import { toast } from 'sonner';
 
 interface ToolbarProps {
@@ -94,6 +96,24 @@ export function Toolbar({
   const ast = useDiagramStore((s) => s.ast);
 
   const indicator = originIndicator(sourceOrigin);
+  const theme = useTheme();
+  const isDark = theme === 'dark';
+
+  // Theme-aware tokens for the toolbar chrome.
+  const headerBg = isDark ? 'bg-zinc-950/80 border-zinc-800' : 'bg-white/80 border-zinc-200';
+  const brandText = isDark ? 'text-zinc-100' : 'text-zinc-900';
+  const badgeCls = isDark ? 'border-zinc-700 text-zinc-500' : 'border-zinc-300 text-zinc-400';
+  const statsBorder = isDark ? 'border-zinc-800' : 'border-zinc-200';
+  const statsLabel = isDark ? 'text-zinc-500' : 'text-zinc-400';
+  const statsValue = isDark ? 'text-zinc-300' : 'text-zinc-600';
+  const originPill = isDark ? 'border-zinc-800 bg-zinc-900/50' : 'border-zinc-200 bg-zinc-100/70';
+  const originText = isDark ? 'text-zinc-400' : 'text-zinc-500';
+  const ghostBtn = isDark
+    ? 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100'
+    : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800';
+  const outlineBtn = isDark
+    ? 'border-zinc-700 bg-zinc-900 text-zinc-200 hover:bg-zinc-800 hover:text-zinc-100'
+    : 'border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900';
 
   const handleExport = () => {
     const dbml = serializeDBML(ast);
@@ -140,6 +160,26 @@ export function Toolbar({
     toast.success('Exported stitchdb-erd.svg');
   };
 
+  const handleCopyJson = async () => {
+    try {
+      const json = JSON.stringify(ast, null, 2);
+      await navigator.clipboard.writeText(json);
+      toast.success('Copied AST JSON to clipboard');
+    } catch {
+      toast.error('Failed to copy');
+    }
+  };
+
+  const handleCopyDbml = async () => {
+    try {
+      const dbml = serializeDBML(ast);
+      await navigator.clipboard.writeText(dbml);
+      toast.success('Copied DBML to clipboard');
+    } catch {
+      toast.error('Failed to copy');
+    }
+  };
+
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -160,7 +200,7 @@ export function Toolbar({
 
   return (
     <TooltipProvider delayDuration={200}>
-      <header className="flex h-14 shrink-0 items-center justify-between border-b border-zinc-800 bg-zinc-950/80 px-4 backdrop-blur-sm">
+      <header className={`flex h-14 shrink-0 items-center justify-between border-b ${headerBg} px-4 backdrop-blur-sm`}>
         {/* Left: brand + stats */}
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2.5">
@@ -169,12 +209,12 @@ export function Toolbar({
             </div>
             <div className="leading-none">
               <div className="flex items-center gap-1.5">
-                <span className="text-sm font-bold tracking-tight text-zinc-100">
+                <span className={`text-sm font-bold tracking-tight ${brandText}`}>
                   StitchDB
                 </span>
                 <Badge
                   variant="outline"
-                  className="border-zinc-700 px-1 py-0 text-[9px] font-normal text-zinc-500"
+                  className={`px-1 py-0 text-[9px] font-normal ${badgeCls}`}
                 >
                   v1.0
                 </Badge>
@@ -182,22 +222,22 @@ export function Toolbar({
             </div>
           </div>
 
-          <div className="hidden items-center gap-3 border-l border-zinc-800 pl-4 md:flex">
+          <div className={`hidden items-center gap-3 border-l ${statsBorder} pl-4 md:flex`}>
             <div className="flex items-center gap-1.5 text-xs">
-              <span className="text-zinc-500">tables</span>
-              <span className="font-mono font-medium text-zinc-300">
+              <span className={statsLabel}>tables</span>
+              <span className={`font-mono font-medium ${statsValue}`}>
                 {tableCount}
               </span>
             </div>
             <div className="flex items-center gap-1.5 text-xs">
-              <span className="text-zinc-500">cols</span>
-              <span className="font-mono font-medium text-zinc-300">
+              <span className={statsLabel}>cols</span>
+              <span className={`font-mono font-medium ${statsValue}`}>
                 {fieldCount}
               </span>
             </div>
             <div className="flex items-center gap-1.5 text-xs">
-              <span className="text-zinc-500">refs</span>
-              <span className="font-mono font-medium text-zinc-300">
+              <span className={statsLabel}>refs</span>
+              <span className={`font-mono font-medium ${statsValue}`}>
                 {refCount}
               </span>
             </div>
@@ -206,9 +246,9 @@ export function Toolbar({
 
         {/* Right: actions */}
         <div className="flex items-center gap-2">
-          <div className="hidden items-center gap-1.5 rounded-md border border-zinc-800 bg-zinc-900/50 px-2.5 py-1 sm:flex">
+          <div className={`hidden items-center gap-1.5 rounded-md border ${originPill} px-2.5 py-1 sm:flex`}>
             <CircleDot className={`h-2.5 w-2.5 ${indicator.color}`} />
-            <span className="text-[11px] font-medium text-zinc-400">
+            <span className={`text-[11px] font-medium ${originText}`}>
               {indicator.label}
             </span>
           </div>
@@ -218,7 +258,7 @@ export function Toolbar({
               <Button
                 variant="ghost"
                 size="sm"
-                className="gap-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+                className={`gap-1.5 ${ghostBtn}`}
               >
                 <Sparkles className="h-4 w-4" />
                 Samples
@@ -278,7 +318,7 @@ export function Toolbar({
               <Button
                 variant="ghost"
                 size="sm"
-                className="gap-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+                className={`gap-1.5 ${ghostBtn}`}
                 onClick={() =>
                   document.getElementById('import-dbml')?.click()
                 }
@@ -295,7 +335,7 @@ export function Toolbar({
               <Button
                 variant="ghost"
                 size="sm"
-                className="gap-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+                className={`gap-1.5 ${ghostBtn}`}
               >
                 <Download className="h-4 w-4" />
                 <span className="hidden lg:inline">Export</span>
@@ -336,6 +376,21 @@ export function Toolbar({
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-zinc-800" />
               <DropdownMenuItem
+                className="cursor-pointer text-zinc-300 focus:bg-zinc-800 focus:text-zinc-100"
+                onClick={handleCopyDbml}
+              >
+                <Clipboard className="mr-2 h-4 w-4" />
+                Copy DBML to clipboard
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="cursor-pointer text-zinc-300 focus:bg-zinc-800 focus:text-zinc-100"
+                onClick={handleCopyJson}
+              >
+                <Clipboard className="mr-2 h-4 w-4" />
+                Copy AST JSON to clipboard
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="bg-zinc-800" />
+              <DropdownMenuItem
                 className="cursor-pointer text-rose-400 focus:bg-rose-500/10 focus:text-rose-300"
                 onClick={handleClearSchema}
               >
@@ -350,7 +405,7 @@ export function Toolbar({
           <Button
             size="sm"
             variant="outline"
-            className="gap-1.5 border-indigo-600/40 bg-indigo-600/10 text-indigo-300 hover:bg-indigo-600/20 hover:text-indigo-200"
+            className={`gap-1.5 border-indigo-600/40 bg-indigo-600/10 text-indigo-300 hover:bg-indigo-600/20 hover:text-indigo-200`}
             onClick={() => onAddTableOpenChange(true)}
           >
             <Plus className="h-4 w-4" />
@@ -360,7 +415,7 @@ export function Toolbar({
           <Button
             size="sm"
             variant="outline"
-            className="gap-1.5 border-zinc-700 bg-zinc-900 text-zinc-200 hover:bg-zinc-800 hover:text-zinc-100"
+            className={`gap-1.5 ${outlineBtn}`}
             onClick={onAutoLayout}
             disabled={isLayouting || tableCount === 0}
           >
@@ -390,7 +445,7 @@ export function Toolbar({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
+                className={`h-8 w-8 ${ghostBtn}`}
                 onClick={() => onCommandPaletteOpenChange(true)}
               >
                 <Command className="h-4 w-4" />
@@ -404,7 +459,7 @@ export function Toolbar({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
+                className={`h-8 w-8 ${ghostBtn}`}
                 onClick={() => onShortcutsOpenChange(true)}
               >
                 <Keyboard className="h-4 w-4" />

@@ -23,10 +23,12 @@ import {
   Pencil,
   Check,
   StickyNote,
+  Copy,
 } from 'lucide-react';
 import { useDiagramStore } from '@/store/diagram-store';
 import { TABLE_COLORS } from '@/types/ast';
 import type { SchemaField } from '@/types/ast';
+import { useTheme } from '@/hooks/use-theme-state';
 import { toast } from 'sonner';
 
 const TYPE_COLORS: Record<string, string> = {
@@ -63,6 +65,7 @@ export function InspectorPanel() {
   const renameTable = useDiagramStore((s) => s.renameTable);
   const setTableNote = useDiagramStore((s) => s.setTableNote);
   const setFieldNote = useDiagramStore((s) => s.setFieldNote);
+  const addTable = useDiagramStore((s) => s.addTable);
 
   const [newFieldName, setNewFieldName] = useState('');
   const [newFieldType, setNewFieldType] = useState('varchar');
@@ -76,6 +79,22 @@ export function InspectorPanel() {
   const [fieldNoteDraft, setFieldNoteDraft] = useState('');
 
   const table = selectedTable ? ast.tables[selectedTable] : null;
+  const theme = useTheme();
+  const isDark = theme === 'dark';
+
+  // Theme-aware tokens for the inspector chrome.
+  const panelBg = isDark ? 'bg-zinc-950/80' : 'bg-white/90';
+  const borderCls = isDark ? 'border-zinc-800' : 'border-zinc-200';
+  const metaText = isDark ? 'text-zinc-500' : 'text-zinc-400';
+  const metaDim = isDark ? 'text-zinc-600' : 'text-zinc-400';
+  const sectionLabel = isDark ? 'text-zinc-600' : 'text-zinc-400';
+  const fieldRow = isDark ? 'hover:border-zinc-800 hover:bg-zinc-900/60' : 'hover:border-zinc-200 hover:bg-zinc-50';
+  const fieldText = isDark ? 'text-zinc-300' : 'text-zinc-700';
+  const pkText = isDark ? 'text-zinc-100' : 'text-zinc-900';
+  const closeBtn = isDark ? 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200' : 'text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600';
+  const emptyIcon = isDark ? 'text-zinc-700' : 'text-zinc-300';
+  const emptyTitle = isDark ? 'text-zinc-500' : 'text-zinc-400';
+  const emptyDesc = isDark ? 'text-zinc-600' : 'text-zinc-500';
 
   const handleAddField = useCallback(() => {
     if (!table) return;
@@ -105,6 +124,34 @@ export function InspectorPanel() {
     toast.success(`Dropped table "${name}"`);
   }, [table, deleteTable]);
 
+  const handleDuplicateTable = useCallback(() => {
+    if (!table) return;
+    // Find a unique name like "users_copy", "users_copy_2", etc.
+    let base = `${table.name}_copy`;
+    let suffix = '';
+    const ast = useDiagramStore.getState().ast;
+    while (ast.tables[`${base}${suffix}`]) {
+      suffix = suffix === '' ? '2' : String(Number(suffix) + 1);
+    }
+    const newName = `${base}${suffix}`;
+    const clonedFields: SchemaField[] = table.fields.map((f) => ({
+      ...f,
+      id: `${newName}.${f.name}`,
+      constraints: { ...f.constraints },
+    }));
+    addTable({
+      ...table,
+      id: newName,
+      name: newName,
+      fields: clonedFields,
+      position: {
+        x: (table.position?.x ?? 0) + 40,
+        y: (table.position?.y ?? 0) + 40,
+      },
+    });
+    toast.success(`Duplicated table as "${newName}"`);
+  }, [table, addTable]);
+
   const startEditField = useCallback((f: SchemaField) => {
     setEditingField(f.name);
     setFieldDraft({ ...f });
@@ -129,10 +176,10 @@ export function InspectorPanel() {
 
   if (!table) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-2 border-l border-zinc-800 bg-zinc-950/60 p-4 text-center">
-        <Database className="h-8 w-8 text-zinc-700" />
-        <p className="text-xs font-medium text-zinc-500">No table selected</p>
-        <p className="text-[11px] text-zinc-600">
+      <div className={`flex h-full flex-col items-center justify-center gap-2 border-l ${borderCls} ${isDark ? 'bg-zinc-950/60' : 'bg-zinc-50'} p-4 text-center`}>
+        <Database className={`h-8 w-8 ${emptyIcon}`} />
+        <p className={`text-xs font-medium ${emptyTitle}`}>No table selected</p>
+        <p className={`text-[11px] ${emptyDesc}`}>
           Click a table on the canvas to inspect and edit its columns.
         </p>
       </div>
@@ -141,7 +188,7 @@ export function InspectorPanel() {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="flex h-full flex-col border-l border-zinc-800 bg-zinc-950/80 backdrop-blur-sm">
+      <div className={`flex h-full flex-col border-l ${borderCls} ${panelBg} backdrop-blur-sm`}>
         {/* Header */}
         <div
           className="flex shrink-0 items-center justify-between border-b border-zinc-800 px-3 py-2.5"
@@ -179,7 +226,7 @@ export function InspectorPanel() {
           </div>
           <button
             onClick={() => setSelectedTable(null)}
-            className="rounded p-1 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
+            className={`rounded p-1 ${closeBtn}`}
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -296,7 +343,7 @@ export function InspectorPanel() {
                 return (
                   <div
                     key={f.id}
-                    className="group rounded-md border border-transparent px-2 py-1.5 hover:border-zinc-800 hover:bg-zinc-900/60"
+                    className={`group rounded-md border border-transparent px-2 py-1.5 ${fieldRow}`}
                   >
                     {isEditing ? (
                       <div className="space-y-1.5">
@@ -555,16 +602,25 @@ export function InspectorPanel() {
           </div>
         </ScrollArea>
 
-        {/* Footer: delete table */}
-        <div className="shrink-0 border-t border-zinc-800 p-2">
+        {/* Footer: duplicate + delete table */}
+        <div className={`shrink-0 border-t ${borderCls} grid grid-cols-2 gap-1.5 p-2`}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleDuplicateTable}
+            className={`gap-1.5 ${isDark ? 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100' : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800'}`}
+          >
+            <Copy className="h-3.5 w-3.5" />
+            Duplicate
+          </Button>
           <Button
             variant="ghost"
             size="sm"
             onClick={handleDeleteTable}
-            className="w-full gap-1.5 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
+            className="gap-1.5 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
           >
             <Trash2 className="h-3.5 w-3.5" />
-            Drop table
+            Drop
           </Button>
         </div>
       </div>

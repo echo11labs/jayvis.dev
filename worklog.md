@@ -7,9 +7,9 @@ declarative DBML code and visual ERDs using an AST as the single source of
 truth. The platform is **functional, browser-verified, and feature-complete**
 with bidirectional canvas↔editor sync, IndexedDB persistence, a command
 palette, edge context menus, ERD SVG export, schema search, undo/redo,
-schema validation, table & field notes UI, live validation badge, **full
-dark/light theme coverage, fit-view shortcut (⌘0), and edge hover
-highlighting**.
+schema validation, table & field notes UI, live validation badge, full
+dark/light theme coverage, **themed toolbar + inspector, table duplicate,
+copy-to-clipboard, and fit-view shortcut (⌘0)**.
 
 ### Architecture
 - **Frontend**: Next.js 16 (App Router) + TypeScript + Tailwind + shadcn/ui
@@ -24,43 +24,50 @@ highlighting**.
 - **Validation**: AST → prioritized errors/warnings + live badge
 - **MCP**: Standalone Model Context Protocol server for IDE agent integration
 - **State**: Zustand store with origin flagging + bidirectional sync + undo/redo
-- **Theme**: Full dark/light toggle (TableNode, CodeEditor, FlowCanvas, shell)
+- **Theme**: Full dark/light toggle (TableNode, CodeEditor, FlowCanvas, Toolbar,
+  Inspector, app shell)
 
 ## Current Goals / Completed Modifications / Verification
 
-### Phase 8 — Completed (this round)
+### Phase 9 — Completed (this round)
 
-1. **Full light theme coverage** ✅
-   - Created `useTheme` hook (`src/hooks/use-theme-state.ts`) that observes
-     the `<html>` class attribute via MutationObserver, so all components
-     re-render when the theme toggles.
-   - **CodeEditor** (`src/components/editor/CodeEditor.tsx`): theme-aware
-     background (`#0a0a0a` dark / `#fafafa` light), gutter border, gutter
-     text, editor text, and placeholder colors.
-   - **TableNode** (`src/components/canvas/TableNode.tsx`): theme-aware card
-     background (zinc-950 / white), card border, header border, schema label,
-     table name, col badge, alternating row backgrounds, row hover, field
-     text, PK field text, handle border/background, empty text, index footer.
-   - **FlowCanvas** (`src/components/canvas/FlowCanvas.tsx`): theme-aware
-     canvas background (`#0a0a0a` / `#f4f4f5`), ReactFlow bg class, dot color,
-     Controls styling, MiniMap styling + mask color, empty-state colors.
-   - **App shell** (`src/app/page.tsx`): theme-aware shell background, editor
-     panel background, header borders/text, status bar, badges.
-   - **Verified**: toggling theme switches html class to "light", body
-     background changes, both dark and light screenshots captured.
+1. **Toolbar theming** ✅ (`src/components/workspace/Toolbar.tsx`)
+   - Added `useTheme` hook; theme-aware tokens for header background, brand
+     text, version badge, stats border/labels/values, origin pill, ghost
+     buttons, outline buttons, icon buttons.
+   - All 6+ buttons (Samples, Import, Export, Add Table, Auto Layout,
+     Generate Migration, Command palette, Keyboard, Theme toggle) now adapt
+     to the active theme.
 
-2. **Fit-view keyboard shortcut (⌘0)** ✅
-   - Added ⌘0 handler in page.tsx that dispatches a `stitchdb:fit-view`
-     custom event.
-   - FlowCanvas listens for the event and calls `fitView({ padding: 0.2,
-     duration: 400 })`.
-   - Shortcuts overlay updated to document ⌘0.
+2. **Inspector theming** ✅ (`src/components/workspace/InspectorPanel.tsx`)
+   - Theme-aware tokens for panel background, borders, meta text, section
+     labels, field rows, field text, PK text, close button, empty state.
+   - Empty state (no table selected) adapts: dark uses zinc-950/60, light
+     uses zinc-50.
+
+3. **Table duplicate action** ✅ (inspector footer)
+   - "Duplicate" button in the inspector footer (next to "Drop").
+   - Clones the table with a unique name (`users_copy`, `users_copy_2`, etc.),
+     copies all fields with new IDs, offsets position by 40px.
+   - Calls `addTable` store method (which pushes history for undo).
+
+4. **Copy-to-clipboard actions** ✅ (toolbar Export dropdown)
+   - "Copy DBML to clipboard" — copies the serialized DBML text.
+   - "Copy AST JSON to clipboard" — copies the full AST as formatted JSON.
+   - Both use `navigator.clipboard.writeText` with success/error toasts.
+   - **Verified**: Export dropdown now has 7 items including both copy actions.
+
+5. **Styling polish** ✅
+   - Inspector footer redesigned as a 2-column grid (Duplicate | Drop).
+   - Toolbar buttons use theme-aware ghost/outline tokens.
+   - All hardcoded dark classes in toolbar/inspector replaced with theme tokens.
 
 ### Previous Phases (still working)
+- **Phase 8**: Full light theme coverage (TableNode, CodeEditor, FlowCanvas,
+  shell), fit-view shortcut (⌘0).
 - **Phase 7**: Relationship edge labels with field names, edge hover
-  highlighting, 5 schema templates (added Auth & Analytics).
-- **Phase 6**: Table & field notes UI, live validation badge, theme toggle,
-  field note tooltips, edge arrow markers.
+  highlighting, 5 schema templates.
+- **Phase 6**: Table & field notes UI, live validation badge, theme toggle.
 - **Phase 5**: Undo/redo history stack, schema validation, validation panel.
 - **Phase 4**: Edge context menu, schema search (⌘F), ERD SVG export.
 - **Phase 3**: IndexedDB persistence, command palette (⌘K), DDL export.
@@ -71,10 +78,10 @@ highlighting**.
 
 ### Browser-Verified (agent-browser)
 - ✅ Page hydrates: editor (1016 chars) + canvas (4 tables) + HMR connected
-- ✅ Theme toggle works: clicking switches html class to "light"
-- ✅ Body background changes between dark and light
-- ✅ Dark + light mode screenshots captured
-- ✅ Server stays alive with HMR blocked
+- ✅ Theme toggle works: html class switches to "light"
+- ✅ Export dropdown has 7 items including "Copy DBML" + "Copy AST JSON"
+- ✅ Inspector opens on table click (themed)
+- ✅ Lint clean (0 errors)
 
 ### Critical Operational Notes
 1. **HMR through the gateway crashes the dev server.** Block
@@ -98,16 +105,17 @@ highlighting**.
 - **Server stability under interaction**: the dev server dies after ~2-3
   dialog interactions due to memory pressure. A production build
   (`next build`) would eliminate this.
-- **Toolbar/Inspector theme**: the toolbar and inspector panel still use
-  hardcoded dark classes. A full theme pass would update those too.
+- **Dialog theming**: the AddTableDialog, ShortcutsOverlay, CommandPalette,
+  ValidationPanel, MigrationPanel still use shadcn defaults which are
+  dark-oriented. A full theme pass would update those too.
 
 ### Priority Recommendations for Next Phase
 1. **Wire MCP to the live store** via a WebSocket mini-service so agent
    edits appear on the canvas in real time.
 2. **Production build test** (`next build`) — would eliminate the HMR crash
    and memory issues, enabling full interactive QA.
-3. **Theme the Toolbar + Inspector** — propagate the theme class into the
-   toolbar, inspector panel, and dialogs for a complete light mode.
+3. **Theme the dialogs** — propagate the theme class into AddTableDialog,
+   ShortcutsOverlay, CommandPalette, ValidationPanel, MigrationPanel.
 4. **Multi-select + bulk actions** — shift-click to select multiple tables,
    then move/delete as a group.
 5. **Schema diff timeline** — show a visual history of schema changes with
