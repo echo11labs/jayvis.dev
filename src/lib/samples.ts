@@ -138,4 +138,126 @@ Ref: api_keys.org_id > organizations.id [delete: cascade]
 Ref: projects.org_id > organizations.id [delete: cascade]
 Ref: audit_log.org_id > organizations.id [delete: cascade]
 `,
+
+  auth: `// StitchDB — Authentication & sessions sample schema
+Table users {
+  id uuid [pk]
+  email varchar [unique, not null]
+  password_hash varchar [not null]
+  full_name varchar
+  avatar_url varchar
+  email_verified_at timestamptz
+  is_active boolean [default: true]
+  created_at timestamptz [default: 'now()']
+  updated_at timestamptz
+}
+
+Table sessions {
+  id uuid [pk]
+  user_id uuid [not null]
+  token_hash varchar [unique, not null]
+  ip_address varchar
+  user_agent text
+  expires_at timestamptz [not null]
+  created_at timestamptz [default: 'now()']
+}
+
+Table oauth_accounts {
+  id uuid [pk]
+  user_id uuid [not null]
+  provider varchar [not null]
+  provider_user_id varchar [not null]
+  access_token varchar
+  refresh_token varchar
+  expires_at timestamptz
+  created_at timestamptz [default: 'now()']
+  indexes {
+    (provider, provider_user_id) [unique]
+  }
+}
+
+Table password_resets {
+  id uuid [pk]
+  user_id uuid [not null]
+  token_hash varchar [unique, not null]
+  used_at timestamptz
+  expires_at timestamptz [not null]
+  created_at timestamptz [default: 'now()']
+}
+
+Table roles {
+  id integer [pk, increment]
+  name varchar [unique, not null]
+}
+
+Table user_roles {
+  user_id uuid
+  role_id integer
+  indexes {
+    (user_id, role_id) [unique]
+  }
+}
+
+Ref: sessions.user_id > users.id [delete: cascade]
+Ref: oauth_accounts.user_id > users.id [delete: cascade]
+Ref: password_resets.user_id > users.id [delete: cascade]
+Ref: user_roles.user_id > users.id [delete: cascade]
+Ref: user_roles.role_id > roles.id [delete: cascade]
+`,
+
+  analytics: `// StitchDB — Analytics & events sample schema
+Table events {
+  id bigint [pk, increment]
+  event_name varchar [not null]
+  user_id uuid
+  session_id varchar
+  properties jsonb [default: '{}']
+  occurred_at timestamptz [not null, default: 'now()']
+}
+
+Table event_properties {
+  id bigint [pk, increment]
+  event_id bigint [not null]
+  key varchar [not null]
+  value text
+  indexes {
+    (event_id, key) [unique]
+  }
+}
+
+Table funnels {
+  id integer [pk, increment]
+  name varchar [not null]
+  steps jsonb [not null]
+  created_at timestamptz [default: 'now()']
+}
+
+Table cohorts {
+  id integer [pk, increment]
+  name varchar [unique, not null]
+  description text
+  user_ids jsonb [default: '[]']
+  created_at timestamptz [default: 'now()']
+}
+
+Table dashboards {
+  id integer [pk, increment]
+  name varchar [not null]
+  layout jsonb
+  created_by uuid
+  created_at timestamptz [default: 'now()']
+}
+
+Table dashboard_widgets {
+  id integer [pk, increment]
+  dashboard_id integer [not null]
+  type varchar [not null]
+  title varchar
+  config jsonb
+  position jsonb
+}
+
+Ref: event_properties.event_id > events.id [delete: cascade]
+Ref: dashboard_widgets.dashboard_id > dashboards.id [delete: cascade]
+`,
 };

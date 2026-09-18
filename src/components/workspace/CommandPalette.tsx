@@ -185,6 +185,14 @@ export function CommandPalette({
             <Boxes className="mr-2 h-4 w-4 text-pink-400" />
             SaaS Multi-tenant
           </CommandItem>
+          <CommandItem onSelect={run(() => onLoadSample('auth'))}>
+            <Boxes className="mr-2 h-4 w-4 text-amber-400" />
+            Auth &amp; Sessions
+          </CommandItem>
+          <CommandItem onSelect={run(() => onLoadSample('analytics'))}>
+            <Boxes className="mr-2 h-4 w-4 text-cyan-400" />
+            Analytics &amp; Events
+          </CommandItem>
         </CommandGroup>
 
         <CommandSeparator />

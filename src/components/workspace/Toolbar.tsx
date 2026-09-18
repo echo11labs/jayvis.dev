@@ -53,7 +53,7 @@ interface ToolbarProps {
   isLayouting: boolean;
 }
 
-export type SampleName = 'ecommerce' | 'blog' | 'saas';
+export type SampleName = 'ecommerce' | 'blog' | 'saas' | 'auth' | 'analytics';
 
 function originIndicator(origin: string) {
   switch (origin) {
@@ -250,6 +250,18 @@ export function Toolbar({
                 onClick={() => onLoadSample('saas')}
               >
                 SaaS Multi-tenant
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="cursor-pointer text-zinc-300 focus:bg-zinc-800 focus:text-zinc-100"
+                onClick={() => onLoadSample('auth')}
+              >
+                Auth &amp; Sessions
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="cursor-pointer text-zinc-300 focus:bg-zinc-800 focus:text-zinc-100"
+                onClick={() => onLoadSample('analytics')}
+              >
+                Analytics &amp; Events
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

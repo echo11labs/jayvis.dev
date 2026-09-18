@@ -17,6 +17,31 @@ import {
 } from '@/types/ast';
 import { serializeDBML } from '@/lib/parser/dbml';
 
+/**
+ * Build a React Flow edge label showing the source field → target field
+ * plus cardinality, so relationships are self-documenting on the canvas.
+ */
+function edgeLabel(ref: SchemaReference): string {
+  return `${ref.sourceField} → ${ref.targetField}  ·  ${ref.cardinality}`;
+}
+
+/** Build a full Edge object from a SchemaReference. */
+function refToEdge(ref: SchemaReference): Edge {
+  return {
+    id: ref.id,
+    source: ref.sourceTable,
+    target: ref.targetTable,
+    sourceHandle: `${ref.sourceTable}.${ref.sourceField}-source`,
+    targetHandle: `${ref.targetTable}.${ref.targetField}-target`,
+    type: 'smoothstep',
+    animated: true,
+    style: { stroke: '#6366F1', strokeWidth: 2 },
+    label: edgeLabel(ref),
+    labelStyle: { fontSize: 10, fill: '#a1a1aa' },
+    labelBgStyle: { fill: '#18181b' },
+  };
+}
+
 interface DiagramStoreState {
   ast: DatabaseAST;
   nodes: Node[];
@@ -236,17 +261,7 @@ export const useDiagramStore = create<DiagramStoreState>((set, get) => ({
     if (ast.references[ref.id]) return;
     get().pushHistory();
     const newRefs = { ...ast.references, [ref.id]: ref };
-    const newEdge: Edge = {
-      id: ref.id,
-      source: ref.sourceTable,
-      target: ref.targetTable,
-      sourceHandle: `${ref.sourceTable}.${ref.sourceField}-source`,
-      targetHandle: `${ref.targetTable}.${ref.targetField}-target`,
-      type: 'smoothstep',
-      animated: true,
-      style: { stroke: '#6366F1', strokeWidth: 2 },
-      label: ref.cardinality,
-    };
+    const newEdge: Edge = refToEdge(ref);
     const newAST = { ...ast, references: newRefs };
     set({
       ast: newAST,
@@ -288,17 +303,7 @@ export const useDiagramStore = create<DiagramStoreState>((set, get) => ({
       nodes: state.nodes.map((n) =>
         n.id === tableName ? { ...n, data: { table: updatedTable } } : n,
       ),
-      edges: Object.values(newRefs).map((r) => ({
-        id: r.id,
-        source: r.sourceTable,
-        target: r.targetTable,
-        sourceHandle: `${r.sourceTable}.${r.sourceField}-source`,
-        targetHandle: `${r.targetTable}.${r.targetField}-target`,
-        type: 'smoothstep',
-        animated: true,
-        style: { stroke: '#6366F1', strokeWidth: 2 },
-        label: r.cardinality,
-      })),
+      edges: Object.values(newRefs).map((r) => refToEdge(r)),
       rawText: serializeDBML(finalAST),
       sourceOrigin: 'canvas',
       statusMessage: `Updated column "${field.name}" in ${tableName}`,
@@ -329,17 +334,7 @@ export const useDiagramStore = create<DiagramStoreState>((set, get) => ({
     const updated: SchemaReference = { ...ref, ...patch };
     const newRefs = { ...ast.references, [refId]: updated };
     const newAST = { ...ast, references: newRefs };
-    const newEdge: Edge = {
-      id: refId,
-      source: updated.sourceTable,
-      target: updated.targetTable,
-      sourceHandle: `${updated.sourceTable}.${updated.sourceField}-source`,
-      targetHandle: `${updated.targetTable}.${updated.targetField}-target`,
-      type: 'smoothstep',
-      animated: true,
-      style: { stroke: '#6366F1', strokeWidth: 2 },
-      label: updated.cardinality,
-    };
+    const newEdge: Edge = refToEdge(updated);
     set({
       ast: newAST,
       edges: get().edges.map((e) => (e.id === refId ? newEdge : e)),
@@ -445,17 +440,7 @@ export const useDiagramStore = create<DiagramStoreState>((set, get) => ({
             }
           : n,
       ),
-      edges: Object.values(newRefs).map((r) => ({
-        id: r.id,
-        source: r.sourceTable,
-        target: r.targetTable,
-        sourceHandle: `${r.sourceTable}.${r.sourceField}-source`,
-        targetHandle: `${r.targetTable}.${r.targetField}-target`,
-        type: 'smoothstep',
-        animated: true,
-        style: { stroke: '#6366F1', strokeWidth: 2 },
-        label: r.cardinality,
-      })),
+      edges: Object.values(newRefs).map((r) => refToEdge(r)),
       rawText: serializeDBML(newAST),
       selectedTable: newName,
       sourceOrigin: 'canvas',
@@ -548,17 +533,7 @@ export const useDiagramStore = create<DiagramStoreState>((set, get) => ({
       position: t.position ?? { x: 0, y: 0 },
       data: { table: t },
     }));
-    const edges: Edge[] = Object.values(ast.references).map((r) => ({
-      id: r.id,
-      source: r.sourceTable,
-      target: r.targetTable,
-      sourceHandle: `${r.sourceTable}.${r.sourceField}-source`,
-      targetHandle: `${r.targetTable}.${r.targetField}-target`,
-      type: 'smoothstep',
-      animated: true,
-      style: { stroke: '#6366F1', strokeWidth: 2 },
-      label: r.cardinality,
-    }));
+    const edges: Edge[] = Object.values(ast.references).map((r) => refToEdge(r));
     set({ ast, nodes, edges, sourceOrigin: 'none', previousAST: null, parseError: null });
   },
 }));

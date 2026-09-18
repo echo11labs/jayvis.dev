@@ -296,11 +296,15 @@ export default function Home() {
                   <span className="font-medium">ERD Canvas</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="font-mono text-[10px] text-zinc-600">
+                  <span className="hidden font-mono text-[10px] text-zinc-600 sm:inline">
                     ELK · layered
                   </span>
+                  <span className="flex items-center gap-1 rounded bg-zinc-900 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400">
+                    <Database className="h-2.5 w-2.5 text-indigo-400/70" />
+                    {nodes.length} tables
+                  </span>
                   <span className="rounded bg-zinc-900 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400">
-                    {nodes.length} nodes
+                    {useDiagramStore.getState().edges.length} refs
                   </span>
                 </div>
               </div>

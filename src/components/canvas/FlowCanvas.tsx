@@ -85,11 +85,36 @@ function FlowCanvasInner() {
     [],
   );
 
+  // Highlight an edge on hover (thicker + brighter stroke).
+  const [hoveredEdge, setHoveredEdge] = useState<string | null>(null);
+  const onEdgeEnter = useCallback(
+    (_e: React.MouseEvent, edge: Edge) => setHoveredEdge(edge.id),
+    [],
+  );
+  const onEdgeLeave = useCallback(() => setHoveredEdge(null), []);
+
+  const displayEdges = useMemo(
+    () =>
+      edges.map((e) =>
+        hoveredEdge === e.id
+          ? {
+              ...e,
+              style: {
+                ...(e.style as object),
+                stroke: '#818CF8',
+                strokeWidth: 3,
+              },
+            }
+          : e,
+      ),
+    [edges, hoveredEdge],
+  );
+
   return (
     <div className="relative h-full w-full bg-[#0a0a0a]">
       <ReactFlow
         nodes={nodes}
-        edges={edges}
+        edges={displayEdges}
         nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
@@ -97,6 +122,8 @@ function FlowCanvasInner() {
         onNodeClick={onNodeClick}
         onPaneClick={onPaneClick}
         onEdgeContextMenu={onEdgeContextMenu}
+        onEdgeMouseEnter={onEdgeEnter}
+        onEdgeMouseLeave={onEdgeLeave}
         defaultEdgeOptions={defaultEdgeOptions}
         connectionRadius={28}
         fitView
