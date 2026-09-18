@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -29,9 +28,11 @@ import {
   Loader2,
   Circle,
   CircleDot,
+  Plus,
+  Keyboard,
+  Trash2,
 } from 'lucide-react';
 import { useDiagramStore } from '@/store/diagram-store';
-import { layoutDiagram } from '@/lib/layout/elk-layout';
 import { serializeDBML } from '@/lib/parser/dbml';
 import { toast } from 'sonner';
 
@@ -40,6 +41,8 @@ interface ToolbarProps {
   onGenerateMigration: () => void;
   onMigrationOpenChange: (open: boolean) => void;
   onLoadSample: (name: SampleName) => void;
+  onAddTableOpenChange: (open: boolean) => void;
+  onShortcutsOpenChange: (open: boolean) => void;
   isLayouting: boolean;
 }
 
@@ -65,6 +68,8 @@ export function Toolbar({
   onGenerateMigration,
   onMigrationOpenChange,
   onLoadSample,
+  onAddTableOpenChange,
+  onShortcutsOpenChange,
   isLayouting,
 }: ToolbarProps) {
   const sourceOrigin = useDiagramStore((s) => s.sourceOrigin);
@@ -79,10 +84,6 @@ export function Toolbar({
     (s) => Object.keys(s.ast.references).length,
   );
   const ast = useDiagramStore((s) => s.ast);
-  const setNodes = useDiagramStore((s) => s.setNodes);
-  const nodes = useDiagramStore((s) => s.nodes);
-
-  const [exporting, setExporting] = useState(false);
 
   const indicator = originIndicator(sourceOrigin);
 
@@ -123,18 +124,9 @@ export function Toolbar({
     e.target.value = '';
   };
 
-  const handleRecenter = async () => {
-    if (nodes.length === 0) return;
-    setExporting(true);
-    try {
-      const { nodes: laid } = await layoutDiagram(nodes, []);
-      setNodes(laid);
-      toast.success('Auto layout applied');
-    } catch {
-      toast.error('Auto layout failed');
-    } finally {
-      setExporting(false);
-    }
+  const handleClearSchema = () => {
+    useDiagramStore.getState().loadAST({ version: '1.0', tables: {}, references: {} });
+    toast.success('Schema cleared');
   };
 
   return (
@@ -263,8 +255,6 @@ export function Toolbar({
                 variant="ghost"
                 size="sm"
                 className="gap-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
-                onClick={handleRecenter}
-                disabled={exporting || nodes.length === 0}
               >
                 <Download className="h-4 w-4" />
                 <span className="hidden lg:inline">Export</span>
@@ -289,10 +279,28 @@ export function Toolbar({
                 <Database className="mr-2 h-4 w-4" />
                 Export as JSON AST
               </DropdownMenuItem>
+              <DropdownMenuSeparator className="bg-zinc-800" />
+              <DropdownMenuItem
+                className="cursor-pointer text-rose-400 focus:bg-rose-500/10 focus:text-rose-300"
+                onClick={handleClearSchema}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Clear schema
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
           <div className="mx-1 h-6 w-px bg-zinc-800" />
+
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5 border-indigo-600/40 bg-indigo-600/10 text-indigo-300 hover:bg-indigo-600/20 hover:text-indigo-200"
+            onClick={() => onAddTableOpenChange(true)}
+          >
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">Add Table</span>
+          </Button>
 
           <Button
             size="sm"
@@ -306,7 +314,7 @@ export function Toolbar({
             ) : (
               <LayoutGrid className="h-4 w-4" />
             )}
-            Auto Layout
+            <span className="hidden sm:inline">Auto Layout</span>
           </Button>
 
           <Button
@@ -319,8 +327,22 @@ export function Toolbar({
             disabled={tableCount === 0}
           >
             <GitCompare className="h-4 w-4" />
-            Generate Migration
+            <span className="hidden sm:inline">Generate Migration</span>
           </Button>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
+                onClick={() => onShortcutsOpenChange(true)}
+              >
+                <Keyboard className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Keyboard shortcuts (⇧?)</TooltipContent>
+          </Tooltip>
         </div>
       </header>
     </TooltipProvider>

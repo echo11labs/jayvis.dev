@@ -24,12 +24,11 @@ function FlowCanvasInner() {
   const onNodesChange = useDiagramStore((s) => s.onNodesChange);
   const onEdgesChange = useDiagramStore((s) => s.onEdgesChange);
   const onConnect = useDiagramStore((s) => s.onConnect);
+  const setSelectedTable = useDiagramStore((s) => s.setSelectedTable);
   const { fitView } = useReactFlow();
 
   const prevCountRef = useRef(0);
 
-  // Auto-fit the view whenever the number of nodes changes
-  // (e.g. after parsing new DBML or applying auto-layout).
   useEffect(() => {
     if (nodes.length !== prevCountRef.current) {
       prevCountRef.current = nodes.length;
@@ -49,6 +48,12 @@ function FlowCanvasInner() {
     [],
   );
 
+  const onNodeClick = useCallback(
+    (_e: React.MouseEvent, node: Node) => setSelectedTable(node.id),
+    [setSelectedTable],
+  );
+  const onPaneClick = useCallback(() => setSelectedTable(null), [setSelectedTable]);
+
   return (
     <div className="relative h-full w-full bg-[#0a0a0a]">
       <ReactFlow
@@ -58,41 +63,39 @@ function FlowCanvasInner() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onNodeClick={onNodeClick}
+        onPaneClick={onPaneClick}
         defaultEdgeOptions={defaultEdgeOptions}
+        connectionRadius={28}
         fitView
-        minZoom={0.2}
+        minZoom={0.15}
         maxZoom={2.5}
         proOptions={{ hideAttribution: true }}
         className="bg-zinc-950"
       >
-        <Background
-          variant={BackgroundVariant.Dots}
-          gap={20}
-          size={1}
-          color="#27272a"
-        />
+        <Background variant={BackgroundVariant.Dots} gap={22} size={1} color="#27272a" />
         <Controls
-          className="!border-zinc-800 !bg-zinc-900 !shadow-2xl [&_button]:!border-zinc-800 [&_button]:!bg-zinc-900 [&_button]:!text-zinc-300 [&_button:hover]:!bg-zinc-800 [&_svg]:!fill-zinc-300"
+          className="!border !border-zinc-800 !bg-zinc-900/95 !rounded-lg !shadow-2xl [&_button]:!border-zinc-800 [&_button]:!bg-zinc-900 [&_button]:!text-zinc-300 [&_button:hover]:!bg-zinc-800 [&_svg]:!fill-zinc-300"
           showInteractive={false}
         />
         <MiniMap
-          className="!border !border-zinc-800 !bg-zinc-900 !rounded-lg"
+          className="!border !border-zinc-800 !bg-zinc-900/95 !rounded-lg !shadow-2xl"
           nodeColor={(node: Node<TableNodeData>) =>
             (node.data?.table?.color as string) || '#6366F1'
           }
-          nodeStrokeWidth={2}
-          maskColor="rgba(0,0,0,0.6)"
+          nodeStrokeWidth={3}
+          nodeStrokeColor="#0a0a0a"
+          maskColor="rgba(0,0,0,0.65)"
           pannable
           zoomable
         />
       </ReactFlow>
 
       {nodes.length === 0 && (
-        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 text-center">
-          <div className="text-3xl font-bold text-zinc-700">Empty Canvas</div>
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 text-center">
+          <div className="text-lg font-semibold text-zinc-700">Empty Canvas</div>
           <p className="max-w-sm text-sm text-zinc-600">
-            Write DBML in the editor on the left to render tables here, or load a
-            sample schema to get started.
+            Write DBML in the editor on the left, or load a sample schema.
           </p>
         </div>
       )}
