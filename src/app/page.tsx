@@ -60,6 +60,7 @@ export default function Home() {
   const selectedTable = useDiagramStore((s) => s.selectedTable);
   const hydrated = useDiagramStore((s) => s.hydrated);
   const setHydrated = useDiagramStore((s) => s.setHydrated);
+  const isParsing = useDiagramStore((s) => s.isParsing);
 
   const [isLayouting, setIsLayouting] = useState(false);
   const [migrationOpen, setMigrationOpen] = useState(false);
@@ -372,15 +373,29 @@ export default function Home() {
         </ResizablePanelGroup>
 
         {/* Status bar */}
-        <div className={`absolute bottom-0 left-0 right-0 flex h-7 items-center justify-between border-t ${statusBorder} px-3 text-[11px] backdrop-blur-sm`}>
+        <div className={`absolute bottom-0 left-0 right-0 flex h-7 items-center justify-between border-t ${statusBorder} px-3 text-[11px] backdrop-blur-md`}>
           <div className="flex items-center gap-3">
-            <span className={`font-mono ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{statusMessage}</span>
-            {parseError && (
-              <span className="flex items-center gap-1 font-mono text-rose-400">
+            {/* Parse status indicator */}
+            {isParsing ? (
+              <span className="flex items-center gap-1.5 font-mono text-indigo-400">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-indigo-400" />
+                parsing…
+              </span>
+            ) : parseError ? (
+              <span className="flex items-center gap-1.5 font-mono text-rose-400">
                 <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
                 parse error
               </span>
+            ) : (
+              <span className="flex items-center gap-1.5 font-mono text-emerald-500/70">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                {statusMessage}
+              </span>
             )}
+            {/* Line/char counts */}
+            <span className={`hidden font-mono sm:inline ${isDark ? 'text-zinc-700' : 'text-zinc-400'}`}>
+              {rawText.split('\n').length}L · {rawText.length}c
+            </span>
           </div>
           <div className={`flex items-center gap-3 ${isDark ? 'text-zinc-600' : 'text-zinc-400'}`}>
             <span className="hidden sm:inline">
@@ -391,6 +406,7 @@ export default function Home() {
             <span className="hidden sm:inline font-mono">
               saved locally
             </span>
+            <span className={`hidden font-mono sm:inline ${isDark ? 'text-zinc-700' : 'text-zinc-300'}`}>·</span>
             <span className="font-mono">tables: {tableCount}</span>
           </div>
         </div>

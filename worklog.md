@@ -9,9 +9,11 @@ with bidirectional canvas↔editor sync, IndexedDB persistence, a command
 palette, edge context menus, ERD SVG export, schema search, undo/redo,
 schema validation, table & field notes UI, live validation badge, full
 dark/light theme coverage (canvas + editor + toolbar + inspector + all
-dialogs + **command palette**), table duplicate, copy-to-clipboard, column
-reordering, **canvas pane context menu, cardinality-colored edges**, and
-fit-view shortcut.
+dialogs + command palette), table duplicate, copy-to-clipboard, column
+reordering, canvas pane context menu, cardinality-colored edges, fit-view
+shortcut, **Prisma schema export, JSON AST import, polished status bar with
+parse indicator + line/char counts, glassmorphic gradient branding, custom
+animations, and scrollbars**.
 
 ### Architecture
 - **Frontend**: Next.js 16 (App Router) + TypeScript + Tailwind + shadcn/ui
@@ -21,46 +23,64 @@ fit-view shortcut.
   kept out of the Next.js bundle to avoid Turbopack OOM)
 - **Persistence**: IndexedDB (local-first — schema + positions survive reloads)
 - **Diff Engine**: AST-driven schema diff → up/down SQL migrations
-- **DDL Export**: AST → PostgreSQL CREATE TABLE + ALTER TABLE + indexes
-- **ERD Export**: AST + positions → standalone SVG diagram
+- **Export Formats**: DBML, PostgreSQL DDL, JSON AST, ERD SVG, **Prisma schema**
+- **Import Formats**: DBML, **JSON AST** (auto-detected)
 - **Validation**: AST → prioritized errors/warnings + live badge
 - **MCP**: Standalone Model Context Protocol server for IDE agent integration
 - **State**: Zustand store with origin flagging + bidirectional sync + undo/redo
-- **Theme**: Full dark/light toggle (TableNode, CodeEditor, FlowCanvas, Toolbar,
-  Inspector, AddTableDialog, ShortcutsOverlay, ValidationPanel, MigrationPanel,
-  CommandPalette, app shell)
+- **Theme**: Full dark/light toggle (all components)
 
 ## Current Goals / Completed Modifications / Verification
 
-### Phase 11 — Completed (this round)
+### Phase 12 — Completed (this round)
 
-1. **CommandPalette theming** ✅ (`src/components/workspace/CommandPalette.tsx`)
-   - Added `useTheme` hook; theme-aware dialog background (zinc-950/white),
-     text (zinc-100/zinc-900), and kbd shortcut colors.
-   - Passes `className` override to the `CommandDialog`.
-   - All 7+ command items now render with correct theme colors.
+1. **Prisma schema export** ✅ (`src/lib/export/prisma.ts`)
+   - Converts the DatabaseAST to a complete `schema.prisma` file with:
+     - `generator client` + `datasource db` boilerplate
+     - `model` declarations with `@id`, `@unique`, `@default(now())`,
+       `@default(autoincrement())` directives
+     - `@relation` with field mappings, onDelete actions
+     - `@@map` for table names, `@@schema` for non-public schemas
+     - Prisma type mapping (uuid→String @db.Uuid, timestamptz→DateTime, etc.)
+   - Available in toolbar Export dropdown ("Export as Prisma schema") +
+     command palette.
+   - **Verified**: Export dropdown now has 8 items including "Export as
+     Prisma schema".
 
-2. **Canvas pane context menu** ✅ (`src/components/canvas/PaneContextMenu.tsx`)
-   - Right-click the empty canvas → floating menu with:
-     - "Add table" (⌘T) — opens the Add Table dialog.
-     - "Auto layout" (⌘L) — runs ELK layout.
-     - "Fit view" (⌘0) — fits the canvas to all nodes.
-     - "Clear schema" (danger, disabled when empty) — drops all tables.
-   - Closes on outside-click or Escape.
-   - Wired via `onPaneContextMenu` on ReactFlow + custom events for actions.
+2. **JSON AST import** ✅ (`src/components/workspace/Toolbar.tsx`)
+   - Import button now accepts `.dbml`, `.txt`, **and `.json`** files.
+   - Auto-detects JSON AST files (checks for `tables` key) and loads them
+     directly via `loadAST()` — no DBML parsing round-trip needed.
+   - Falls through to DBML text import for non-JSON files.
 
-3. **Cardinality-colored edges** ✅ (`src/store/diagram-store.ts`)
-   - Added `cardinalityStroke()` helper: 1:1 → emerald (#10B981), 1:N →
-     indigo (#6366F1), N:M → pink (#EC4899).
-   - The `refToEdge` helper now sets the edge stroke + markerEnd color based
-     on the reference's cardinality.
-   - Visual distinction between relationship types at a glance.
-   - **Verified**: 3 edges all show `rgb(99, 102, 241)` (#6366F1, 1:N) for
-     the e-commerce sample (all 1:N relationships).
+3. **Polished status bar** ✅ (`src/app/page.tsx`)
+   - Real-time parse status indicator:
+     - Indigo pulsing dot + "parsing…" while parsing.
+     - Red dot + "parse error" on errors.
+     - Green dot + status message when healthy.
+   - Line count + char count badges (`42L · 1016c`).
+   - Backdrop-blur-md for glassmorphic effect.
+   - `isParsing` selector added for reactive updates.
+
+4. **Glassmorphic gradient branding** ✅ (`src/components/workspace/Toolbar.tsx`)
+   - "StitchDB" logo text uses a gradient clip (`bg-gradient-to-r` with
+     `bg-clip-text text-transparent`) — zinc-100→zinc-300 in dark, zinc-900→
+     zinc-600 in light.
+
+5. **Custom animations & scrollbars** ✅ (`src/app/globals.css`)
+   - Added CSS animation utilities:
+     - `animate-fade-in` — panels fade in from below.
+     - `animate-slide-in-right` — sheet panels slide in from right.
+     - `animate-pulse-glow` — status indicators pulse.
+     - `.glow-indigo` — subtle indigo glow shadow.
+     - `.scrollbar-thin` — slim, themed scrollbar styling.
+   - Applied `animate-fade-in` to the inspector panel.
 
 ### Previous Phases (still working)
+- **Phase 11**: CommandPalette theming, canvas pane context menu,
+  cardinality-colored edges (1:1=emerald, 1:N=indigo, N:M=pink).
 - **Phase 10**: Dialog theming (AddTable, Shortcuts, Validation, Migration),
-  column reordering, canvas header stats badge.
+  column reordering (move up/down), canvas header stats badge.
 - **Phase 9**: Themed toolbar + inspector, table duplicate, copy-to-clipboard.
 - **Phase 8**: Full light theme coverage (TableNode, CodeEditor, FlowCanvas,
   shell), fit-view shortcut (⌘0).
@@ -77,9 +97,8 @@ fit-view shortcut.
 
 ### Browser-Verified (agent-browser)
 - ✅ Page hydrates: editor (1016 chars) + canvas (4 tables, 3 edges) + HMR connected
-- ✅ Command palette opens in light mode (themed background)
-- ✅ Theme toggle works (html class switches to "light")
-- ✅ Edge colors reflect cardinality (all 1:N = indigo #6366F1)
+- ✅ Export dropdown has 8 items including "Export as Prisma schema"
+- ✅ Status bar shows parse indicator + line/char counts
 - ✅ Lint clean (0 errors)
 
 ### Critical Operational Notes
@@ -114,6 +133,6 @@ fit-view shortcut.
    then move/delete as a group.
 4. **Schema diff timeline** — show a visual history of schema changes with
    timestamps, clickable to restore any prior state.
-5. **Prisma schema import** — parse `schema.prisma` files into the AST.
-6. **Keyboard navigation in command palette** — arrow keys + enter to
-   select (cmdk supports this natively, verify it works).
+5. **Performance optimization** — use `useShallow` for Zustand selectors
+   to prevent unnecessary re-renders; memoize TableNode more aggressively.
+6. **Prisma schema import** — parse `schema.prisma` files back into the AST.

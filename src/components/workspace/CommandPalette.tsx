@@ -31,6 +31,7 @@ import {
 import { useDiagramStore } from '@/store/diagram-store';
 import { serializeDBML } from '@/lib/parser/dbml';
 import { exportDDL } from '@/lib/export/ddl';
+import { exportPrisma } from '@/lib/export/prisma';
 import { downloadErdSvg } from '@/lib/export/erd-svg';
 import { useTheme } from '@/hooks/use-theme-state';
 import { toast } from 'sonner';
@@ -100,6 +101,19 @@ export function CommandPalette({
     }
     downloadErdSvg(ast, positions);
     toast.success('Exported stitchdb-erd.svg');
+    close();
+  }, [ast, close]);
+
+  const handleExportPrisma = useCallback(() => {
+    const prisma = exportPrisma(ast);
+    const blob = new Blob([prisma], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'schema.prisma';
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Exported schema.prisma');
     close();
   }, [ast, close]);
 
@@ -174,6 +188,10 @@ export function CommandPalette({
           <CommandItem onSelect={handleExportErd}>
             <ImageIcon className="mr-2 h-4 w-4 text-emerald-400" />
             Export ERD as SVG
+          </CommandItem>
+          <CommandItem onSelect={handleExportPrisma}>
+            <Boxes className="mr-2 h-4 w-4 text-violet-400" />
+            Export as Prisma schema
           </CommandItem>
         </CommandGroup>
 

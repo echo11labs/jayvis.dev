@@ -35,10 +35,12 @@ import {
   Command,
   Image as ImageIcon,
   Clipboard,
+  Boxes,
 } from 'lucide-react';
 import { useDiagramStore } from '@/store/diagram-store';
 import { serializeDBML } from '@/lib/parser/dbml';
 import { exportDDL } from '@/lib/export/ddl';
+import { exportPrisma } from '@/lib/export/prisma';
 import { downloadErdSvg } from '@/lib/export/erd-svg';
 import { ThemeToggle } from '@/components/workspace/ThemeToggle';
 import { useTheme } from '@/hooks/use-theme-state';
@@ -160,6 +162,18 @@ export function Toolbar({
     toast.success('Exported stitchdb-erd.svg');
   };
 
+  const handleExportPrisma = () => {
+    const prisma = exportPrisma(ast);
+    const blob = new Blob([prisma], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'schema.prisma';
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Exported schema.prisma');
+  };
+
   const handleCopyJson = async () => {
     try {
       const json = JSON.stringify(ast, null, 2);
@@ -186,6 +200,20 @@ export function Toolbar({
     const reader = new FileReader();
     reader.onload = (ev) => {
       const text = String(ev.target?.result || '');
+      // Check if it's a JSON AST file (has "tables" key).
+      if (file.name.endsWith('.json') && text.trim().startsWith('{')) {
+        try {
+          const parsed = JSON.parse(text);
+          if (parsed.tables) {
+            useDiagramStore.getState().loadAST(parsed);
+            toast.success(`Imported AST from ${file.name}`);
+            e.target.value = '';
+            return;
+          }
+        } catch {
+          // Fall through to DBML import.
+        }
+      }
       useDiagramStore.getState().setRawText(text);
       toast.success(`Imported ${file.name}`);
     };
@@ -209,7 +237,7 @@ export function Toolbar({
             </div>
             <div className="leading-none">
               <div className="flex items-center gap-1.5">
-                <span className={`text-sm font-bold tracking-tight ${brandText}`}>
+                <span className={`bg-gradient-to-r ${isDark ? 'from-zinc-100 to-zinc-300' : 'from-zinc-900 to-zinc-600'} bg-clip-text text-sm font-bold tracking-tight text-transparent`}>
                   StitchDB
                 </span>
                 <Badge
@@ -309,7 +337,7 @@ export function Toolbar({
           <input
             id="import-dbml"
             type="file"
-            accept=".dbml,.txt"
+            accept=".dbml,.txt,.json"
             className="hidden"
             onChange={handleImport}
           />
@@ -327,7 +355,7 @@ export function Toolbar({
                 <span className="hidden lg:inline">Import</span>
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="bottom">Import .dbml file</TooltipContent>
+            <TooltipContent side="bottom">Import .dbml, .json AST</TooltipContent>
           </Tooltip>
 
           <DropdownMenu>
@@ -373,6 +401,13 @@ export function Toolbar({
               >
                 <ImageIcon className="mr-2 h-4 w-4" />
                 Export ERD as SVG
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="cursor-pointer text-zinc-300 focus:bg-zinc-800 focus:text-zinc-100"
+                onClick={handleExportPrisma}
+              >
+                <Boxes className="mr-2 h-4 w-4" />
+                Export as Prisma schema
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-zinc-800" />
               <DropdownMenuItem

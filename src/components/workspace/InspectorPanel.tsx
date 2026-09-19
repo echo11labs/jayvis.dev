@@ -191,7 +191,7 @@ export function InspectorPanel() {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className={`flex h-full flex-col border-l ${borderCls} ${panelBg} backdrop-blur-sm`}>
+      <div className={`flex h-full flex-col border-l ${borderCls} ${panelBg} backdrop-blur-sm animate-fade-in`}>
         {/* Header */}
         <div
           className="flex shrink-0 items-center justify-between border-b border-zinc-800 px-3 py-2.5"
