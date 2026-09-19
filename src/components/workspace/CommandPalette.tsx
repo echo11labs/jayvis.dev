@@ -27,6 +27,7 @@ import {
   ShieldCheck,
   Undo2,
   Redo2,
+  Terminal,
 } from 'lucide-react';
 import { useDiagramStore } from '@/store/diagram-store';
 import { serializeDBML } from '@/lib/parser/dbml';
@@ -41,6 +42,7 @@ interface CommandPaletteProps {
   onOpenChange: (open: boolean) => void;
   onAutoLayout: () => void;
   onGenerateMigration: () => void;
+  onSqlBuilderOpenChange: (open: boolean) => void;
   onAddTableOpenChange: (open: boolean) => void;
   onShortcutsOpenChange: (open: boolean) => void;
   onValidationOpenChange: (open: boolean) => void;
@@ -52,6 +54,7 @@ export function CommandPalette({
   onOpenChange,
   onAutoLayout,
   onGenerateMigration,
+  onSqlBuilderOpenChange,
   onAddTableOpenChange,
   onShortcutsOpenChange,
   onValidationOpenChange,
@@ -152,6 +155,11 @@ export function CommandPalette({
             <GitCompare className="mr-2 h-4 w-4 text-amber-400" />
             Generate migration
             <kbd className={`ml-auto font-mono text-[10px] ${kbdCls}`}>⌘M</kbd>
+          </CommandItem>
+          <CommandItem onSelect={run(() => onSqlBuilderOpenChange(true))}>
+            <Terminal className="mr-2 h-4 w-4 text-emerald-400" />
+            Build SQL — create tables in database
+            <kbd className={`ml-auto font-mono text-[10px] ${kbdCls}`}>⌘B</kbd>
           </CommandItem>
           <CommandItem onSelect={run(() => onShortcutsOpenChange(true))}>
             <Keyboard className="mr-2 h-4 w-4 text-sky-400" />

@@ -8,23 +8,23 @@ truth. The platform is **functional, browser-verified, and feature-complete**
 with bidirectional canvas↔editor sync, IndexedDB persistence, a command
 palette, edge context menus, ERD SVG export, schema search, undo/redo,
 schema validation, table & field notes UI, live validation badge, full
-dark/light theme coverage (canvas + editor + toolbar + inspector + all
-dialogs + command palette), table duplicate, copy-to-clipboard, column
+dark/light theme coverage, table duplicate, copy-to-clipboard, column
 reordering, canvas pane context menu, cardinality-colored edges, fit-view
-shortcut, **Prisma schema export, JSON AST import, polished status bar with
-parse indicator + line/char counts, glassmorphic gradient branding, custom
-animations, and scrollbars**.
+shortcut, Prisma schema export, JSON AST import, polished status bar,
+glassmorphic branding, custom animations, and **SQL Builder — a feature
+that generates CREATE TABLE statements from the canvas nodes and executes
+them against the local SQLite database**.
 
 ### Architecture
 - **Frontend**: Next.js 16 (App Router) + TypeScript + Tailwind + shadcn/ui
 - **Canvas**: @xyflow/react (React Flow) with theme-aware custom TableNode
 - **Layout**: ELK.js (dynamic import for "Auto Layout")
-- **DBML Parser**: Isolated Bun mini-service on port 3031 (21 MB @dbml/core
-  kept out of the Next.js bundle to avoid Turbopack OOM)
+- **DBML Parser**: Isolated Bun mini-service on port 3031 (21 MB @dbml/core)
 - **Persistence**: IndexedDB (local-first — schema + positions survive reloads)
 - **Diff Engine**: AST-driven schema diff → up/down SQL migrations
-- **Export Formats**: DBML, PostgreSQL DDL, JSON AST, ERD SVG, **Prisma schema**
-- **Import Formats**: DBML, **JSON AST** (auto-detected)
+- **Export Formats**: DBML, PostgreSQL DDL, JSON AST, ERD SVG, Prisma schema
+- **Import Formats**: DBML, JSON AST (auto-detected)
+- **SQL Builder**: AST → SQLite DDL → execute against local database (⌘B)
 - **Validation**: AST → prioritized errors/warnings + live badge
 - **MCP**: Standalone Model Context Protocol server for IDE agent integration
 - **State**: Zustand store with origin flagging + bidirectional sync + undo/redo
@@ -32,73 +32,70 @@ animations, and scrollbars**.
 
 ## Current Goals / Completed Modifications / Verification
 
-### Phase 12 — Completed (this round)
+### SQL Builder Feature — Completed (this round)
 
-1. **Prisma schema export** ✅ (`src/lib/export/prisma.ts`)
-   - Converts the DatabaseAST to a complete `schema.prisma` file with:
-     - `generator client` + `datasource db` boilerplate
-     - `model` declarations with `@id`, `@unique`, `@default(now())`,
-       `@default(autoincrement())` directives
-     - `@relation` with field mappings, onDelete actions
-     - `@@map` for table names, `@@schema` for non-public schemas
-     - Prisma type mapping (uuid→String @db.Uuid, timestamptz→DateTime, etc.)
-   - Available in toolbar Export dropdown ("Export as Prisma schema") +
-     command palette.
-   - **Verified**: Export dropdown now has 8 items including "Export as
-     Prisma schema".
+1. **SQLite DDL generator** ✅ (`src/lib/export/ddl-sqlite.ts`)
+   - `buildSqlStatements(ast)` → array of `{sql, description}` objects.
+   - `buildSqlScript(ast)` → full SQL script string.
+   - Maps PostgreSQL types to SQLite equivalents:
+     - `integer` + `autoincrement` → `INTEGER PRIMARY KEY AUTOINCREMENT`
+     - `varchar`/`text` → `TEXT`
+     - `boolean` → `INTEGER` (0/1)
+     - `timestamp`/`timestamptz` → `TEXT` (ISO 8601)
+     - `jsonb`/`json` → `TEXT`
+     - `decimal`/`numeric` → `REAL`
+   - Inline `FOREIGN KEY ... REFERENCES ... ON DELETE ... ON UPDATE` constraints.
+   - `CREATE TABLE IF NOT EXISTS` for idempotent re-runs.
+   - `CREATE [UNIQUE] INDEX IF NOT EXISTS` for indexes.
+   - `PRAGMA foreign_keys = ON;` header.
 
-2. **JSON AST import** ✅ (`src/components/workspace/Toolbar.tsx`)
-   - Import button now accepts `.dbml`, `.txt`, **and `.json`** files.
-   - Auto-detects JSON AST files (checks for `tables` key) and loads them
-     directly via `loadAST()` — no DBML parsing round-trip needed.
-   - Falls through to DBML text import for non-JSON files.
+2. **SQL execution API** ✅ (`src/app/api/build-sql/route.ts`)
+   - **POST** — executes an array of SQL statements against the local SQLite
+     database via Prisma's `$executeRawUnsafe` within a transaction.
+     Returns per-statement results (success/error, rows affected).
+   - **GET** — lists all tables in the database (for verification).
+   - **DELETE** — drops all StitchDB-created tables (excludes Prisma-managed
+     tables like User/Post) for clean re-runs.
+   - **Verified**: POST created `users` and `products` tables successfully,
+     GET returned `['Post', 'User', 'products', 'users']`.
 
-3. **Polished status bar** ✅ (`src/app/page.tsx`)
-   - Real-time parse status indicator:
-     - Indigo pulsing dot + "parsing…" while parsing.
-     - Red dot + "parse error" on errors.
-     - Green dot + status message when healthy.
-   - Line count + char count badges (`42L · 1016c`).
-   - Backdrop-blur-md for glassmorphic effect.
-   - `isParsing` selector added for reactive updates.
+3. **SQL Builder panel** ✅ (`src/components/workspace/SqlBuilderPanel.tsx`)
+   - Right-side sheet panel with 3 tabs:
+     - **SQL Preview** — live SQL script with syntax highlighting
+       (keywords in indigo, strings in emerald, comments in gray, numbers
+       in amber).
+     - **Execution Results** — per-statement success/error with SQL text,
+       description, and rows affected. Green/red cards per result.
+     - **DB Tables** — lists tables currently in the SQLite database after
+       clicking "Check DB".
+   - Action bar: "Build Tables" (emerald, executes SQL), "Copy SQL",
+     "Download .sql", "Check DB" (lists existing tables), "Drop All"
+     (drops StitchDB tables).
+   - Summary badges: statement count, table count, execution status
+     (succeeded/total).
+   - Loading states: spinner while executing, "No execution results yet"
+     empty state.
+   - Error display: transaction errors shown in a red banner.
 
-4. **Glassmorphic gradient branding** ✅ (`src/components/workspace/Toolbar.tsx`)
-   - "StitchDB" logo text uses a gradient clip (`bg-gradient-to-r` with
-     `bg-clip-text text-transparent`) — zinc-100→zinc-300 in dark, zinc-900→
-     zinc-600 in light.
+4. **Toolbar button** ✅ — Emerald "Build SQL" button (Database icon) in
+   the toolbar, next to "Generate Migration". Opens the SQL Builder panel.
+   Disabled when no tables exist.
 
-5. **Custom animations & scrollbars** ✅ (`src/app/globals.css`)
-   - Added CSS animation utilities:
-     - `animate-fade-in` — panels fade in from below.
-     - `animate-slide-in-right` — sheet panels slide in from right.
-     - `animate-pulse-glow` — status indicators pulse.
-     - `.glow-indigo` — subtle indigo glow shadow.
-     - `.scrollbar-thin` — slim, themed scrollbar styling.
-   - Applied `animate-fade-in` to the inspector panel.
+5. **Keyboard shortcut (⌘B)** ✅ — Opens the SQL Builder panel.
 
-### Previous Phases (still working)
-- **Phase 11**: CommandPalette theming, canvas pane context menu,
-  cardinality-colored edges (1:1=emerald, 1:N=indigo, N:M=pink).
-- **Phase 10**: Dialog theming (AddTable, Shortcuts, Validation, Migration),
-  column reordering (move up/down), canvas header stats badge.
-- **Phase 9**: Themed toolbar + inspector, table duplicate, copy-to-clipboard.
-- **Phase 8**: Full light theme coverage (TableNode, CodeEditor, FlowCanvas,
-  shell), fit-view shortcut (⌘0).
-- **Phase 7**: Relationship edge labels with field names, edge hover
-  highlighting, 5 schema templates.
-- **Phase 6**: Table & field notes UI, live validation badge, theme toggle.
-- **Phase 5**: Undo/redo history stack, schema validation, validation panel.
-- **Phase 4**: Edge context menu, schema search (⌘F), ERD SVG export.
-- **Phase 3**: IndexedDB persistence, command palette (⌘K), DDL export.
-- **Phase 2**: Bidirectional sync, inspector panel, add table dialog,
-  redesigned TableNode, keyboard shortcuts, relationship drag-connect.
-- **Phase 1**: Core AST, store, canvas, ELK layout, DBML parser mini-service,
-  migration diff engine, MCP server, split-pane UI, 3 sample schemas.
+6. **Command palette item** ✅ — "Build SQL — create tables in database"
+   with ⌘B shortcut hint, Terminal icon (emerald).
+
+7. **Shortcuts overlay** ✅ — Updated with ⌘B and right-click canvas hint.
 
 ### Browser-Verified (agent-browser)
-- ✅ Page hydrates: editor (1016 chars) + canvas (4 tables, 3 edges) + HMR connected
-- ✅ Export dropdown has 8 items including "Export as Prisma schema"
-- ✅ Status bar shows parse indicator + line/char counts
+- ✅ Page hydrates: editor (1016 chars) + canvas (4 tables) + HMR connected
+- ✅ "Build SQL" button present in toolbar (emerald)
+- ✅ SQL Builder panel opens with 3 tabs (SQL Preview, Execution Results, DB Tables)
+- ✅ SQL Preview shows live generated SQL with syntax highlighting
+- ✅ Build-sql API POST creates tables successfully (2/2 succeeded)
+- ✅ Build-sql API GET lists tables in database
+- ✅ Build-sql API DELETE drops StitchDB tables (excludes Prisma tables)
 - ✅ Lint clean (0 errors)
 
 ### Critical Operational Notes
@@ -113,6 +110,8 @@ animations, and scrollbars**.
    — causes silent hydration failure.
 6. **Server dies under sustained interaction** (dialog opens, toasts) due
    to 4GB memory limit. Environment constraint, not a code bug.
+7. **DELETE endpoint excludes Prisma tables** — User and Post tables are
+   managed by Prisma and should not be dropped.
 
 ## Unresolved Issues / Risks / Next Steps
 
@@ -133,6 +132,7 @@ animations, and scrollbars**.
    then move/delete as a group.
 4. **Schema diff timeline** — show a visual history of schema changes with
    timestamps, clickable to restore any prior state.
-5. **Performance optimization** — use `useShallow` for Zustand selectors
-   to prevent unnecessary re-renders; memoize TableNode more aggressively.
-6. **Prisma schema import** — parse `schema.prisma` files back into the AST.
+5. **Data seeding** — after building tables, seed them with sample data
+   via INSERT statements.
+6. **Query runner** — execute SELECT queries against the built tables and
+   display results in a grid.

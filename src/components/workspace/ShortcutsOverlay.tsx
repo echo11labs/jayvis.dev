@@ -24,11 +24,13 @@ const SHORTCUTS = [
   { keys: ['⌘', '0'], label: 'Fit canvas to view (zoom to fit)' },
   { keys: ['⌘', 'L'], label: 'Run auto-layout on the canvas' },
   { keys: ['⌘', 'M'], label: 'Open the migration diff panel' },
+  { keys: ['⌘', 'B'], label: 'Build SQL — create tables in the database' },
   { keys: ['⌘', 'T'], label: 'Create a new table (dialog)' },
   { keys: ['⇧', '?'], label: 'Toggle this shortcuts overlay' },
   { keys: ['Tab'], label: 'Insert two spaces in the editor' },
   { keys: ['Enter'], label: 'Auto-indent the next line' },
   { keys: ['Right-click', ''], label: 'Right-click a relationship for cardinality / ON DELETE / ON UPDATE' },
+  { keys: ['Right-click', ''], label: 'Right-click canvas for quick actions (add table, fit view, etc.)' },
   { keys: ['Drag', ''], label: 'Drag from a column handle to create a relationship' },
   { keys: ['Click', ''], label: 'Click a table to inspect & edit its columns' },
 ];

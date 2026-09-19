@@ -22,6 +22,7 @@ import { CommandPalette } from '@/components/workspace/CommandPalette';
 import { ValidationPanel } from '@/components/workspace/ValidationPanel';
 import { ValidationBadge } from '@/components/workspace/ValidationBadge';
 import { UndoRedoButtons } from '@/components/workspace/UndoRedoButtons';
+import { SqlBuilderPanel } from '@/components/workspace/SqlBuilderPanel';
 import { CanvasLegend } from '@/components/canvas/CanvasLegend';
 import { CodeEditor } from '@/components/editor/CodeEditor';
 import { useDiagramStore } from '@/store/diagram-store';
@@ -68,6 +69,7 @@ export default function Home() {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [validationOpen, setValidationOpen] = useState(false);
+  const [sqlBuilderOpen, setSqlBuilderOpen] = useState(false);
   const parseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const theme = useTheme();
   const isDark = theme === 'dark';
@@ -222,6 +224,10 @@ export default function Home() {
         e.preventDefault();
         handleGenerateMigration();
       }
+      if (cmd && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        setSqlBuilderOpen(true);
+      }
       if (cmd && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setPaletteOpen((v) => !v);
@@ -263,6 +269,7 @@ export default function Home() {
         onAutoLayout={handleAutoLayout}
         onGenerateMigration={handleGenerateMigration}
         onMigrationOpenChange={setMigrationOpen}
+        onSqlBuilderOpenChange={setSqlBuilderOpen}
         onLoadSample={handleLoadSample}
         onAddTableOpenChange={setAddTableOpen}
         onShortcutsOpenChange={setShortcutsOpen}
@@ -413,6 +420,7 @@ export default function Home() {
       </main>
 
       <MigrationPanel open={migrationOpen} onOpenChange={setMigrationOpen} />
+      <SqlBuilderPanel open={sqlBuilderOpen} onOpenChange={setSqlBuilderOpen} />
       <ValidationPanel open={validationOpen} onOpenChange={setValidationOpen} />
       <AddTableDialog open={addTableOpen} onOpenChange={setAddTableOpen} />
       <ShortcutsOverlay open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
@@ -421,6 +429,7 @@ export default function Home() {
         onOpenChange={setPaletteOpen}
         onAutoLayout={handleAutoLayout}
         onGenerateMigration={handleGenerateMigration}
+        onSqlBuilderOpenChange={setSqlBuilderOpen}
         onAddTableOpenChange={setAddTableOpen}
         onShortcutsOpenChange={setShortcutsOpen}
         onLoadSample={handleLoadSample}

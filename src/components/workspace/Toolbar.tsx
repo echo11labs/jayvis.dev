@@ -50,6 +50,7 @@ interface ToolbarProps {
   onAutoLayout: () => Promise<void>;
   onGenerateMigration: () => void;
   onMigrationOpenChange: (open: boolean) => void;
+  onSqlBuilderOpenChange: (open: boolean) => void;
   onLoadSample: (name: SampleName) => void;
   onAddTableOpenChange: (open: boolean) => void;
   onShortcutsOpenChange: (open: boolean) => void;
@@ -78,6 +79,7 @@ export function Toolbar({
   onAutoLayout,
   onGenerateMigration,
   onMigrationOpenChange,
+  onSqlBuilderOpenChange,
   onLoadSample,
   onAddTableOpenChange,
   onShortcutsOpenChange,
@@ -473,6 +475,16 @@ export function Toolbar({
           >
             <GitCompare className="h-4 w-4" />
             <span className="hidden sm:inline">Generate Migration</span>
+          </Button>
+
+          <Button
+            size="sm"
+            className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-500"
+            onClick={() => onSqlBuilderOpenChange(true)}
+            disabled={tableCount === 0}
+          >
+            <Database className="h-4 w-4" />
+            <span className="hidden sm:inline">Build SQL</span>
           </Button>
 
           <Tooltip>
