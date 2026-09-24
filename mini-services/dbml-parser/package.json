@@ -1,9 +1,10 @@
 {
-  "name": "stitchdb-dbml-parser",
+  "name": "jayvis-dbml-parser",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun --hot index.ts"
+    "dev": "npx --no-install tsx watch index.ts",
+    "start": "npx --no-install tsx index.ts"
   },
   "dependencies": {
     "@dbml/core": "^10.1.1"

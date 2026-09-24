@@ -1,8 +1,14 @@
-# StitchDB — Project Worklog
+# JayVis.dev — Project Worklog
+
+## Robustness stabilization (2026-09-21)
+
+Verified locally: `npm run check` (lint, tsc, 20 tests), parser `/health`, `/api/parse`, `/api/build-sql`.
+
+Shipped: Node parser, `SyncStatus` + draft persistence, atomic `replaceWorkspace` with confirm/undo, truthful status/settings, SQL Builder error envelopes. MCP remains file-based/offline.
 
 ## Current Project Status
 
-StitchDB is a **developer-first database modeling workspace** that bridges
+JayVis.dev is a **developer-first database modeling workspace** that bridges
 declarative DBML code and visual ERDs using an AST as the single source of
 truth. The platform is **functional, browser-verified, and feature-complete**
 with bidirectional canvas↔editor sync, IndexedDB persistence, a command
@@ -54,7 +60,7 @@ them against the local SQLite database**.
      database via Prisma's `$executeRawUnsafe` within a transaction.
      Returns per-statement results (success/error, rows affected).
    - **GET** — lists all tables in the database (for verification).
-   - **DELETE** — drops all StitchDB-created tables (excludes Prisma-managed
+   - **DELETE** — drops all JayVis.dev-created tables (excludes Prisma-managed
      tables like User/Post) for clean re-runs.
    - **Verified**: POST created `users` and `products` tables successfully,
      GET returned `['Post', 'User', 'products', 'users']`.
@@ -70,7 +76,7 @@ them against the local SQLite database**.
        clicking "Check DB".
    - Action bar: "Build Tables" (emerald, executes SQL), "Copy SQL",
      "Download .sql", "Check DB" (lists existing tables), "Drop All"
-     (drops StitchDB tables).
+     (drops JayVis.dev tables).
    - Summary badges: statement count, table count, execution status
      (succeeded/total).
    - Loading states: spinner while executing, "No execution results yet"
@@ -95,7 +101,7 @@ them against the local SQLite database**.
 - ✅ SQL Preview shows live generated SQL with syntax highlighting
 - ✅ Build-sql API POST creates tables successfully (2/2 succeeded)
 - ✅ Build-sql API GET lists tables in database
-- ✅ Build-sql API DELETE drops StitchDB tables (excludes Prisma tables)
+- ✅ Build-sql API DELETE drops JayVis.dev tables (excludes Prisma tables)
 - ✅ Lint clean (0 errors)
 
 ### Critical Operational Notes
@@ -117,7 +123,7 @@ them against the local SQLite database**.
 
 ### Unresolved
 - **MCP ↔ live store wiring**: the MCP server reads/writes a JSON file
-  (`stitchdb-state.json`), not the live browser store. A WebSocket bridge
+  (`jayvis-state.json`), not the live browser store. A WebSocket bridge
   would enable real-time agent-driven schema edits.
 - **Server stability under interaction**: the dev server dies after ~2-3
   dialog interactions due to memory pressure. A production build

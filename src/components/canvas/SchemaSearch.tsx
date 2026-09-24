@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { Search, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Codicon } from '@/components/ui/codicon';
 import { useDiagramStore } from '@/store/diagram-store';
 import { useReactFlow } from '@xyflow/react';
 import type { SchemaTable } from '@/types/ast';
@@ -42,13 +42,17 @@ export function SchemaSearch() {
     setQuery('');
   };
 
-  // ⌘F opens the search within the canvas
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'f') {
-        e.preventDefault();
-        setOpen((v) => !v);
-      }
+      if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 'f') return;
+      const target = e.target as HTMLElement | null;
+      const isTyping =
+        !!target &&
+        (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) ||
+          target.isContentEditable);
+      if (isTyping) return;
+      e.preventDefault();
+      setOpen((v) => !v);
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
@@ -57,9 +61,9 @@ export function SchemaSearch() {
   return (
     <div className="pointer-events-auto absolute left-3 top-3 z-10 w-64">
       {open ? (
-        <div className="rounded-lg border border-zinc-800 bg-zinc-950/95 shadow-2xl backdrop-blur-md">
-          <div className="flex items-center gap-2 border-b border-zinc-800 px-2.5 py-2">
-            <Search className="h-3.5 w-3.5 text-zinc-500" />
+        <div className="border border-[var(--color-border-subtle)] bg-[var(--color-bg-app)]">
+          <div className="flex items-center gap-2 border-b border-[var(--color-border-subtle)] px-2.5 py-2">
+            <Codicon name="search" />
             <input
               autoFocus
               value={query}
@@ -74,16 +78,16 @@ export function SchemaSearch() {
                 }
               }}
               placeholder="Search tables & columns…"
-              className="flex-1 bg-transparent text-xs text-zinc-200 outline-none placeholder:text-zinc-600"
+              className="flex-1 bg-transparent text-xs text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)]"
             />
             <button
               onClick={() => {
                 setOpen(false);
                 setQuery('');
               }}
-              className="text-zinc-600 hover:text-zinc-300"
+              className="text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
             >
-              <X className="h-3.5 w-3.5" />
+              <Codicon name="close" />
             </button>
           </div>
           {results.length > 0 && (
@@ -92,14 +96,14 @@ export function SchemaSearch() {
                 <button
                   key={t.name}
                   onClick={() => focusTable(t.name)}
-                  className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs hover:bg-zinc-900"
+                  className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs hover:bg-[var(--color-bg-panel)]"
                 >
                   <span
                     className="h-2 w-2 flex-shrink-0 rounded-full"
                     style={{ backgroundColor: t.color || '#6366F1' }}
                   />
-                  <span className="font-mono text-zinc-200">{t.name}</span>
-                  <span className="ml-auto font-mono text-[10px] text-zinc-600">
+                  <span className="font-mono text-[var(--color-text-primary)]">{t.name}</span>
+                  <span className="ml-auto font-mono text-[10px] text-[var(--color-text-muted)]">
                     {t.fields.length} col
                   </span>
                 </button>
@@ -107,24 +111,12 @@ export function SchemaSearch() {
             </div>
           )}
           {results.length === 0 && (
-            <div className="px-2.5 py-3 text-center text-[11px] text-zinc-600">
+            <div className="px-2.5 py-3 text-center text-[11px] text-[var(--color-text-muted)]">
               No tables match “{query}”
             </div>
           )}
         </div>
-      ) : (
-        <button
-          onClick={() => setOpen(true)}
-          className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950/90 px-2.5 py-1.5 text-xs text-zinc-400 shadow-2xl backdrop-blur-sm transition-colors hover:border-zinc-700 hover:text-zinc-200"
-          title="Search tables (⌘F)"
-        >
-          <Search className="h-3.5 w-3.5" />
-          <span>Search tables</span>
-          <kbd className="ml-1 rounded bg-zinc-800 px-1 py-0.5 font-mono text-[9px] text-zinc-500">
-            ⌘F
-          </kbd>
-        </button>
-      )}
+      ) : null}
     </div>
   );
 }

@@ -13,10 +13,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useTheme } from '@/hooks/use-theme-state';
-import { Plus, Trash2, Table2 } from 'lucide-react';
+import { Codicon } from '@/components/ui/codicon';
 import { useDiagramStore } from '@/store/diagram-store';
 import type { SchemaField, SchemaTable } from '@/types/ast';
+import { hasDuplicateIdents, normalizeIdent } from '@/lib/ident';
 import { toast } from 'sonner';
 
 interface AddTableDialogProps {
@@ -28,6 +28,7 @@ interface FieldDraft {
   name: string;
   type: string;
   isPrimaryKey: boolean;
+  isUnique: boolean;
   isNullable: boolean;
 }
 
@@ -37,24 +38,19 @@ const COMMON_TYPES = [
 ];
 
 const DEFAULT_FIELDS: FieldDraft[] = [
-  { name: 'id', type: 'integer', isPrimaryKey: true, isNullable: false },
-  { name: 'created_at', type: 'timestamptz', isPrimaryKey: false, isNullable: false },
+  { name: 'id', type: 'integer', isPrimaryKey: true, isUnique: false, isNullable: false },
+  { name: 'created_at', type: 'timestamptz', isPrimaryKey: false, isUnique: false, isNullable: false },
 ];
 
 export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
   const addTable = useDiagramStore((s) => s.addTable);
-  const theme = useTheme();
-  const isDark = theme === 'dark';
-  const dialogCls = isDark
-    ? 'border-zinc-800 bg-zinc-950 text-zinc-100'
-    : 'border-zinc-200 bg-white text-zinc-900';
-  const descCls = isDark ? 'text-zinc-500' : 'text-zinc-500';
-  const inputCls = isDark
-    ? 'border-zinc-800 bg-zinc-900 font-mono text-sm text-zinc-100 focus:border-indigo-500'
-    : 'border-zinc-300 bg-white font-mono text-sm text-zinc-900 focus:border-indigo-500';
-  const fieldRowCls = isDark ? 'border-zinc-800 bg-zinc-950' : 'border-zinc-300 bg-white';
-  const selectCls = isDark ? 'border-zinc-800 bg-zinc-950 text-zinc-100' : 'border-zinc-300 bg-white text-zinc-900';
-  const fieldsContainerCls = isDark ? 'border-zinc-800 bg-zinc-900/40' : 'border-zinc-200 bg-zinc-50';
+  const syncStatus = useDiagramStore((s) => s.syncStatus);
+  const dialogCls = 'border-[var(--color-border-subtle)] bg-[var(--color-bg-app)] text-[var(--color-text-primary)]';
+  const descCls = 'text-[var(--color-text-muted)]';
+  const inputCls = 'border-[var(--color-border-subtle)] bg-[var(--color-bg-panel)] font-mono text-sm text-[var(--color-text-primary)] focus:border-indigo-500';
+  const fieldRowCls = 'border-[var(--color-border-subtle)] bg-[var(--color-bg-app)]';
+  const selectCls = 'border-[var(--color-border-subtle)] bg-[var(--color-bg-app)] text-[var(--color-text-primary)]';
+  const fieldsContainerCls = 'border-[var(--color-border-subtle)] bg-[var(--color-bg-panel)]';
   const [tableName, setTableName] = useState('');
   const [schema, setSchema] = useState('public');
   const [fields, setFields] = useState<FieldDraft[]>(DEFAULT_FIELDS.map((f) => ({ ...f })));
@@ -68,7 +64,7 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
   const addField = useCallback(() => {
     setFields((prev) => [
       ...prev,
-      { name: '', type: 'varchar', isPrimaryKey: false, isNullable: true },
+      { name: '', type: 'varchar', isPrimaryKey: false, isUnique: false, isNullable: true },
     ]);
   }, []);
 
@@ -86,7 +82,11 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
   );
 
   const handleSubmit = useCallback(() => {
-    const name = tableName.trim().toLowerCase().replace(/\s+/g, '_');
+    if (useDiagramStore.getState().syncStatus !== 'synced') {
+      toast.error('Cannot add a table while DBML is not synced');
+      return;
+    }
+    const name = normalizeIdent(tableName);
     if (!name) {
       toast.error('Table name is required');
       return;
@@ -96,31 +96,41 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
       return;
     }
 
-    const validFields = fields.filter((f) => f.name.trim());
+    const validFields = fields
+      .map((field) => ({ ...field, name: normalizeIdent(field.name) }))
+      .filter((field) => field.name);
     if (validFields.length === 0) {
       toast.error('At least one column is required');
       return;
     }
+    if (hasDuplicateIdents(validFields.map((field) => field.name))) {
+      toast.error('Column names must be unique');
+      return;
+    }
 
     const schemaFields: SchemaField[] = validFields.map((f) => ({
-      id: `${name}.${f.name.trim()}`,
-      name: f.name.trim(),
+      id: `${name}.${f.name}`,
+      name: f.name,
       type: f.type.trim() || 'varchar',
       constraints: {
         isPrimaryKey: f.isPrimaryKey,
-        isNullable: f.isNullable,
+        isUnique: f.isUnique && !f.isPrimaryKey,
+        isNullable: f.isPrimaryKey ? false : f.isNullable,
       },
     }));
+
+    const nodes = useDiagramStore.getState().nodes;
+    const last = nodes[nodes.length - 1];
+    const position = last
+      ? { x: last.position.x + 280, y: last.position.y }
+      : { x: 80, y: 80 };
 
     const table: SchemaTable = {
       id: name,
       name,
       schema: schema.trim() || 'public',
       fields: schemaFields,
-      position: {
-        x: 80 + Math.random() * 120,
-        y: 80 + Math.random() * 120,
-      },
+      position,
     };
 
     addTable(table);
@@ -140,7 +150,7 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
       <DialogContent className={`${dialogCls} sm:max-w-[560px]`}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Table2 className="h-4 w-4 text-indigo-400" />
+            <Codicon name="table" />
             Create Table
           </DialogTitle>
           <DialogDescription className={descCls}>
@@ -151,7 +161,7 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
 
         <div className="grid grid-cols-2 gap-3 py-2">
           <div className="space-y-1.5">
-            <Label htmlFor="table-name" className="text-xs text-zinc-400">
+            <Label htmlFor="table-name" className="text-xs text-[var(--color-text-muted)]">
               Table name
             </Label>
             <Input
@@ -167,7 +177,7 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="schema-name" className="text-xs text-zinc-400">
+            <Label htmlFor="schema-name" className="text-xs text-[var(--color-text-muted)]">
               Schema
             </Label>
             <Input
@@ -182,14 +192,14 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
 
         <div className="mt-2 space-y-2">
           <div className="flex items-center justify-between">
-            <Label className="text-xs text-zinc-400">Columns</Label>
+            <Label className="text-xs text-[var(--color-text-muted)]">Columns</Label>
             <Button
               size="sm"
               variant="ghost"
               onClick={addField}
-              className="h-7 gap-1 text-xs text-indigo-400 hover:bg-zinc-800 hover:text-indigo-300"
+              className="h-7 gap-1 text-xs text-indigo-400 hover:bg-[var(--color-bg-panel)] hover:text-indigo-300"
             >
-              <Plus className="h-3.5 w-3.5" />
+              <Codicon name="plus" />
               Add column
             </Button>
           </div>
@@ -198,7 +208,7 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
             {fields.map((f, idx) => (
               <div
                 key={idx}
-                className="grid grid-cols-[1fr_1fr_auto_auto_auto] items-center gap-2"
+                className="grid grid-cols-[1fr_1fr_auto_auto_auto_auto] items-center gap-2"
               >
                 <Input
                   value={f.name}
@@ -217,7 +227,7 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
                     </option>
                   ))}
                 </select>
-                <label className="flex cursor-pointer items-center gap-1 text-[10px] text-zinc-500">
+                <label className="flex cursor-pointer items-center gap-1 text-[10px] text-[var(--color-text-muted)]">
                   <Checkbox
                     checked={f.isPrimaryKey}
                     onCheckedChange={(v) =>
@@ -226,7 +236,15 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
                   />
                   PK
                 </label>
-                <label className="flex cursor-pointer items-center gap-1 text-[10px] text-zinc-500">
+                <label className="flex cursor-pointer items-center gap-1 text-[10px] text-[var(--color-text-muted)]">
+                  <Checkbox
+                    checked={f.isUnique && !f.isPrimaryKey}
+                    onCheckedChange={(v) => updateField(idx, { isUnique: !!v })}
+                    disabled={f.isPrimaryKey}
+                  />
+                  UQ
+                </label>
+                <label className="flex cursor-pointer items-center gap-1 text-[10px] text-[var(--color-text-muted)]">
                   <Checkbox
                     checked={f.isNullable}
                     onCheckedChange={(v) => updateField(idx, { isNullable: !!v })}
@@ -238,10 +256,10 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
                   size="icon"
                   variant="ghost"
                   onClick={() => removeField(idx)}
-                  className="h-7 w-7 text-zinc-600 hover:bg-zinc-800 hover:text-rose-400"
+                  className="h-7 w-7 text-[var(--color-text-muted)] hover:bg-[var(--color-bg-panel)] hover:text-rose-400"
                   disabled={fields.length <= 1}
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <Codicon name="trash" />
                 </Button>
               </div>
             ))}
@@ -252,15 +270,16 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
           <Button
             variant="ghost"
             onClick={() => onOpenChange(false)}
-            className="text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+            className="text-[var(--color-text-muted)] hover:bg-[var(--color-bg-panel)] hover:text-[var(--color-text-primary)]"
           >
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
-            className="gap-1.5 bg-indigo-600 text-white hover:bg-indigo-500"
+            disabled={syncStatus !== 'synced'}
+            className="gap-1.5 bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-40"
           >
-            <Table2 className="h-4 w-4" />
+            <Codicon name="table" />
             Create table
           </Button>
         </DialogFooter>

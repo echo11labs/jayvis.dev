@@ -1,0 +1,26 @@
+---
+description: JayVis.dev layer build order — deepen one layer at a time
+alwaysApply: true
+---
+
+# Build order (do not skip)
+
+One session = one layer. Finish checklist before next.
+
+0. `src/types/ast.ts`
+1. `src/store/diagram-store.ts`
+2. parser: `src/lib/parser/dbml.ts` + `mini-services/dbml-parser` + `/api/parse`
+3. sync: `src/app/page.tsx` origins
+4. canvas: FlowCanvas, TableNode, menus, ELK
+5. Inspector / Context / AddTable
+6. `src/lib/persistence.ts`
+7. validation
+8. diff / migrations
+9. exports one format at a time
+10. SQL Builder
+11. chrome = Schema Studio (command strip, catalog, stage, inspector, footer)
+12. MCP last
+
+WIP now: layers 0–11. Do not revive VS Code / IntelliJ chrome. MCP last.
+
+Per feature: contract → store/lib → one UI wire → sync → persist/export → stop.

@@ -41,6 +41,16 @@ function sqliteType(f: SchemaField): string {
   return map[base] || 'TEXT';
 }
 
+function sqliteDefault(value: string): string {
+  const bare = value.trim().replace(/^['"]|['"]$/g, '').toLowerCase();
+  if (bare === 'now()' || bare === 'current_timestamp') return "(datetime('now'))";
+  return value;
+}
+
+function sqlAction(value: string): string {
+  return value.trim().toUpperCase();
+}
+
 function columnDef(f: SchemaField): string {
   // If autoincrement, the type already includes PRIMARY KEY AUTOINCREMENT
   if (f.constraints.isAutoincrement) {
@@ -53,10 +63,7 @@ function columnDef(f: SchemaField): string {
   if (f.constraints.isUnique && !f.constraints.isPrimaryKey) parts.push('UNIQUE');
   if (f.constraints.isNullable === false && !f.constraints.isPrimaryKey) parts.push('NOT NULL');
   if (f.constraints.defaultValue) {
-    const dv = f.constraints.defaultValue;
-    // SQLite-friendly defaults
-    if (dv === 'now()') parts.push("DEFAULT (datetime('now'))");
-    else parts.push(`DEFAULT ${dv}`);
+    parts.push(`DEFAULT ${sqliteDefault(f.constraints.defaultValue)}`);
   }
 
   return parts.join(' ');
@@ -95,8 +102,8 @@ export function buildSqlStatements(ast: DatabaseAST): SqlStatement[] {
     // Add inline FOREIGN KEY constraints
     for (const fk of fks) {
       let fkLine = `  FOREIGN KEY ("${fk.field}") REFERENCES "${fk.refTable}"("${fk.refField}")`;
-      if (fk.onDelete) fkLine += ` ON DELETE ${fk.onDelete}`;
-      if (fk.onUpdate) fkLine += ` ON UPDATE ${fk.onUpdate}`;
+      if (fk.onDelete) fkLine += ` ON DELETE ${sqlAction(fk.onDelete)}`;
+      if (fk.onUpdate) fkLine += ` ON UPDATE ${sqlAction(fk.onUpdate)}`;
       colDefs.push(fkLine);
     }
 
@@ -129,7 +136,7 @@ export function buildSqlStatements(ast: DatabaseAST): SqlStatement[] {
 export function buildSqlScript(ast: DatabaseAST): string {
   const stmts = buildSqlStatements(ast);
   const lines: string[] = [
-    '-- StitchDB — SQL Builder output (SQLite)',
+    '-- JayVis.dev — SQL Builder output (SQLite)',
     `-- Generated ${new Date().toISOString()}`,
     `-- ${Object.keys(ast.tables).length} table(s), ${Object.keys(ast.references).length} reference(s), ${stmts.length} statement(s)`,
     '',

@@ -1,9 +1,32 @@
 /**
- * Prisma schema exporter — converts a DatabaseAST into a Prisma `schema.prisma`
- * file with `model` declarations, `@id`, `@unique`, `@default`, `@relation`
- * directives, and enum support.
+ * Prisma schema exporter — DatabaseAST → schema.prisma
  */
-import { DatabaseAST, SchemaField } from '@/types/ast';
+import type { DatabaseAST, SchemaField, SchemaReference } from '@/types/ast';
+
+function toPascal(name: string): string {
+  return name
+    .split(/[^A-Za-z0-9]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join('');
+}
+
+function toCamel(name: string): string {
+  const pascal = toPascal(name);
+  return pascal.charAt(0).toLowerCase() + pascal.slice(1);
+}
+
+function uniqueName(used: Set<string>, base: string): string {
+  if (!used.has(base)) {
+    used.add(base);
+    return base;
+  }
+  let n = 2;
+  while (used.has(`${base}${n}`)) n += 1;
+  const next = `${base}${n}`;
+  used.add(next);
+  return next;
+}
 
 function prismaType(type: string): string {
   const base = type.split('(')[0].toLowerCase();
@@ -14,8 +37,8 @@ function prismaType(type: string): string {
     integer: 'Int',
     int: 'Int',
     bigint: 'BigInt',
-    serial: 'Int @default(autoincrement())',
-    bigserial: 'BigInt @default(autoincrement())',
+    serial: 'Int',
+    bigserial: 'BigInt',
     boolean: 'Boolean',
     bool: 'Boolean',
     timestamp: 'DateTime @db.Timestamp',
@@ -33,110 +56,119 @@ function prismaType(type: string): string {
   return map[base] || 'String';
 }
 
-function fieldDirective(f: SchemaField): string {
+function prismaOnDelete(value?: string): string | null {
+  switch (value) {
+    case 'CASCADE':
+      return 'Cascade';
+    case 'SET NULL':
+      return 'SetNull';
+    case 'RESTRICT':
+      return 'Restrict';
+    case 'NO ACTION':
+      return 'NoAction';
+    default:
+      return null;
+  }
+}
+
+function fieldDirective(field: SchemaField): string {
   const parts: string[] = [];
-  if (f.constraints.isPrimaryKey) parts.push('@id');
-  if (f.constraints.isUnique && !f.constraints.isPrimaryKey) parts.push('@unique');
-  if (f.constraints.defaultValue) {
-    const dv = f.constraints.defaultValue;
-    if (dv === 'now()') {
-      parts.push('@default(now())');
-    } else if (dv === 'true' || dv === 'false') {
-      parts.push(`@default(${dv})`);
-    } else if (/^-?\d+(\.\d+)?$/.test(dv)) {
-      parts.push(`@default(${dv})`);
-    } else {
-      parts.push(`@default(${dv})`);
-    }
-  }
-  if (f.constraints.isAutoincrement && !parts.includes('@default(autoincrement())')) {
+  if (field.constraints.isPrimaryKey) parts.push('@id');
+  if (field.constraints.isUnique && !field.constraints.isPrimaryKey)
+    parts.push('@unique');
+  if (field.constraints.isAutoincrement) {
     parts.push('@default(autoincrement())');
+  } else if (field.constraints.defaultValue) {
+    const value = field.constraints.defaultValue.replace(/^'|'$/g, '');
+    if (value === 'now()') parts.push('@default(now())');
+    else if (value === 'true' || value === 'false' || /^-?\d+(\.\d+)?$/.test(value))
+      parts.push(`@default(${value})`);
+    else parts.push(`@default("${value.replace(/"/g, '\\"')}")`);
   }
-  if (!f.constraints.isNullable && !f.constraints.isPrimaryKey) {
-    // Prisma fields are NOT NULL by default for scalars — no directive needed.
-  }
-  return parts.length > 0 ? ' ' + parts.join(' ') : '';
+  return parts.length > 0 ? ` ${parts.join(' ')}` : '';
+}
+
+function relationName(ref: SchemaReference): string {
+  return `${ref.sourceTable}_${ref.sourceField}_to_${ref.targetTable}`;
 }
 
 export function exportPrisma(ast: DatabaseAST): string {
-  const lines: string[] = [];
+  const tables = Object.values(ast.tables);
+  const refs = Object.values(ast.references);
+  const lines: string[] = [
+    '// JayVis.dev — Prisma schema export',
+    `// ${tables.length} model(s), ${refs.length} relation(s)`,
+    '',
+    'generator client {',
+    '  provider = "prisma-client-js"',
+    '}',
+    '',
+    'datasource db {',
+    '  provider = "postgresql"',
+    '  url      = env("DATABASE_URL")',
+    '}',
+    '',
+  ];
 
-  lines.push('// StitchDB — Prisma schema export');
-  lines.push(`// Generated ${new Date().toISOString()}`);
-  lines.push(`// ${Object.keys(ast.tables).length} model(s), ${Object.keys(ast.references).length} relation(s)`);
-  lines.push('');
-  lines.push('generator client {');
-  lines.push('  provider = "prisma-client-js"');
-  lines.push('}');
-  lines.push('');
-  lines.push('datasource db {');
-  lines.push('  provider = "postgresql"');
-  lines.push('  url      = env("DATABASE_URL")');
-  lines.push('}');
-  lines.push('');
-
-  // Build a map of relations per table for inline @relation directives.
-  const outgoingRefs: Record<string, SchemaReference[]> = {};
-  for (const ref of Object.values(ast.references)) {
-    if (!outgoingRefs[ref.sourceTable]) outgoingRefs[ref.sourceTable] = [];
-    outgoingRefs[ref.sourceTable].push(ref);
+  if (tables.length === 0) {
+    lines.push('// empty schema');
+    return lines.join('\n');
   }
 
-  for (const table of Object.values(ast.tables)) {
-    lines.push(`model ${capitalize(table.name)} {`);
-
+  for (const table of tables) {
+    if (table.fields.length === 0) continue;
+    const model = toPascal(table.name) || 'Model';
+    const used = new Set(table.fields.map((field) => field.name));
     const fieldLines: string[] = [];
-    for (const f of table.fields) {
-      const ptype = prismaType(f.type);
-      const directive = fieldDirective(f);
-      const nullable = f.constraints.isNullable === false ? '' : '?';
-      fieldLines.push(`  ${f.name.padEnd(24)} ${ptype}${nullable}${directive}`);
+
+    for (const field of table.fields) {
+      const nullable =
+        field.constraints.isNullable === false || field.constraints.isPrimaryKey
+          ? ''
+          : '?';
+      fieldLines.push(
+        `  ${field.name.padEnd(24)} ${prismaType(field.type)}${nullable}${fieldDirective(field)}`,
+      );
     }
 
-    // Add relation fields.
-    const refs = outgoingRefs[table.name] || [];
     for (const ref of refs) {
-      const relName = `${ref.sourceField}To${capitalize(ref.targetTable)}`;
-      fieldLines.push(`  ${ref.targetTable.padEnd(24)} ${capitalize(ref.targetTable)}?    @relation(name: "${relName}", fields: [${ref.sourceField}], references: [${ref.targetField}], onDelete: ${ref.onDelete ? ref.onDelete.toLowerCase().replace(' ', ' ') : 'NoAction'})`);
+      if (ref.sourceTable !== table.name) continue;
+      const fieldName = uniqueName(used, toCamel(ref.targetTable));
+      const onDelete = prismaOnDelete(ref.onDelete);
+      const deletePart = onDelete ? `, onDelete: ${onDelete}` : '';
+      fieldLines.push(
+        `  ${fieldName.padEnd(24)} ${toPascal(ref.targetTable)}? @relation(name: "${relationName(ref)}", fields: [${ref.sourceField}], references: [${ref.targetField}]${deletePart})`,
+      );
     }
 
-    // Incoming relations (the other side).
-    for (const ref of Object.values(ast.references)) {
-      if (ref.targetTable === table.name) {
-        const fieldName = `${table.name}_to_${ref.sourceTable}`;
-        fieldLines.push(`  ${ref.sourceTable.padEnd(24)} ${capitalize(ref.sourceTable)}[]   @relation("${ref.sourceField}To${capitalize(ref.targetTable)}")`);
-      }
+    for (const ref of refs) {
+      if (ref.targetTable !== table.name) continue;
+      const fieldName = uniqueName(used, toCamel(ref.sourceTable));
+      fieldLines.push(
+        `  ${fieldName.padEnd(24)} ${toPascal(ref.sourceTable)}[] @relation(name: "${relationName(ref)}")`,
+      );
     }
 
-    // @@map to the actual table name.
+    for (const index of table.indexes ?? []) {
+      const cols = index.columns.join(', ');
+      const map = index.name ? `, map: "${index.name}"` : '';
+      fieldLines.push(
+        index.isUnique
+          ? `  @@unique([${cols}]${map})`
+          : `  @@index([${cols}]${map})`,
+      );
+    }
+
     if (table.schema && table.schema !== 'public') {
-      fieldLines.push('');
       fieldLines.push(`  @@schema("${table.schema}")`);
     }
     fieldLines.push(`  @@map("${table.name}")`);
 
+    lines.push(`model ${model} {`);
     lines.push(fieldLines.join('\n'));
     lines.push('}');
     lines.push('');
   }
 
-  // Indexes.
-  for (const table of Object.values(ast.tables)) {
-    if (!table.indexes) continue;
-    for (const idx of table.indexes) {
-      const fields = idx.columns.join(', ');
-      const name = idx.name || `idx_${table.name}_${idx.columns.join('_')}`;
-      if (idx.isUnique) {
-        lines.push(`// @@unique([${fields}]) on ${table.name} (index: ${name})`);
-      } else {
-        lines.push(`// @@index([${fields}]) on ${table.name} (index: ${name})`);
-      }
-    }
-  }
-
-  return lines.join('\n');
-}
-
-function capitalize(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
+  return lines.join('\n').trimEnd() + '\n';
 }

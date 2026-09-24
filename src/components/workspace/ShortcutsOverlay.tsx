@@ -7,8 +7,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Keyboard } from 'lucide-react';
-import { useTheme } from '@/hooks/use-theme-state';
+import { Codicon } from '@/components/ui/codicon';
 
 interface ShortcutsOverlayProps {
   open: boolean;
@@ -17,45 +16,53 @@ interface ShortcutsOverlayProps {
 
 const SHORTCUTS = [
   { keys: ['⌘', 'K'], label: 'Open command palette' },
+  { keys: ['⌘', 'B'], label: 'Toggle Schema Explorer' },
+  { keys: ['⌘', '⇧', 'B'], label: 'Toggle Table Inspector' },
+  { keys: ['⌘', '⇧', 'T'], label: 'Open theme picker' },
+  { keys: ['⌘', ','], label: 'Open settings' },
+  { keys: ['⌘', '1'], label: 'Code view' },
+  { keys: ['⌘', '2'], label: 'Board view' },
+  { keys: ['⌘', '3'], label: 'Both views' },
+  { keys: ['⌘', '⇧', 'D'], label: 'Code only' },
+  { keys: ['⌘', '⇧', 'E'], label: 'Board only' },
+  { keys: ['⌘', '\\'], label: 'Both Code and Board' },
   { keys: ['⌘', 'Z'], label: 'Undo last action' },
   { keys: ['⌘', '⇧', 'Z'], label: 'Redo (or ⌘Y)' },
-  { keys: ['⌘', '⇧', 'V'], label: 'Toggle schema validation panel' },
-  { keys: ['⌘', 'F'], label: 'Search tables on the canvas' },
-  { keys: ['⌘', '0'], label: 'Fit canvas to view (zoom to fit)' },
-  { keys: ['⌘', 'L'], label: 'Run auto-layout on the canvas' },
-  { keys: ['⌘', 'M'], label: 'Open the migration diff panel' },
-  { keys: ['⌘', 'B'], label: 'Build SQL — create tables in the database' },
-  { keys: ['⌘', 'T'], label: 'Create a new table (dialog)' },
+  { keys: ['⌘', '⇧', 'V'], label: 'Open Problems / validate' },
+  { keys: ['⌘', 'F'], label: 'Find in Code or Board' },
+  { keys: ['⌘', '0'], label: 'Fit canvas to view' },
+  { keys: ['⌘', 'L'], label: 'Auto layout' },
+  { keys: ['⌘', 'M'], label: 'Open Migration' },
+  { keys: ['⌘', '⇧', 'S'], label: 'Open SQL builder' },
+  { keys: ['⌘', 'E'], label: 'Export DBML' },
+  { keys: ['⌘', 'S'], label: 'Save workspace locally' },
+  { keys: ['⌘', '⇧', 'Enter'], label: 'Build SQL tables' },
+  { keys: ['⌘', 'Space'], label: 'Trigger editor autocomplete' },
+  { keys: ['T'], label: 'Create a new table (or ⌘T)' },
+  { keys: ['Delete'], label: 'Delete selected table' },
   { keys: ['⇧', '?'], label: 'Toggle this shortcuts overlay' },
   { keys: ['Tab'], label: 'Insert two spaces in the editor' },
   { keys: ['Enter'], label: 'Auto-indent the next line' },
-  { keys: ['Right-click', ''], label: 'Right-click a relationship for cardinality / ON DELETE / ON UPDATE' },
-  { keys: ['Right-click', ''], label: 'Right-click canvas for quick actions (add table, fit view, etc.)' },
+  { keys: ['Right-click', ''], label: 'Open table, relationship, or canvas context menu' },
   { keys: ['Drag', ''], label: 'Drag from a column handle to create a relationship' },
-  { keys: ['Click', ''], label: 'Click a table to inspect & edit its columns' },
+  { keys: ['Click', ''], label: 'Click a table or relationship to inspect it' },
 ];
 
 export function ShortcutsOverlay({ open, onOpenChange }: ShortcutsOverlayProps) {
-  const theme = useTheme();
-  const isDark = theme === 'dark';
-  const dialogCls = isDark
-    ? 'border-zinc-800 bg-zinc-950 text-zinc-100'
-    : 'border-zinc-200 bg-white text-zinc-900';
-  const rowHover = isDark ? 'hover:bg-zinc-900' : 'hover:bg-zinc-100';
-  const labelText = isDark ? 'text-zinc-400' : 'text-zinc-600';
-  const kbdCls = isDark
-    ? 'border-zinc-700 bg-zinc-900 text-zinc-300'
-    : 'border-zinc-300 bg-zinc-100 text-zinc-600';
+  const dialogCls = 'border-[var(--color-border-subtle)] bg-[var(--color-bg-app)] text-[var(--color-text-primary)]';
+  const rowHover = 'hover:bg-[var(--color-bg-panel)]';
+  const labelText = 'text-[var(--color-text-muted)]';
+  const kbdCls = 'border-[var(--color-border-subtle)] bg-[var(--color-bg-panel)] text-[var(--color-text-primary)]';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={`${dialogCls} sm:max-w-md`}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Keyboard className="h-4 w-4 text-indigo-400" />
+            <Codicon name="keyboard" />
             Keyboard Shortcuts
           </DialogTitle>
-          <DialogDescription className="text-zinc-500">
+          <DialogDescription className="text-[var(--color-text-muted)]">
             Speed up your workflow with these shortcuts.
           </DialogDescription>
         </DialogHeader>

@@ -1,5 +1,5 @@
 /**
- * StitchDB Core AST & Type System
+ * JayVis.dev Core AST & Type System
  * --------------------------------
  * The DatabaseAST is the single source of truth. Code (DBML) and the
  * visual canvas both mutate / read from this structure. Every mutation
@@ -64,6 +64,23 @@ export interface SchemaTable {
 
 export type Cardinality = '1:1' | '1:N' | 'N:M';
 
+export interface SchemaEnumValue {
+  name: string;
+  note?: string;
+}
+
+export interface SchemaEnum {
+  name: string;
+  values: SchemaEnumValue[];
+  note?: string;
+}
+
+export interface SchemaTableGroup {
+  name: string;
+  tables: string[];
+  note?: string;
+}
+
 export interface SchemaReference {
   id: string;
   sourceTable: string;
@@ -79,12 +96,20 @@ export interface DatabaseAST {
   version: string;
   tables: Record<string, SchemaTable>;
   references: Record<string, SchemaReference>;
+  enums?: Record<string, SchemaEnum>;
+  tableGroups?: Record<string, SchemaTableGroup>;
 }
 
 /* ----------------------------------------------------------------------------
  * Origin tracking — prevents infinite re-render / parsing loops.
  * ------------------------------------------------------------------------- */
 export type Origin = 'editor' | 'canvas' | 'remote' | 'mcp' | 'none';
+export type SyncStatus =
+  | 'booting'
+  | 'parsing'
+  | 'synced'
+  | 'invalid'
+  | 'offline';
 
 /* ----------------------------------------------------------------------------
  * Diff Engine Contracts
@@ -106,8 +131,25 @@ export interface TableDiff {
   columnDiffs: ColumnDiff[];
 }
 
+export interface IndexDiff {
+  action: 'CREATE' | 'DROP';
+  tableName: string;
+  indexName: string;
+  columns: string[];
+  isUnique?: boolean;
+}
+
+export interface ReferenceDiff {
+  action: DiffAction;
+  refId: string;
+  previous?: SchemaReference;
+  current?: SchemaReference;
+}
+
 export interface SchemaDiffResult {
   tables: TableDiff[];
+  indexes: IndexDiff[];
+  references: ReferenceDiff[];
   upSql: string[];
   downSql: string[];
 }

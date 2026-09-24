@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "stitchdb-dbml-parser",
+      "name": "jayvis-dbml-parser",
       "dependencies": {
         "@dbml/core": "^10.1.1",
       },

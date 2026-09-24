@@ -1,12 +1,12 @@
 /**
- * StitchDB MCP Agent Bridge
+ * JayVis.dev MCP Agent Bridge
  * -------------------------
  * Exposes a Model Context Protocol (MCP) server that lets external IDE
  * agents (Cursor, Windsurf, Claude Code) inspect and mutate the live
- * StitchDB schema.
+ * JayVis.dev schema.
  *
  * The browser app persists its current DatabaseAST to a JSON file
- * (`stitchdb-state.json`) whenever it changes. This MCP server reads
+ * (`jayvis-state.json`) whenever it changes. This MCP server reads
  * from and writes to that file, so agent edits flow back into the app
  * on the next poll cycle.
  *
@@ -27,7 +27,7 @@ import {
   TABLE_COLORS,
 } from '@/types/ast';
 
-const STATE_FILE = path.resolve(process.cwd(), 'stitchdb-state.json');
+const STATE_FILE = path.resolve(process.cwd(), 'jayvis-state.json');
 
 function readState(): DatabaseAST {
   try {
@@ -47,7 +47,7 @@ function writeState(ast: DatabaseAST): void {
 
 export async function runMcpServer(): Promise<void> {
   const server = new Server(
-    { name: 'stitchdb-agent-bridge', version: '1.0.0' },
+    { name: 'jayvis-agent-bridge', version: '1.0.0' },
     { capabilities: { tools: {} } },
   );
 
@@ -56,7 +56,7 @@ export async function runMcpServer(): Promise<void> {
       {
         name: 'get_current_schema',
         description:
-          'Returns the active StitchDB database schema as a structured JSON AST (tables + references).',
+          'Returns the active JayVis.dev database schema as a structured JSON AST (tables + references).',
         inputSchema: { type: 'object', properties: {} },
       },
       {
@@ -271,7 +271,7 @@ const isDirectRun =
   path.resolve(process.argv[1]) === path.resolve(import.meta.url ?? '');
 if (isDirectRun) {
   runMcpServer().catch((err) => {
-    console.error('StitchDB MCP server failed:', err);
+    console.error('JayVis.dev MCP server failed:', err);
     process.exit(1);
   });
 }

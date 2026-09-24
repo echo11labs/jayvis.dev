@@ -1,73 +1,87 @@
 /**
  * PostgreSQL DDL exporter — converts a DatabaseAST into a complete
  * `CREATE TABLE` + `ALTER TABLE ... ADD CONSTRAINT` SQL script.
- *
- * This is the "forward" DDL (what the schema looks like as SQL), distinct
- * from the migration diff SQL (which compares two snapshots).
  */
-import { DatabaseAST, SchemaField } from '@/types/ast';
+import type { DatabaseAST, SchemaField } from '@/types/ast';
+import { quoteIdent } from '@/lib/ident';
 
-function columnToDDL(f: SchemaField): string {
-  const parts: string[] = [`"${f.name}"`, f.type];
-  if (f.constraints.isPrimaryKey) parts.push('PRIMARY KEY');
-  if (f.constraints.isUnique && !f.constraints.isPrimaryKey) parts.push('UNIQUE');
-  if (f.constraints.isNullable === false && !f.constraints.isPrimaryKey)
-    parts.push('NOT NULL');
-  if (f.constraints.defaultValue)
-    parts.push(`DEFAULT ${f.constraints.defaultValue}`);
-  if (f.constraints.isAutoincrement && f.type === 'integer')
+function columnToDDL(field: SchemaField): string {
+  const parts: string[] = [quoteIdent(field.name), field.type];
+  if (
+    field.constraints.isAutoincrement &&
+    (field.type === 'integer' || field.type === 'serial')
+  ) {
     parts[1] = 'SERIAL';
+  }
+  if (
+    field.constraints.isAutoincrement &&
+    (field.type === 'bigint' || field.type === 'bigserial')
+  ) {
+    parts[1] = 'BIGSERIAL';
+  }
+  if (field.constraints.isPrimaryKey) parts.push('PRIMARY KEY');
+  if (field.constraints.isUnique && !field.constraints.isPrimaryKey)
+    parts.push('UNIQUE');
+  if (field.constraints.isNullable === false && !field.constraints.isPrimaryKey)
+    parts.push('NOT NULL');
+  if (field.constraints.defaultValue)
+    parts.push(`DEFAULT ${field.constraints.defaultValue}`);
   return parts.join(' ');
 }
 
 export function exportDDL(ast: DatabaseAST): string {
-  const lines: string[] = [];
+  const tables = Object.values(ast.tables);
+  const refs = Object.values(ast.references);
+  const lines: string[] = [
+    '-- JayVis.dev schema export (PostgreSQL DDL)',
+    `-- ${tables.length} table(s), ${refs.length} reference(s)`,
+    '',
+  ];
 
-  lines.push('-- StitchDB schema export (PostgreSQL DDL)');
-  lines.push(`-- Generated ${new Date().toISOString()}`);
-  lines.push(
-    `-- ${Object.keys(ast.tables).length} table(s), ${Object.keys(ast.references).length} reference(s)`,
-  );
-  lines.push('');
+  if (tables.length === 0) {
+    lines.push('-- empty schema');
+    return lines.join('\n');
+  }
 
-  for (const table of Object.values(ast.tables)) {
+  for (const table of tables) {
+    if (table.fields.length === 0) {
+      lines.push(`-- skipped empty table ${quoteIdent(table.name)}`);
+      lines.push('');
+      continue;
+    }
     const schemaPrefix =
-      table.schema && table.schema !== 'public' ? `"${table.schema}".` : '';
-    lines.push(`CREATE TABLE ${schemaPrefix}"${table.name}" (`);
-
-    const colLines = table.fields.map((f) => `  ${columnToDDL(f)}`);
-
-    lines.push(colLines.join(',\n'));
+      table.schema && table.schema !== 'public'
+        ? `${quoteIdent(table.schema)}.`
+        : '';
+    const cols = table.fields.map((field) => `  ${columnToDDL(field)}`).join(',\n');
+    lines.push(`CREATE TABLE ${schemaPrefix}${quoteIdent(table.name)} (`);
+    lines.push(cols);
     lines.push(');');
     lines.push('');
   }
 
-  // Foreign key constraints
-  for (const ref of Object.values(ast.references)) {
+  for (const ref of refs) {
     const constraintName = `fk_${ref.sourceTable}_${ref.sourceField}`;
-    lines.push(`ALTER TABLE "${ref.sourceTable}"`);
-    lines.push(`  ADD CONSTRAINT "${constraintName}"`);
-    lines.push(
-      `  FOREIGN KEY ("${ref.sourceField}") REFERENCES "${ref.targetTable}" ("${ref.targetField}")`,
-    );
-    if (ref.onDelete) lines.push(`  ON DELETE ${ref.onDelete}`);
-    if (ref.onUpdate) lines.push(`  ON UPDATE ${ref.onUpdate}`);
-    lines.push('  ;');
+    const action = [
+      `ALTER TABLE ${quoteIdent(ref.sourceTable)} ADD CONSTRAINT ${quoteIdent(constraintName)}`,
+      `FOREIGN KEY (${quoteIdent(ref.sourceField)}) REFERENCES ${quoteIdent(ref.targetTable)} (${quoteIdent(ref.targetField)})`,
+    ];
+    if (ref.onDelete) action.push(`ON DELETE ${ref.onDelete}`);
+    if (ref.onUpdate) action.push(`ON UPDATE ${ref.onUpdate}`);
+    lines.push(`${action.join(' ')};`);
     lines.push('');
   }
 
-  // Index creation statements
-  for (const table of Object.values(ast.tables)) {
-    if (!table.indexes) continue;
-    for (const idx of table.indexes) {
-      const cols = idx.columns.map((c) => `"${c}"`).join(', ');
-      const uniq = idx.isUnique ? 'UNIQUE ' : '';
-      const name = idx.name || `idx_${table.name}_${idx.columns.join('_')}`;
+  for (const table of tables) {
+    for (const index of table.indexes ?? []) {
+      const cols = index.columns.map(quoteIdent).join(', ');
+      const uniq = index.isUnique ? 'UNIQUE ' : '';
+      const name = index.name || `idx_${table.name}_${index.columns.join('_')}`;
       lines.push(
-        `CREATE ${uniq}INDEX "${name}" ON "${table.name}" (${cols});`,
+        `CREATE ${uniq}INDEX ${quoteIdent(name)} ON ${quoteIdent(table.name)} (${cols});`,
       );
     }
   }
 
-  return lines.join('\n');
+  return lines.join('\n').trimEnd() + '\n';
 }

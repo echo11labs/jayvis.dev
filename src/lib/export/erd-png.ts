@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 export function useErdPngExport() {
   const { getNodes, getEdges } = useReactFlow();
 
-  const exportPng = async (filename = 'stitchdb-erd.png') => {
+  const exportPng = async (filename = 'jayvis-erd.png') => {
     const nodes = getNodes();
     if (nodes.length === 0) {
       toast.error('Nothing to export — the canvas is empty');

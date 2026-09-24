@@ -1,7 +1,7 @@
 import type { SampleName } from '@/components/workspace/Toolbar';
 
 export const SAMPLE_SCHEMAS: Record<SampleName, string> = {
-  ecommerce: `// StitchDB — E-commerce sample schema
+  ecommerce: `// JayVis.dev — E-commerce sample schema
 Table users {
   id integer [pk, increment]
   email varchar [unique, not null]
@@ -43,7 +43,7 @@ Ref: order_items.order_id > orders.id [delete: cascade]
 Ref: order_items.product_id > products.id
 `,
 
-  blog: `// StitchDB — Blog / CMS sample schema
+  blog: `// JayVis.dev — Blog / CMS sample schema
 Table authors {
   id integer [pk, increment]
   username varchar [unique, not null]
@@ -91,7 +91,7 @@ Ref: post_tags.tag_id > tags.id [delete: cascade]
 Ref: comments.post_id > posts.id [delete: cascade]
 `,
 
-  saas: `// StitchDB — SaaS multi-tenant sample schema
+  saas: `// JayVis.dev — SaaS multi-tenant sample schema
 Table organizations {
   id uuid [pk]
   name varchar [not null]
@@ -105,6 +105,10 @@ Table members {
   user_email varchar [not null]
   role varchar [default: 'member']
   invited_at timestamptz [default: 'now()']
+
+  indexes {
+    org_id
+  }
 }
 
 Table api_keys {
@@ -114,6 +118,10 @@ Table api_keys {
   key_hash varchar [unique, not null]
   last_used_at timestamptz
   created_at timestamptz [default: 'now()']
+
+  indexes {
+    org_id
+  }
 }
 
 Table projects {
@@ -122,6 +130,10 @@ Table projects {
   name varchar [not null]
   description text
   status varchar [default: 'active']
+
+  indexes {
+    org_id
+  }
 }
 
 Table audit_log {
@@ -131,6 +143,10 @@ Table audit_log {
   action varchar [not null]
   meta jsonb
   created_at timestamptz [default: 'now()']
+
+  indexes {
+    org_id
+  }
 }
 
 Ref: members.org_id > organizations.id [delete: cascade]
@@ -139,7 +155,7 @@ Ref: projects.org_id > organizations.id [delete: cascade]
 Ref: audit_log.org_id > organizations.id [delete: cascade]
 `,
 
-  auth: `// StitchDB — Authentication & sessions sample schema
+  auth: `// JayVis.dev — Authentication & sessions sample schema
 Table users {
   id uuid [pk]
   email varchar [unique, not null]
@@ -205,7 +221,7 @@ Ref: user_roles.user_id > users.id [delete: cascade]
 Ref: user_roles.role_id > roles.id [delete: cascade]
 `,
 
-  analytics: `// StitchDB — Analytics & events sample schema
+  analytics: `// JayVis.dev — Analytics & events sample schema
 Table events {
   id bigint [pk, increment]
   event_name varchar [not null]

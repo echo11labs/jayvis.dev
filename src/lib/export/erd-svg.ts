@@ -1,6 +1,14 @@
 'use client';
 
-import type { DatabaseAST, SchemaTable, SchemaField } from '@/types/ast';
+import type { DatabaseAST, SchemaField } from '@/types/ast';
+
+function escapeXml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
 
 /**
  * Generates a standalone SVG document of the ERD from the AST + node
@@ -111,10 +119,10 @@ export function exportErdSvg(
     );
     // Header text — schema + table name.
     parts.push(
-      `<text x="${x + 10}" y="${y + 20}" fill="#a1a1aa" font-family="monospace" font-size="9" font-weight="bold">${(t.schema || 'public').toUpperCase()}</text>`,
+      `<text x="${x + 10}" y="${y + 20}" fill="#a1a1aa" font-family="monospace" font-size="9" font-weight="bold">${escapeXml((t.schema || 'public').toUpperCase())}</text>`,
     );
     parts.push(
-      `<text x="${x + 10}" y="${y + 32}" fill="#f4f4f5" font-family="sans-serif" font-size="13" font-weight="600">${t.name}</text>`,
+      `<text x="${x + 10}" y="${y + 32}" fill="#f4f4f5" font-family="sans-serif" font-size="13" font-weight="600">${escapeXml(t.name)}</text>`,
     );
     // Column count badge.
     parts.push(
@@ -147,11 +155,11 @@ export function exportErdSvg(
         textX += 18;
       }
       parts.push(
-        `<text x="${textX}" y="${ry + 16}" fill="${f.constraints.isPrimaryKey ? '#f4f4f5' : '#d4d4d8'}" font-family="monospace" font-size="11" ${f.constraints.isPrimaryKey ? 'font-weight="600"' : ''}>${f.name}</text>`,
+        `<text x="${textX}" y="${ry + 16}" fill="${f.constraints.isPrimaryKey ? '#f4f4f5' : '#d4d4d8'}" font-family="monospace" font-size="11" ${f.constraints.isPrimaryKey ? 'font-weight="600"' : ''}>${escapeXml(f.name)}</text>`,
       );
       // Type (right-aligned).
       parts.push(
-        `<text x="${x + box.w - 10}" y="${ry + 16}" fill="#71717a" font-family="monospace" font-size="10" text-anchor="end">${f.type}${f.constraints.isNullable === false ? ' *' : ''}</text>`,
+        `<text x="${x + box.w - 10}" y="${ry + 16}" fill="#71717a" font-family="monospace" font-size="10" text-anchor="end">${escapeXml(f.type)}${f.constraints.isNullable === false ? ' *' : ''}</text>`,
       );
     });
   }
@@ -167,7 +175,7 @@ export function downloadErdSvg(ast: DatabaseAST, positions: Record<string, { x: 
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'stitchdb-erd.svg';
+  a.download = 'schema.svg';
   a.click();
   URL.revokeObjectURL(url);
 }

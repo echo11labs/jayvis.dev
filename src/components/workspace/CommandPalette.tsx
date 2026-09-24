@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useCallback } from 'react';
 import {
-  Command,
   CommandDialog,
   CommandEmpty,
   CommandGroup,
@@ -11,31 +10,10 @@ import {
   CommandList,
   CommandSeparator,
 } from '@/components/ui/command';
-import {
-  Plus,
-  LayoutGrid,
-  GitCompare,
-  FileCode2,
-  Database,
-  Keyboard,
-  Trash2,
-  Download,
-  Code2,
-  Sparkles,
-  Boxes,
-  Image as ImageIcon,
-  ShieldCheck,
-  Undo2,
-  Redo2,
-  Terminal,
-} from 'lucide-react';
+import { Codicon } from '@/components/ui/codicon';
 import { useDiagramStore } from '@/store/diagram-store';
-import { serializeDBML } from '@/lib/parser/dbml';
-import { exportDDL } from '@/lib/export/ddl';
-import { exportPrisma } from '@/lib/export/prisma';
-import { downloadErdSvg } from '@/lib/export/erd-svg';
-import { useTheme } from '@/hooks/use-theme-state';
-import { toast } from 'sonner';
+import type { SampleName } from '@/components/workspace/Toolbar';
+import type { ExportFormat } from '@/lib/export/workspace';
 
 interface CommandPaletteProps {
   open: boolean;
@@ -46,7 +24,11 @@ interface CommandPaletteProps {
   onAddTableOpenChange: (open: boolean) => void;
   onShortcutsOpenChange: (open: boolean) => void;
   onValidationOpenChange: (open: boolean) => void;
-  onLoadSample: (name: 'ecommerce' | 'blog' | 'saas') => void;
+  onThemePickerOpenChange: (open: boolean) => void;
+  onSettingsOpen: () => void;
+  onLoadSample: (name: SampleName) => void;
+  onClearSchema: () => void;
+  onExport: (format: ExportFormat) => void;
 }
 
 export function CommandPalette({
@@ -58,125 +40,90 @@ export function CommandPalette({
   onAddTableOpenChange,
   onShortcutsOpenChange,
   onValidationOpenChange,
+  onThemePickerOpenChange,
+  onSettingsOpen,
   onLoadSample,
+  onClearSchema,
+  onExport,
 }: CommandPaletteProps) {
-  const ast = useDiagramStore((s) => s.ast);
-  const loadAST = useDiagramStore((s) => s.loadAST);
-  const theme = useTheme();
-  const isDark = theme === 'dark';
-  const dialogCls = isDark
-    ? 'border-zinc-800 bg-zinc-950 text-zinc-100'
-    : 'border-zinc-200 bg-white text-zinc-900';
-  const kbdCls = isDark ? 'text-zinc-500' : 'text-zinc-400';
+  const tableCount = useDiagramStore((s) => Object.keys(s.ast.tables).length);
+  const refCount = useDiagramStore((s) => Object.keys(s.ast.references).length);
+  const dialogCls =
+    'border-[var(--color-border-subtle)] bg-[var(--color-bg-app)] text-[var(--color-text-primary)]';
+  const kbdCls = 'text-[var(--color-text-muted)]';
+  const mutedIcon = 'mr-2 text-[var(--color-text-muted)]';
 
   const close = useCallback(() => onOpenChange(false), [onOpenChange]);
 
-  const handleExportDDL = useCallback(() => {
-    const ddl = exportDDL(ast);
-    const blob = new Blob([ddl], { type: 'text/sql' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'schema.sql';
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success('Exported schema.sql (DDL)');
-    close();
-  }, [ast, close]);
-
-  const handleExportDBML = useCallback(() => {
-    const dbml = serializeDBML(ast);
-    const blob = new Blob([dbml], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'schema.dbml';
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success('Exported schema.dbml');
-    close();
-  }, [ast, close]);
-
-  const handleExportErd = useCallback(() => {
-    const positions: Record<string, { x: number; y: number }> = {};
-    for (const n of useDiagramStore.getState().nodes) {
-      positions[n.id] = { x: n.position.x, y: n.position.y };
-    }
-    downloadErdSvg(ast, positions);
-    toast.success('Exported stitchdb-erd.svg');
-    close();
-  }, [ast, close]);
-
-  const handleExportPrisma = useCallback(() => {
-    const prisma = exportPrisma(ast);
-    const blob = new Blob([prisma], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'schema.prisma';
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success('Exported schema.prisma');
-    close();
-  }, [ast, close]);
-
   const handleClear = useCallback(() => {
-    loadAST({ version: '1.0', tables: {}, references: {} });
-    toast.success('Schema cleared');
+    onClearSchema();
     close();
-  }, [loadAST, close]);
+  }, [onClearSchema, close]);
 
   const run = useCallback(
     (fn: () => void) => () => {
-      fn();
       close();
+      queueMicrotask(fn);
     },
     [close],
   );
 
+  if (!open) return null;
+
   return (
-    <CommandDialog open={open} onOpenChange={onOpenChange} className={dialogCls}>
+    <CommandDialog open onOpenChange={onOpenChange} className={dialogCls}>
       <CommandInput placeholder="Type a command or search…" />
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
 
         <CommandGroup heading="Actions">
           <CommandItem onSelect={run(() => onAddTableOpenChange(true))}>
-            <Plus className="mr-2 h-4 w-4 text-indigo-400" />
+            <Codicon name="plus" className="mr-2" />
             Create table
-            <kbd className={`ml-auto font-mono text-[10px] ${kbdCls}`}>⌘T</kbd>
+            <kbd className={`ml-auto font-mono text-[10px] ${kbdCls}`}>T</kbd>
           </CommandItem>
-          <CommandItem onSelect={run(onAutoLayout)}>
-            <LayoutGrid className="mr-2 h-4 w-4 text-emerald-400" />
+          <CommandItem onSelect={run(onAutoLayout)} disabled={tableCount === 0}>
+            <Codicon name="layout" className="mr-2" />
             Auto layout
             <kbd className={`ml-auto font-mono text-[10px] ${kbdCls}`}>⌘L</kbd>
           </CommandItem>
-          <CommandItem onSelect={run(onGenerateMigration)}>
-            <GitCompare className="mr-2 h-4 w-4 text-amber-400" />
+          <CommandItem onSelect={run(onGenerateMigration)} disabled={tableCount === 0}>
+            <Codicon name="diff" className="mr-2" />
             Generate migration
             <kbd className={`ml-auto font-mono text-[10px] ${kbdCls}`}>⌘M</kbd>
           </CommandItem>
-          <CommandItem onSelect={run(() => onSqlBuilderOpenChange(true))}>
-            <Terminal className="mr-2 h-4 w-4 text-emerald-400" />
+          <CommandItem onSelect={run(() => onSqlBuilderOpenChange(true))} disabled={tableCount === 0}>
+            <Codicon name="terminal" className="mr-2" />
             Build SQL — create tables in database
-            <kbd className={`ml-auto font-mono text-[10px] ${kbdCls}`}>⌘B</kbd>
+            <kbd className={`ml-auto font-mono text-[10px] ${kbdCls}`}>⌘⇧S</kbd>
           </CommandItem>
           <CommandItem onSelect={run(() => onShortcutsOpenChange(true))}>
-            <Keyboard className="mr-2 h-4 w-4 text-sky-400" />
+            <Codicon name="keyboard" className="mr-2" />
             Show keyboard shortcuts
+            <kbd className={`ml-auto font-mono text-[10px] ${kbdCls}`}>⇧?</kbd>
+          </CommandItem>
+          <CommandItem onSelect={run(() => onThemePickerOpenChange(true))}>
+            <Codicon name="palette" className="mr-2" />
+            Open theme picker
+            <kbd className={`ml-auto font-mono text-[10px] ${kbdCls}`}>⌘⇧T</kbd>
+          </CommandItem>
+          <CommandItem onSelect={run(onSettingsOpen)}>
+            <Codicon name="settings" className="mr-2" />
+            Open settings
+            <kbd className={`ml-auto font-mono text-[10px] ${kbdCls}`}>⌘,</kbd>
           </CommandItem>
           <CommandItem onSelect={run(() => onValidationOpenChange(true))}>
-            <ShieldCheck className="mr-2 h-4 w-4 text-indigo-400" />
+            <Codicon name="shield" className="mr-2" />
             Validate schema
             <kbd className={`ml-auto font-mono text-[10px] ${kbdCls}`}>⌘⇧V</kbd>
           </CommandItem>
           <CommandItem onSelect={run(() => useDiagramStore.getState().undo())}>
-            <Undo2 className="mr-2 h-4 w-4 text-zinc-400" />
+            <Codicon name="undo" className={mutedIcon} />
             Undo
             <kbd className={`ml-auto font-mono text-[10px] ${kbdCls}`}>⌘Z</kbd>
           </CommandItem>
           <CommandItem onSelect={run(() => useDiagramStore.getState().redo())}>
-            <Redo2 className="mr-2 h-4 w-4 text-zinc-400" />
+            <Codicon name="redo" className={mutedIcon} />
             Redo
             <kbd className={`ml-auto font-mono text-[10px] ${kbdCls}`}>⌘⇧Z</kbd>
           </CommandItem>
@@ -185,20 +132,29 @@ export function CommandPalette({
         <CommandSeparator />
 
         <CommandGroup heading="Export">
-          <CommandItem onSelect={handleExportDDL}>
-            <Code2 className="mr-2 h-4 w-4 text-cyan-400" />
-            Export as SQL DDL
+          <CommandItem onSelect={run(() => onExport('sql'))}>
+            <Codicon name="code" className="mr-2" />
+            Export PostgreSQL
           </CommandItem>
-          <CommandItem onSelect={handleExportDBML}>
-            <FileCode2 className="mr-2 h-4 w-4 text-violet-400" />
+          <CommandItem onSelect={run(() => onExport('sqlite'))}>
+            <Codicon name="database" className="mr-2" />
+            Export SQLite
+          </CommandItem>
+          <CommandItem onSelect={run(() => onExport('dbml'))}>
+            <Codicon name="fileCode" className="mr-2" />
             Export as DBML
+            <kbd className={`ml-auto font-mono text-[10px] ${kbdCls}`}>⌘E</kbd>
           </CommandItem>
-          <CommandItem onSelect={handleExportErd}>
-            <ImageIcon className="mr-2 h-4 w-4 text-emerald-400" />
+          <CommandItem onSelect={run(() => onExport('svg'))}>
+            <Codicon name="image" className="mr-2" />
             Export ERD as SVG
           </CommandItem>
-          <CommandItem onSelect={handleExportPrisma}>
-            <Boxes className="mr-2 h-4 w-4 text-violet-400" />
+          <CommandItem onSelect={run(() => onExport('json'))}>
+            <Codicon name="json" className="mr-2" />
+            Export as JSON AST
+          </CommandItem>
+          <CommandItem onSelect={run(() => onExport('prisma'))}>
+            <Codicon name="symbolClass" className="mr-2" />
             Export as Prisma schema
           </CommandItem>
         </CommandGroup>
@@ -207,23 +163,23 @@ export function CommandPalette({
 
         <CommandGroup heading="Load sample schema">
           <CommandItem onSelect={run(() => onLoadSample('ecommerce'))}>
-            <Boxes className="mr-2 h-4 w-4 text-indigo-400" />
+            <Codicon name="fileCode" className="mr-2" />
             E-commerce
           </CommandItem>
           <CommandItem onSelect={run(() => onLoadSample('blog'))}>
-            <Boxes className="mr-2 h-4 w-4 text-emerald-400" />
+            <Codicon name="fileCode" className="mr-2" />
             Blog / CMS
           </CommandItem>
           <CommandItem onSelect={run(() => onLoadSample('saas'))}>
-            <Boxes className="mr-2 h-4 w-4 text-pink-400" />
+            <Codicon name="fileCode" className="mr-2" />
             SaaS Multi-tenant
           </CommandItem>
           <CommandItem onSelect={run(() => onLoadSample('auth'))}>
-            <Boxes className="mr-2 h-4 w-4 text-amber-400" />
+            <Codicon name="fileCode" className="mr-2" />
             Auth &amp; Sessions
           </CommandItem>
           <CommandItem onSelect={run(() => onLoadSample('analytics'))}>
-            <Boxes className="mr-2 h-4 w-4 text-cyan-400" />
+            <Codicon name="fileCode" className="mr-2" />
             Analytics &amp; Events
           </CommandItem>
         </CommandGroup>
@@ -231,12 +187,12 @@ export function CommandPalette({
         <CommandSeparator />
 
         <CommandGroup heading="Schema">
-          <CommandItem onSelect={() => { /* future: navigate to table */ }}>
-            <Database className="mr-2 h-4 w-4 text-zinc-400" />
-            {Object.keys(ast.tables).length} table(s), {Object.keys(ast.references).length} reference(s)
+          <CommandItem disabled>
+            <Codicon name="database" className={mutedIcon} />
+            {tableCount} table(s), {refCount} reference(s)
           </CommandItem>
-          <CommandItem onSelect={handleClear} className="text-rose-400">
-            <Trash2 className="mr-2 h-4 w-4" />
+          <CommandItem onSelect={handleClear} disabled={tableCount === 0} className="text-rose-400">
+            <Codicon name="trash" className="mr-2" />
             Clear all tables
           </CommandItem>
         </CommandGroup>

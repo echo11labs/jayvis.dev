@@ -1,68 +1,75 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { Moon, Sun } from 'lucide-react';
+import { Codicon } from '@/components/ui/codicon';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { applyTheme, useThemeName } from '@/hooks/use-theme-state';
+import { THEME_OPTIONS } from '@/hooks/use-theme-state';
 
-type Theme = 'dark' | 'light';
-
-/**
- * Light/dark theme toggle.
- *
- * The app is dark-first. When the user switches to light mode, we add a
- * `light` class to <html>. The canvas itself stays dark (ERD tools render
- * better on dark), but the surrounding chrome adapts.
- */
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>('dark');
-
-  useEffect(() => {
-    const saved = (typeof window !== 'undefined'
-      ? localStorage.getItem('stitchdb-theme')
-      : null) as Theme | null;
-    if (saved === 'light' || saved === 'dark') {
-      setTheme(saved);
-    }
-  }, []);
-
-  useEffect(() => {
-    const root = document.documentElement;
-    if (theme === 'light') {
-      root.classList.remove('dark');
-      root.classList.add('light');
-    } else {
-      root.classList.remove('light');
-      root.classList.add('dark');
-    }
-    localStorage.setItem('stitchdb-theme', theme);
-  }, [theme]);
-
-  const toggle = useCallback(() => {
-    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
-  }, []);
+  const theme = useThemeName();
+  const current = THEME_OPTIONS.find((option) => option.value === theme) ?? THEME_OPTIONS[0];
 
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          onClick={toggle}
-          className="flex h-8 w-7 items-center justify-center rounded text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
-          title="Toggle theme"
+    <DropdownMenu>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>
+            <button
+              className="flex h-7 w-7 items-center justify-center rounded text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-panel)] hover:text-[var(--color-text-primary)]"
+              aria-label={`Theme: ${current.label}`}
+              title={`Theme: ${current.label} (⌘⇧T)`}
+            >
+              <span
+                className="h-3 w-3 rounded-sm border border-[var(--color-border-subtle)]"
+                style={{ background: current.swatch }}
+              />
+            </button>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">Switch theme (⌘⇧T)</TooltipContent>
+      </Tooltip>
+      <DropdownMenuContent
+        align="end"
+        className="min-w-[13rem] border-[var(--color-border-subtle)] bg-[var(--color-bg-panel)] text-[var(--color-text-primary)]"
+      >
+        <DropdownMenuLabel className="text-[var(--color-text-muted)]">Appearance</DropdownMenuLabel>
+        <DropdownMenuSeparator className="bg-[var(--color-border-subtle)]" />
+        {THEME_OPTIONS.map((option) => (
+          <DropdownMenuItem
+            key={option.value}
+            onClick={() => applyTheme(option.value)}
+            className="flex cursor-pointer items-center gap-2.5 px-2 py-1.5 text-xs focus:bg-[var(--color-bg-panel)] focus:text-[var(--color-text-secondary)]"
+          >
+            <span
+              className="h-3.5 w-3.5 shrink-0 rounded-sm border border-black/20"
+              style={{ background: option.swatch }}
+            />
+            <span className="flex-1">{option.label}</span>
+            {theme === option.value && <Codicon name="check" className="text-[var(--color-accent-primary)]" />}
+          </DropdownMenuItem>
+        ))}
+        <DropdownMenuSeparator className="bg-[var(--color-border-subtle)]" />
+        <DropdownMenuItem
+          onClick={() => applyTheme(theme === 'light-plus' ? 'dark-plus' : 'light-plus')}
+          className="flex cursor-pointer items-center gap-2.5 px-2 py-1.5 text-xs focus:bg-[var(--color-bg-panel)] focus:text-[var(--color-text-secondary)]"
         >
-          {theme === 'dark' ? (
-            <Sun className="h-3.5 w-3.5" />
-          ) : (
-            <Moon className="h-3.5 w-3.5" />
-          )}
-        </button>
-      </TooltipTrigger>
-      <TooltipContent side="bottom">
-        Switch to {theme === 'dark' ? 'light' : 'dark'} mode
-      </TooltipContent>
-    </Tooltip>
+          <Codicon name="theme" />
+          Toggle light / dark
+          <Codicon name="desktop" className="ml-auto text-[var(--color-text-muted)]" />
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

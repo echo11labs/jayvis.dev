@@ -34,6 +34,7 @@ export async function layoutDiagram(
   // Dynamic import — keeps elkjs out of the initial bundle.
   const ELK = (await import('elkjs/lib/elk.bundled.js')).default;
   const elk = new ELK();
+  const nodeIds = new Set(nodes.map((node) => node.id));
 
   const elkGraph = {
     id: 'root',
@@ -48,20 +49,33 @@ export async function layoutDiagram(
     },
     children: nodes.map((node) => ({
       id: node.id,
-      width: node.measured?.width ?? 280,
-      height: node.measured?.height ?? 200,
+      width:
+        node.measured?.width && node.measured.width > 0
+          ? node.measured.width
+          : 280,
+      height:
+        node.measured?.height && node.measured.height > 0
+          ? node.measured.height
+          : 200,
     })),
-    edges: edges.map((edge) => ({
-      id: edge.id,
-      sources: [edge.source],
-      targets: [edge.target],
-    })),
+    edges: edges
+      .filter(
+        (edge) => nodeIds.has(edge.source) && nodeIds.has(edge.target),
+      )
+      .map((edge) => ({
+        id: edge.id,
+        sources: [edge.source],
+        targets: [edge.target],
+      })),
   };
 
   const layouted = await elk.layout(elkGraph);
+  const positions = new Map(
+    layouted.children?.map((node) => [node.id, node]) ?? [],
+  );
 
   const updatedNodes = nodes.map((node) => {
-    const layoutNode = layouted.children?.find((n: any) => n.id === node.id);
+    const layoutNode = positions.get(node.id);
     return {
       ...node,
       position: {
@@ -77,6 +91,31 @@ export async function layoutDiagram(
 /**
  * Compact grid layout fallback — used when ELK fails (e.g. SSR / edge runtime).
  */
+/** True when two or more tables share one point, which is how a fresh parse arrives. */
+export function positionsCollapsed(
+  nodes: Array<{ position: { x: number; y: number } }>,
+): boolean {
+  if (nodes.length < 2) return false;
+  const seen = new Set<string>();
+  for (const node of nodes) {
+    const key = `${Math.round(node.position.x)}:${Math.round(node.position.y)}`;
+    if (seen.has(key)) return true;
+    seen.add(key);
+  }
+  return false;
+}
+
+export async function layoutFreshNodes(nodes: Node[], edges: Edge[]): Promise<Node[]> {
+  if (nodes.length < 2) return nodes;
+  try {
+    const laid = await layoutDiagram(nodes, edges);
+    return laid.nodes;
+  } catch (err) {
+    console.error('ELK layout failed:', err);
+    return gridLayout(nodes);
+  }
+}
+
 export function gridLayout(
   nodes: Node[],
   columns = 3,

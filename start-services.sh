@@ -1,5 +1,5 @@
 #!/bin/bash
-# StitchDB — starts all background services and keeps them alive.
+# JayVis.dev — starts all background services and keeps them alive.
 # Each service is fully detached with setsid + nohup so it survives
 # the parent shell exiting.
 

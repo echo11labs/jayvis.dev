@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useCallback } from 'react';
-import { Plus, LayoutGrid, Maximize, Sparkles, Database } from 'lucide-react';
+import { Codicon } from '@/components/ui/codicon';
+import type { IconName } from '@/lib/ui/icons';
 import { useDiagramStore } from '@/store/diagram-store';
 
 interface PaneContextMenuProps {
@@ -28,7 +29,6 @@ export function PaneContextMenu({
   onFitView,
 }: PaneContextMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const loadAST = useDiagramStore((s) => s.loadAST);
   const tableCount = useDiagramStore((s) => Object.keys(s.ast.tables).length);
 
   const close = useCallback(() => onClose(), [onClose]);
@@ -50,7 +50,7 @@ export function PaneContextMenu({
   }, [open, close]);
 
   const handleClear = () => {
-    loadAST({ version: '1.0', tables: {}, references: {} });
+    window.dispatchEvent(new CustomEvent('jayvis:clear-schema'));
     close();
   };
 
@@ -59,18 +59,18 @@ export function PaneContextMenu({
   return (
     <div
       ref={ref}
-      className="fixed z-50 w-56 rounded-lg border border-zinc-800 bg-zinc-950/95 p-1.5 shadow-2xl backdrop-blur-md"
+      className="fixed z-50 w-56 border border-[var(--color-border-subtle)] bg-[var(--color-bg-app)] p-1.5"
       style={{ left: x, top: y }}
     >
-      <div className="mb-1 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-600">
+      <div className="mb-1 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
         Canvas actions
       </div>
-      <MenuItem icon={Plus} label="Add table" shortcut="⌘T" onClick={() => { onAddTable(); close(); }} />
-      <MenuItem icon={LayoutGrid} label="Auto layout" shortcut="⌘L" onClick={() => { onAutoLayout(); close(); }} />
-      <MenuItem icon={Maximize} label="Fit view" shortcut="⌘0" onClick={() => { onFitView(); close(); }} />
-      <div className="my-1 h-px bg-zinc-800" />
+      <MenuItem icon="plus" label="Add table" shortcut="T" onClick={() => { onAddTable(); close(); }} />
+      <MenuItem icon="layout" label="Auto layout" shortcut="⌘L" onClick={() => { onAutoLayout(); close(); }} />
+      <MenuItem icon="maximize" label="Fit view" shortcut="⌘0" onClick={() => { onFitView(); close(); }} />
+      <div className="my-1 h-px bg-[var(--color-border-subtle)]" />
       <MenuItem
-        icon={Database}
+        icon="trash"
         label="Clear schema"
         onClick={handleClear}
         danger
@@ -81,14 +81,14 @@ export function PaneContextMenu({
 }
 
 function MenuItem({
-  icon: Icon,
+  icon,
   label,
   shortcut,
   onClick,
   danger,
   disabled,
 }: {
-  icon: React.ComponentType<{ className?: string }>;
+  icon: IconName;
   label: string;
   shortcut?: string;
   onClick: () => void;
@@ -99,16 +99,15 @@ function MenuItem({
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${
-        danger
+      className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${danger
           ? 'text-rose-400 hover:bg-rose-500/10'
-          : 'text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100'
-      }`}
+          : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-panel)] hover:text-[var(--color-text-primary)]'
+        }`}
     >
-      <Icon className="h-3.5 w-3.5" />
+      <Codicon name={icon} />
       <span>{label}</span>
       {shortcut && (
-        <kbd className="ml-auto font-mono text-[10px] text-zinc-600">
+        <kbd className="ml-auto font-mono text-[10px] text-[var(--color-text-muted)]">
           {shortcut}
         </kbd>
       )}

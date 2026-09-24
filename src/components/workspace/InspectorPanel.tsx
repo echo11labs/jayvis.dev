@@ -3,35 +3,22 @@
 import { useCallback, useState } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import {
-  Database,
-  Plus,
-  Trash2,
-  Key,
-  Link2,
-  Hash,
-  Palette,
-  X,
-  Pencil,
-  Check,
-  StickyNote,
-  Copy,
-  ArrowUp,
-  ArrowDown,
-} from 'lucide-react';
+import { Codicon } from '@/components/ui/codicon';
 import { useDiagramStore } from '@/store/diagram-store';
 import { TABLE_COLORS } from '@/types/ast';
 import type { SchemaField } from '@/types/ast';
-import { useTheme } from '@/hooks/use-theme-state';
 import { toast } from 'sonner';
+import { confirmIf } from '@/lib/confirm-action';
+import { Disclosure } from '@/components/workspace/Disclosure';
+import { normalizeIdent } from '@/lib/ident';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const TYPE_COLORS: Record<string, string> = {
   uuid: 'text-violet-400',
@@ -50,12 +37,7 @@ const TYPE_COLORS: Record<string, string> = {
   numeric: 'text-cyan-400',
 };
 
-function typeColor(type: string): string {
-  const base = type.split('(')[0];
-  return TYPE_COLORS[base] || 'text-zinc-400';
-}
-
-export function InspectorPanel() {
+export function InspectorPanel({ onClose }: { onClose?: () => void }) {
   const selectedTable = useDiagramStore((s) => s.selectedTable);
   const ast = useDiagramStore((s) => s.ast);
   const setSelectedTable = useDiagramStore((s) => s.setSelectedTable);
@@ -80,28 +62,28 @@ export function InspectorPanel() {
   const [editingTableNote, setEditingTableNote] = useState(false);
   const [editingFieldNote, setEditingFieldNote] = useState<string | null>(null);
   const [fieldNoteDraft, setFieldNoteDraft] = useState('');
+  const [sections, setSections] = useState({
+    columns: true,
+    indexes: true,
+    relations: true,
+    note: false,
+    appearance: false,
+  });
+  const toggleSection = (key: keyof typeof sections) => {
+    setSections((current) => ({ ...current, [key]: !current[key] }));
+  };
 
   const table = selectedTable ? ast.tables[selectedTable] : null;
-  const theme = useTheme();
-  const isDark = theme === 'dark';
-
   // Theme-aware tokens for the inspector chrome.
-  const panelBg = isDark ? 'bg-zinc-950/80' : 'bg-white/90';
-  const borderCls = isDark ? 'border-zinc-800' : 'border-zinc-200';
-  const metaText = isDark ? 'text-zinc-500' : 'text-zinc-400';
-  const metaDim = isDark ? 'text-zinc-600' : 'text-zinc-400';
-  const sectionLabel = isDark ? 'text-zinc-600' : 'text-zinc-400';
-  const fieldRow = isDark ? 'hover:border-zinc-800 hover:bg-zinc-900/60' : 'hover:border-zinc-200 hover:bg-zinc-50';
-  const fieldText = isDark ? 'text-zinc-300' : 'text-zinc-700';
-  const pkText = isDark ? 'text-zinc-100' : 'text-zinc-900';
-  const closeBtn = isDark ? 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200' : 'text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600';
-  const emptyIcon = isDark ? 'text-zinc-700' : 'text-zinc-300';
-  const emptyTitle = isDark ? 'text-zinc-500' : 'text-zinc-400';
-  const emptyDesc = isDark ? 'text-zinc-600' : 'text-zinc-500';
+  const panelBg = 'bg-[var(--color-bg-panel)]';
+  const borderCls = 'border-[var(--color-border-subtle)]';
+  const fieldRow = 'hover:border-[var(--color-border-subtle)] hover:bg-[var(--color-bg-panel)]';
+  const closeBtn = 'text-[var(--color-text-muted)] hover:bg-[var(--color-bg-panel)] hover:text-[var(--color-text-primary)]';
+  const emptyTitle = 'text-[var(--color-text-muted)]';
 
   const handleAddField = useCallback(() => {
     if (!table) return;
-    const name = newFieldName.trim().toLowerCase();
+    const name = normalizeIdent(newFieldName);
     if (!name) {
       toast.error('Column name required');
       return;
@@ -123,8 +105,15 @@ export function InspectorPanel() {
   const handleDeleteTable = useCallback(() => {
     if (!table) return;
     const name = table.name;
-    deleteTable(name);
-    toast.success(`Dropped table "${name}"`);
+    confirmIf(true, {
+      title: `Drop table ${name}?`,
+      description: 'Related relationships will be removed. You can undo this.',
+      confirmLabel: 'Drop table',
+      action: () => {
+        deleteTable(name);
+        toast.success(`Dropped table "${name}"`);
+      },
+    });
   }, [table, deleteTable]);
 
   const handleDuplicateTable = useCallback(() => {
@@ -162,7 +151,19 @@ export function InspectorPanel() {
 
   const commitFieldEdit = useCallback(() => {
     if (!table || !editingField || !fieldDraft) return;
-    updateField(table.name, editingField, fieldDraft);
+    const nextName = normalizeIdent(fieldDraft.name);
+    if (!nextName) {
+      toast.error('Column name required');
+      return;
+    }
+    if (
+      nextName !== editingField &&
+      table.fields.some((field) => field.name === nextName)
+    ) {
+      toast.error(`Column "${nextName}" already exists`);
+      return;
+    }
+    updateField(table.name, editingField, { ...fieldDraft, name: nextName });
     setEditingField(null);
     setFieldDraft(null);
     toast.success('Column updated');
@@ -170,167 +171,103 @@ export function InspectorPanel() {
 
   const commitTableRename = useCallback(() => {
     if (!table) return;
-    const newName = tableNameDraft.trim().toLowerCase();
-    if (newName && newName !== table.name) {
+    const newName = normalizeIdent(tableNameDraft);
+    if (!newName) {
+      toast.error('Table name is required');
+      setEditingTableName(false);
+      return;
+    }
+    if (newName !== table.name && useDiagramStore.getState().ast.tables[newName]) {
+      toast.error(`Table "${newName}" already exists`);
+      return;
+    }
+    if (newName !== table.name) {
       renameTable(table.name, newName);
     }
     setEditingTableName(false);
   }, [table, tableNameDraft, renameTable]);
 
+  const tableRefs = table
+    ? Object.values(ast.references).filter(
+        (ref) => ref.sourceTable === table.name || ref.targetTable === table.name,
+      )
+    : [];
+
   if (!table) {
     return (
-      <div className={`flex h-full flex-col items-center justify-center gap-2 border-l ${borderCls} ${isDark ? 'bg-zinc-950/60' : 'bg-zinc-50'} p-4 text-center`}>
-        <Database className={`h-8 w-8 ${emptyIcon}`} />
-        <p className={`text-xs font-medium ${emptyTitle}`}>No table selected</p>
-        <p className={`text-[11px] ${emptyDesc}`}>
-          Click a table on the canvas to inspect and edit its columns.
-        </p>
+      <div className={`flex h-full flex-col ${panelBg}`}>
+        <div className="group flex h-8 shrink-0 items-center border-b border-[var(--color-border-subtle)] px-3">
+          <span className="text-[11px] text-[var(--color-text-muted)]">Table Inspector</span>
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className={`ml-auto rounded p-1 ${closeBtn}`}
+              aria-label="Close inspector"
+            >
+              <Codicon name="close" />
+            </button>
+          )}
+        </div>
+        <p className={`px-3 py-5 text-[12px] ${emptyTitle}`}>Select a table from the explorer or board.</p>
       </div>
     );
   }
 
   return (
-    <TooltipProvider delayDuration={200}>
-      <div className={`flex h-full flex-col border-l ${borderCls} ${panelBg} backdrop-blur-sm animate-fade-in`}>
-        {/* Header */}
-        <div
-          className="flex shrink-0 items-center justify-between border-b border-zinc-800 px-3 py-2.5"
-          style={{ borderTop: `3px solid ${table.color || '#6366F1'}` }}
-        >
-          <div className="flex min-w-0 items-center gap-2">
-            <span
-              className="h-2.5 w-2.5 rounded-full"
-              style={{ backgroundColor: table.color || '#6366F1' }}
-            />
-            {editingTableName ? (
-              <input
-                autoFocus
-                value={tableNameDraft}
-                onChange={(e) => setTableNameDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') commitTableRename();
-                  if (e.key === 'Escape') setEditingTableName(false);
-                }}
-                onBlur={commitTableRename}
-                className="rounded border border-indigo-500 bg-zinc-900 px-1.5 py-0.5 font-mono text-xs text-zinc-100 outline-none"
-              />
-            ) : (
-              <button
-                onClick={() => {
-                  setTableNameDraft(table.name);
-                  setEditingTableName(true);
-                }}
-                className="group flex items-center gap-1 font-mono text-sm font-semibold text-zinc-100"
-              >
-                {table.name}
-                <Pencil className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-60" />
-              </button>
-            )}
-          </div>
+    <div className={`flex h-full flex-col ${panelBg}`} role="complementary" aria-label={table.name}>
+        <div className="group flex h-8 shrink-0 items-center border-b border-[var(--color-border-subtle)] px-3">
+          <span className="text-[11px] text-[var(--color-text-muted)]">Table Inspector</span>
           <button
-            onClick={() => setSelectedTable(null)}
-            className={`rounded p-1 ${closeBtn}`}
+            onClick={() => (onClose ? onClose() : setSelectedTable(null))}
+            className={`ml-auto rounded p-1 ${closeBtn}`}
+            aria-label="Close inspector"
           >
-            <X className="h-3.5 w-3.5" />
+            <Codicon name="close" />
           </button>
         </div>
 
-        {/* Meta */}
-        <div className="flex shrink-0 items-center justify-between border-b border-zinc-800 px-3 py-2 text-[11px]">
-          <span className="font-mono text-zinc-500">
-            {table.schema || 'public'}.{table.name}
-          </span>
-          <span className="font-mono text-zinc-600">
-            {table.fields.length} col · {table.indexes?.length || 0} idx
-          </span>
-        </div>
-
-        {/* Color picker */}
-        <div className="flex shrink-0 items-center gap-2 border-b border-zinc-800 px-3 py-2">
-          <Palette className="h-3.5 w-3.5 text-zinc-500" />
-          <span className="text-[11px] text-zinc-500">Color</span>
-          <div className="flex gap-1.5">
-            {TABLE_COLORS.map((c) => (
-              <button
-                key={c}
-                onClick={() => setTableColor(table.name, c)}
-                className={`h-4 w-4 rounded-full transition-transform hover:scale-110 ${
-                  table.color === c ? 'ring-2 ring-zinc-300 ring-offset-1 ring-offset-zinc-950' : ''
-                }`}
-                style={{ backgroundColor: c }}
-                title={c}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Table note */}
-        <div className="shrink-0 border-b border-zinc-800 px-3 py-2">
-          <div className="mb-1 flex items-center gap-1.5">
-            <StickyNote className="h-3.5 w-3.5 text-zinc-500" />
-            <span className="text-[11px] text-zinc-500">Table note</span>
-            {!editingTableNote && (
-              <button
-                onClick={() => {
-                  setTableNoteDraft(table.note || '');
-                  setEditingTableNote(true);
-                }}
-                className="ml-auto text-[10px] text-zinc-600 hover:text-indigo-300"
-              >
-                {table.note ? 'Edit' : '+ Add'}
-              </button>
-            )}
-          </div>
-          {editingTableNote ? (
-            <div className="space-y-1.5">
-              <textarea
-                autoFocus
-                value={tableNoteDraft}
-                onChange={(e) => setTableNoteDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                    setTableNote(table.name, tableNoteDraft.trim());
-                    setEditingTableNote(false);
-                    toast.success('Note saved');
-                  }
-                  if (e.key === 'Escape') setEditingTableNote(false);
-                }}
-                placeholder="Describe this table…"
-                rows={2}
-                className="w-full resize-none rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-[11px] text-zinc-200 outline-none focus:border-indigo-500"
-              />
-              <div className="flex gap-1.5">
-                <button
-                  onClick={() => {
-                    setTableNote(table.name, tableNoteDraft.trim());
-                    setEditingTableNote(false);
-                    toast.success('Note saved');
-                  }}
-                  className="rounded bg-indigo-600/80 px-2 py-0.5 text-[10px] text-white hover:bg-indigo-500"
-                >
-                  Save
-                </button>
-                <button
-                  onClick={() => setEditingTableNote(false)}
-                  className="rounded px-2 py-0.5 text-[10px] text-zinc-500 hover:text-zinc-300"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
+        <div className="flex shrink-0 items-center gap-2 border-b border-[var(--color-border-subtle)] px-3 py-2">
+          <span
+            className="h-2 w-2 shrink-0"
+            style={{ backgroundColor: table.color || '#c45c26' }}
+          />
+          {editingTableName ? (
+            <input
+              autoFocus
+              value={tableNameDraft}
+              onChange={(e) => setTableNameDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') commitTableRename();
+                if (e.key === 'Escape') setEditingTableName(false);
+              }}
+              onBlur={commitTableRename}
+              className="rounded border border-[var(--color-accent-primary)] bg-[var(--color-bg-app)] px-1.5 py-0.5 font-mono text-xs text-[var(--color-text-primary)] outline-none"
+            />
           ) : (
-            <p className={`text-[11px] ${table.note ? 'text-zinc-400' : 'italic text-zinc-600'}`}>
-              {table.note || 'No note'}
-            </p>
+            <button
+              onClick={() => {
+                setTableNameDraft(table.name);
+                setEditingTableName(true);
+              }}
+              className="group flex min-w-0 items-center gap-1 font-mono text-[13px] text-[var(--color-text-primary)]"
+            >
+              <span className="truncate">{table.name}</span>
+              <Codicon name="pencil" className="opacity-0 transition-opacity group-hover:opacity-60" />
+            </button>
           )}
+          <span className="ml-auto border border-[var(--color-border-subtle)] px-1.5 font-mono text-[10px] text-[var(--color-text-muted)]">
+            Table
+          </span>
         </div>
 
-        {/* Fields */}
         <ScrollArea className="flex-1">
-          <div className="p-2">
-            <div className="mb-1.5 px-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-600">
-              Columns
-            </div>
+          <Disclosure
+            label="Columns"
+            count={table.fields.length}
+            open={sections.columns}
+            onOpenChange={() => toggleSection('columns')}
+          >
             <div className="space-y-1">
               {table.fields.map((f, fieldIdx) => {
                 const isEditing = editingField === f.name;
@@ -348,7 +285,7 @@ export function InspectorPanel() {
                 return (
                   <div
                     key={f.id}
-                    className={`group rounded-md border border-transparent px-2 py-1.5 ${fieldRow}`}
+                    className={`group rounded-md border border-transparent px-2 py-2.5 ${fieldRow}`}
                   >
                     {isEditing ? (
                       <div className="space-y-1.5">
@@ -362,7 +299,7 @@ export function InspectorPanel() {
                                 id: `${table.name}.${e.target.value}`,
                               })
                             }
-                            className="h-7 border-zinc-800 bg-zinc-950 font-mono text-xs"
+                            className="h-7 border-[var(--color-border-subtle)] bg-[var(--color-bg-app)] font-mono text-xs"
                             autoFocus
                           />
                           <select
@@ -370,7 +307,7 @@ export function InspectorPanel() {
                             onChange={(e) =>
                               setFieldDraft({ ...draft, type: e.target.value })
                             }
-                            className="h-7 rounded border border-zinc-800 bg-zinc-950 px-1.5 font-mono text-xs text-zinc-100"
+                            className="h-7 rounded border border-[var(--color-border-subtle)] bg-[var(--color-bg-app)] px-1.5 font-mono text-xs text-[var(--color-text-primary)]"
                           >
                             {Object.keys(TYPE_COLORS).map((t) => (
                               <option key={t} value={t}>
@@ -380,7 +317,7 @@ export function InspectorPanel() {
                           </select>
                         </div>
                         <div className="flex items-center gap-3 px-1">
-                          <label className="flex cursor-pointer items-center gap-1 text-[10px] text-zinc-500">
+                          <label className="flex cursor-pointer items-center gap-1 text-[10px] text-[var(--color-text-muted)]">
                             <Checkbox
                               checked={isPK}
                               onCheckedChange={(v) =>
@@ -396,7 +333,7 @@ export function InspectorPanel() {
                             />
                             PK
                           </label>
-                          <label className="flex cursor-pointer items-center gap-1 text-[10px] text-zinc-500">
+                          <label className="flex cursor-pointer items-center gap-1 text-[10px] text-[var(--color-text-muted)]">
                             <Checkbox
                               checked={isUQ}
                               onCheckedChange={(v) =>
@@ -411,7 +348,7 @@ export function InspectorPanel() {
                             />
                             UQ
                           </label>
-                          <label className="flex cursor-pointer items-center gap-1 text-[10px] text-zinc-500">
+                          <label className="flex cursor-pointer items-center gap-1 text-[10px] text-[var(--color-text-muted)]">
                             <Checkbox
                               checked={draft.constraints.isNullable !== false}
                               onCheckedChange={(v) =>
@@ -427,123 +364,108 @@ export function InspectorPanel() {
                             />
                             Nullable
                           </label>
-                          <div className="ml-auto flex gap-1">
+                          <Input
+                            value={draft.constraints.defaultValue ?? ''}
+                            onChange={(e) =>
+                              setFieldDraft({
+                                ...draft,
+                                constraints: {
+                                  ...draft.constraints,
+                                  defaultValue: e.target.value || undefined,
+                                },
+                              })
+                            }
+                            placeholder="default"
+                            className="ml-auto h-6 w-24 border-[var(--color-border-subtle)] bg-[var(--color-bg-app)] px-1.5 font-mono text-[10px]"
+                          />
+                          <div className="flex gap-1">
                             <button
                               onClick={commitFieldEdit}
-                              className="rounded p-1 text-emerald-400 hover:bg-zinc-800"
+                              className="rounded p-1 text-emerald-400 hover:bg-[var(--color-bg-panel)]"
                             >
-                              <Check className="h-3.5 w-3.5" />
+                              <Codicon name="check" />
                             </button>
                           </div>
                         </div>
                       </div>
                     ) : (
-                      <div className="flex items-center justify-between gap-2">
+                      <>
+                      <div className="flex flex-col gap-1 px-1.5">
                         <div className="flex min-w-0 items-center gap-1.5">
-                          {isPK && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="flex-shrink-0 rounded bg-amber-500/10 px-1 py-0.5 font-mono text-[9px] font-bold text-amber-400 border border-amber-500/20">
-                                  <Key className="h-2.5 w-2.5" />
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent>Primary Key</TooltipContent>
-                            </Tooltip>
-                          )}
-                          {isUQ && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="flex-shrink-0 rounded bg-sky-500/10 px-1 py-0.5 font-mono text-[9px] font-bold text-sky-400 border border-sky-500/20">
-                                  UQ
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent>Unique</TooltipContent>
-                            </Tooltip>
-                          )}
-                          {isFK && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Link2 className="h-3 w-3 flex-shrink-0 text-indigo-400" />
-                              </TooltipTrigger>
-                              <TooltipContent>Foreign Key</TooltipContent>
-                            </Tooltip>
-                          )}
                           <span
-                            className={`truncate font-mono text-xs ${
-                              isPK ? 'font-semibold text-zinc-100' : 'text-zinc-300'
+                            className={`truncate font-mono text-[13px] ${
+                              isPK ? 'font-medium text-[var(--color-text-primary)]' : 'text-[var(--color-text-primary)]'
                             }`}
                           >
                             {f.name}
                           </span>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                type="button"
+                                className="ml-auto rounded px-1 text-[var(--color-text-muted)] opacity-0 hover:text-[var(--color-text-primary)] group-hover:opacity-100"
+                                aria-label="Column actions"
+                              >
+                                ···
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="min-w-[8rem] border-[var(--color-border-subtle)] bg-[var(--color-bg-panel)]">
+                              <DropdownMenuItem
+                                className="text-[12px]"
+                                onClick={() => {
+                                  setEditingFieldNote(editingFieldNote === f.name ? null : f.name);
+                                  setFieldNoteDraft(f.note || '');
+                                }}
+                              >
+                                Note
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-[12px]"
+                                disabled={!canMoveUp}
+                                onClick={() => moveField(table.name, fieldIdx, fieldIdx - 1)}
+                              >
+                                Move up
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-[12px]"
+                                disabled={!canMoveDown}
+                                onClick={() => moveField(table.name, fieldIdx, fieldIdx + 1)}
+                              >
+                                Move down
+                              </DropdownMenuItem>
+                              <DropdownMenuItem className="text-[12px]" onClick={() => startEditField(f)}>
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-[12px] text-[var(--color-accent-danger)]"
+                                onClick={() => {
+                                  const columnName = f.name;
+                                  confirmIf(true, {
+                                    title: `Drop column ${columnName}?`,
+                                    description:
+                                      'Related relationships will be removed. You can undo this.',
+                                    confirmLabel: 'Drop column',
+                                    action: () => {
+                                      deleteField(table.name, columnName);
+                                      toast.success(`Dropped column "${columnName}"`);
+                                    },
+                                  });
+                                }}
+                              >
+                                Drop
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
-                        <div className="flex flex-shrink-0 items-center gap-1">
-                          <span
-                            className={`font-mono text-[11px] ${typeColor(draft.type)}`}
-                          >
-                            {draft.type}
-                          </span>
-                          {draft.constraints.isNullable === false && !isPK && (
-                            <span
-                              className="font-mono text-[10px] text-rose-400"
-                              title="NOT NULL"
-                            >
-                              *
-                            </span>
-                          )}
-                          {f.note && (
-                            <span
-                              title={f.note}
-                              className="text-amber-500/70"
-                            >
-                              <StickyNote className="h-3 w-3" />
-                            </span>
-                          )}
-                          <button
-                            onClick={() => {
-                              setEditingFieldNote(editingFieldNote === f.name ? null : f.name);
-                              setFieldNoteDraft(f.note || '');
-                            }}
-                            className={`rounded p-0.5 transition-opacity hover:bg-zinc-800 hover:text-amber-300 ${
-                              editingFieldNote === f.name
-                                ? 'text-amber-400 opacity-100'
-                                : 'text-zinc-600 opacity-0 group-hover:opacity-100'
-                            }`}
-                            title="Edit column note"
-                          >
-                            <StickyNote className="h-3 w-3" />
-                          </button>
-                          <button
-                            onClick={() => moveField(table.name, fieldIdx, fieldIdx - 1)}
-                            disabled={!canMoveUp}
-                            className="rounded p-0.5 text-zinc-600 opacity-0 transition-opacity hover:bg-zinc-800 hover:text-zinc-200 group-hover:opacity-100 disabled:opacity-0"
-                            title="Move up"
-                          >
-                            <ArrowUp className="h-3 w-3" />
-                          </button>
-                          <button
-                            onClick={() => moveField(table.name, fieldIdx, fieldIdx + 1)}
-                            disabled={!canMoveDown}
-                            className="rounded p-0.5 text-zinc-600 opacity-0 transition-opacity hover:bg-zinc-800 hover:text-zinc-200 group-hover:opacity-100 disabled:opacity-0"
-                            title="Move down"
-                          >
-                            <ArrowDown className="h-3 w-3" />
-                          </button>
-                          <button
-                            onClick={() => startEditField(f)}
-                            className="rounded p-0.5 text-zinc-600 opacity-0 transition-opacity hover:bg-zinc-800 hover:text-indigo-300 group-hover:opacity-100"
-                          >
-                            <Pencil className="h-3 w-3" />
-                          </button>
-                          <button
-                            onClick={() => {
-                              deleteField(table.name, f.name);
-                              toast.success(`Dropped column "${f.name}"`);
-                            }}
-                            className="rounded p-0.5 text-zinc-600 opacity-0 transition-opacity hover:bg-zinc-800 hover:text-rose-400 group-hover:opacity-100"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
+                        <div className="flex items-center gap-2 font-mono text-[11px] text-[var(--color-text-muted)]">
+                          <span className="tracking-wide">{draft.type}</span>
+                          {isPK && <span className="rounded-sm bg-[var(--color-bg-tertiary)] px-1 text-[9px] tracking-wide text-[var(--color-text-secondary)]">PK</span>}
+                          {isFK && <span className="text-[9px] tracking-wide">FK</span>}
+                          {isUQ && <span className="text-[9px] tracking-wide">UQ</span>}
+                          {draft.constraints.isNullable === false && !isPK && <span title="NOT NULL">*</span>}
+                          {f.note && <span title={f.note}>note</span>}
                         </div>
+                      </div>
                         {editingFieldNote === f.name && (
                           <div className="mt-1.5 space-y-1.5">
                             <textarea
@@ -560,7 +482,7 @@ export function InspectorPanel() {
                               }}
                               placeholder={`Describe column "${f.name}"…`}
                               rows={2}
-                              className="w-full resize-none rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-[11px] text-zinc-200 outline-none focus:border-indigo-500"
+                              className="w-full resize-none rounded border border-[var(--color-border-subtle)] bg-[var(--color-bg-app)] px-2 py-1 text-[11px] text-[var(--color-text-primary)] outline-none focus:border-indigo-500"
                             />
                             <div className="flex gap-1.5">
                               <button
@@ -575,14 +497,14 @@ export function InspectorPanel() {
                               </button>
                               <button
                                 onClick={() => setEditingFieldNote(null)}
-                                className="rounded px-2 py-0.5 text-[10px] text-zinc-500 hover:text-zinc-300"
+                                className="rounded px-2 py-0.5 text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
                               >
                                 Cancel
                               </button>
                             </div>
                           </div>
                         )}
-                      </div>
+                      </>
                     )}
                   </div>
                 );
@@ -590,8 +512,8 @@ export function InspectorPanel() {
             </div>
 
             {/* Add column row */}
-            <div className="mt-2 flex items-center gap-1.5 rounded-md border border-dashed border-zinc-800 px-2 py-1.5">
-              <Plus className="h-3 w-3 flex-shrink-0 text-zinc-600" />
+            <div className="mt-2 flex items-center gap-1.5 rounded-md border border-dashed border-[var(--color-border-subtle)] px-2 py-1.5">
+              <Codicon name="plus" className="flex-shrink-0 text-[var(--color-text-muted)]" />
               <input
                 value={newFieldName}
                 onChange={(e) => setNewFieldName(e.target.value)}
@@ -599,12 +521,12 @@ export function InspectorPanel() {
                   if (e.key === 'Enter') handleAddField();
                 }}
                 placeholder="new column"
-                className="h-6 flex-1 rounded bg-transparent font-mono text-xs text-zinc-200 outline-none placeholder:text-zinc-700"
+                className="h-6 flex-1 rounded bg-transparent font-mono text-xs text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)]"
               />
               <select
                 value={newFieldType}
                 onChange={(e) => setNewFieldType(e.target.value)}
-                className="h-6 rounded border border-zinc-800 bg-zinc-950 px-1 font-mono text-[11px] text-zinc-300"
+                className="h-6 rounded border border-[var(--color-border-subtle)] bg-[var(--color-bg-app)] px-1 font-mono text-[11px] text-[var(--color-text-primary)]"
               >
                 {Object.keys(TYPE_COLORS).map((t) => (
                   <option key={t} value={t}>
@@ -620,31 +542,169 @@ export function InspectorPanel() {
                 Add
               </button>
             </div>
-          </div>
+          </Disclosure>
+
+          <Disclosure
+            label="Indexes"
+            count={table.indexes?.length || 0}
+            open={sections.indexes}
+            onOpenChange={() => toggleSection('indexes')}
+          >
+              {(table.indexes?.length || 0) === 0 && (
+                <p className="px-2.5 py-1.5 text-[12px] text-[var(--color-text-muted)]">
+                  No indexes
+                </p>
+              )}
+              {(table.indexes ?? []).map((index, i) => (
+                <div key={`${index.name || 'idx'}-${i}`} className="flex flex-col gap-0.5 px-2.5 py-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="min-w-0 truncate font-mono text-[12px] text-[var(--color-text-primary)]">
+                      {index.name || index.columns.join('_')}
+                    </span>
+                    {index.isUnique && (
+                      <span className="font-mono text-[10px] tracking-wide text-[var(--color-text-muted)]">UNIQUE</span>
+                    )}
+                  </div>
+                  <span className="font-mono text-[10px] text-[var(--color-text-muted)]">{index.columns.join(', ')}</span>
+                </div>
+              ))}
+          </Disclosure>
+
+          <Disclosure
+            label="Relations"
+            count={tableRefs.length}
+            open={sections.relations}
+            onOpenChange={() => toggleSection('relations')}
+          >
+              {tableRefs.length === 0 && (
+                <p className="px-2.5 py-1.5 text-[12px] text-[var(--color-text-muted)]">
+                  No relations
+                </p>
+              )}
+              {tableRefs.map((ref) => {
+                const other = ref.sourceTable === table.name ? ref.targetTable : ref.sourceTable;
+                const otherField = ref.sourceTable === table.name ? ref.targetField : ref.sourceField;
+                const mark =
+                  ref.cardinality === '1:1' ? '1:1' : ref.cardinality === 'N:M' ? '*:*' : '1:*';
+                return (
+                  <button
+                    key={ref.id}
+                    type="button"
+                    onClick={() => setSelectedTable(other)}
+                    className="flex w-full flex-col items-start gap-0.5 px-2.5 py-1.5 text-left hover:bg-[var(--color-bg-tertiary)]"
+                  >
+                    <span className="truncate font-mono text-[12px] text-[var(--color-text-primary)]">{other}</span>
+                    <span className="font-mono text-[10px] tracking-wide text-[var(--color-text-muted)]">
+                      {mark} · {other}.{otherField}
+                    </span>
+                  </button>
+                );
+              })}
+          </Disclosure>
+
+          <Disclosure
+            label="Note"
+            open={sections.note || editingTableNote}
+            onOpenChange={() => toggleSection('note')}
+            detail={table.note ? 'Set' : undefined}
+            action={
+              !editingTableNote ? (
+                <button
+                  onClick={() => {
+                    setTableNoteDraft(table.note || '');
+                    setEditingTableNote(true);
+                    setSections((current) => ({ ...current, note: true }));
+                  }}
+                  className="px-2 text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+                >
+                  {table.note ? 'Edit' : 'Add'}
+                </button>
+              ) : null
+            }
+          >
+              {editingTableNote ? (
+                <div className="space-y-1.5">
+                  <textarea
+                    autoFocus
+                    value={tableNoteDraft}
+                    onChange={(e) => setTableNoteDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                        setTableNote(table.name, tableNoteDraft.trim());
+                        setEditingTableNote(false);
+                        toast.success('Note saved');
+                      }
+                      if (e.key === 'Escape') setEditingTableNote(false);
+                    }}
+                    placeholder="Describe this table…"
+                    rows={2}
+                    className="w-full resize-none rounded border border-[var(--color-border-subtle)] bg-[var(--color-bg-app)] px-2 py-1 text-[11px] text-[var(--color-text-primary)] outline-none"
+                  />
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={() => {
+                        setTableNote(table.name, tableNoteDraft.trim());
+                        setEditingTableNote(false);
+                        toast.success('Note saved');
+                      }}
+                      className="rounded bg-[var(--color-accent-primary)] px-2 py-0.5 text-[10px] text-white"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => setEditingTableNote(false)}
+                      className="rounded px-2 py-0.5 text-[10px] text-[var(--color-text-muted)]"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p className={`px-2.5 text-[12px] ${table.note ? 'text-[var(--color-text-secondary)]' : 'text-[var(--color-text-muted)]'}`}>
+                  {table.note || 'No note'}
+                </p>
+              )}
+          </Disclosure>
+
+          <Disclosure
+            label="Appearance"
+            open={sections.appearance}
+            onOpenChange={() => toggleSection('appearance')}
+          >
+            <div className="flex flex-wrap items-center gap-2 px-2.5 py-1.5">
+              {TABLE_COLORS.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setTableColor(table.name, c)}
+                  className={`h-4 w-4 ${
+                    table.color === c ? 'ring-1 ring-[var(--color-text-primary)] ring-offset-1 ring-offset-[var(--color-bg-panel)]' : ''
+                  }`}
+                  style={{ backgroundColor: c }}
+                  title={c}
+                />
+              ))}
+            </div>
+          </Disclosure>
         </ScrollArea>
 
-        {/* Footer: duplicate + delete table */}
-        <div className={`shrink-0 border-t ${borderCls} grid grid-cols-2 gap-1.5 p-2`}>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleDuplicateTable}
-            className={`gap-1.5 ${isDark ? 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100' : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800'}`}
-          >
-            <Copy className="h-3.5 w-3.5" />
-            Duplicate
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleDeleteTable}
-            className="gap-1.5 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            Drop
-          </Button>
+        <div className={`shrink-0 border-t ${borderCls} p-2`}>
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              onClick={handleDuplicateTable}
+              className="flex h-7 items-center justify-center gap-1.5 text-[11px] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+            >
+              <Codicon name="copy" />
+              Duplicate
+            </button>
+            <button
+              onClick={handleDeleteTable}
+              className="flex h-7 items-center justify-center gap-1.5 text-[11px] text-rose-400 hover:text-rose-300"
+            >
+              <Codicon name="trash" />
+              Drop
+            </button>
+          </div>
         </div>
       </div>
-    </TooltipProvider>
   );
 }

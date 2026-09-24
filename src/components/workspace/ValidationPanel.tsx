@@ -10,77 +10,74 @@ import {
 } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import {
-  AlertTriangle,
-  AlertCircle,
-  Info,
-  CheckCircle2,
-  Key,
-  Type,
-  Link2,
-  Hash,
-  ShieldCheck,
-} from 'lucide-react';
+import { Codicon } from '@/components/ui/codicon';
+import type { IconName } from '@/lib/ui/icons';
 import { useDiagramStore } from '@/store/diagram-store';
 import {
-  validateSchema,
+  summarizeValidation,
   severityColor,
   severityBg,
   type ValidationIssue,
+  type ValidationSeverity,
 } from '@/lib/validation/schema-validation';
-import { useTheme as useThemeState } from '@/hooks/use-theme-state';
 
 interface ValidationPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-const CATEGORY_ICONS = {
-  'primary-key': Key,
-  naming: Hash,
-  reference: Link2,
-  type: Type,
-  index: ShieldCheck,
+const CATEGORY_ICONS: Record<string, IconName> = {
+  'primary-key': 'key',
+  naming: 'hash',
+  reference: 'link',
+  type: 'type',
+  index: 'shield',
 };
+
+type Filter = 'all' | ValidationSeverity;
 
 function IssueRow({ issue }: { issue: ValidationIssue }) {
   const setSelectedTable = useDiagramStore((s) => s.setSelectedTable);
-  const Icon =
+  const setSelectedEdge = useDiagramStore((s) => s.setSelectedEdge);
+  const icon: IconName =
     issue.severity === 'error'
-      ? AlertCircle
+      ? 'error'
       : issue.severity === 'warning'
-        ? AlertTriangle
-        : Info;
-  const CatIcon = CATEGORY_ICONS[issue.category];
+        ? 'warning'
+        : 'info';
+  const catIcon = CATEGORY_ICONS[issue.category];
+  const selectable = Boolean(issue.refId || issue.tableName);
 
   return (
     <div
-      className={`rounded-lg border p-3 ${severityBg(issue.severity)}`}
+      className={`rounded-lg border p-3 ${severityBg(issue.severity)} ${selectable ? 'cursor-pointer' : ''}`}
       onClick={() => {
-        if (issue.tableName) setSelectedTable(issue.tableName);
+        if (issue.refId) setSelectedEdge(issue.refId);
+        else if (issue.tableName) setSelectedTable(issue.tableName);
       }}
-      role={issue.tableName ? 'button' : undefined}
+      role={selectable ? 'button' : undefined}
     >
       <div className="flex items-start gap-2.5">
-        <Icon
-          className={`mt-0.5 h-4 w-4 flex-shrink-0 ${severityColor(issue.severity)}`}
+        <Codicon
+          name={icon}
+          className={`mt-0.5 flex-shrink-0 ${severityColor(issue.severity)}`}
         />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <CatIcon className="h-3 w-3 text-zinc-500" />
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+            {catIcon && <Codicon name={catIcon} className="text-[var(--color-text-muted)]" />}
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
               {issue.category}
             </span>
             {issue.tableName && (
-              <span className="font-mono text-[10px] text-zinc-600">
+              <span className="font-mono text-[10px] text-[var(--color-text-secondary)]">
                 {issue.tableName}
                 {issue.fieldName ? `.${issue.fieldName}` : ''}
               </span>
             )}
           </div>
-          <p className="mt-1 text-xs text-zinc-300">{issue.message}</p>
+          <p className="mt-1 text-xs text-[var(--color-text-primary)]">{issue.message}</p>
           {issue.fix && (
-            <p className="mt-1 text-[11px] italic text-zinc-500">
+            <p className="mt-1 text-[11px] italic text-[var(--color-text-muted)]">
               {issue.fix}
             </p>
           )}
@@ -92,68 +89,60 @@ function IssueRow({ issue }: { issue: ValidationIssue }) {
 
 export function ValidationPanel({ open, onOpenChange }: ValidationPanelProps) {
   const ast = useDiagramStore((s) => s.ast);
-  const [filter, setFilter] = useState<'all' | 'error' | 'warning'>('all');
-  const theme = useThemeState();
-  const isDark = theme === 'dark';
-  const sheetCls = isDark
-    ? 'border-zinc-800 bg-zinc-950'
-    : 'border-zinc-200 bg-white';
-  const titleCls = isDark ? 'text-zinc-100' : 'text-zinc-900';
+  const [filter, setFilter] = useState<Filter>('all');
 
-  const issues = useMemo(() => validateSchema(ast), [ast]);
+  const summary = useMemo(() => summarizeValidation(ast), [ast]);
   const filtered = useMemo(
-    () => (filter === 'all' ? issues : issues.filter((i) => i.severity === filter)),
-    [issues, filter],
+    () =>
+      filter === 'all'
+        ? summary.issues
+        : summary.issues.filter((issue) => issue.severity === filter),
+    [summary.issues, filter],
   );
-
-  const errorCount = issues.filter((i) => i.severity === 'error').length;
-  const warningCount = issues.filter((i) => i.severity === 'warning').length;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className={`w-full p-0 sm:max-w-md ${sheetCls}`}
+        className="w-full border-[var(--color-border-subtle)] bg-[var(--color-bg-app)] p-0 sm:max-w-md"
       >
-        <SheetHeader className={`border-b ${isDark ? 'border-zinc-800' : 'border-zinc-200'} px-4 py-3`}>
-          <SheetTitle className={`flex items-center gap-2 ${titleCls}`}>
-            <ShieldCheck className="h-4 w-4 text-indigo-400" />
+        <SheetHeader className="border-b border-[var(--color-border-subtle)] px-4 py-3">
+          <SheetTitle className="flex items-center gap-2 text-[var(--color-text-primary)]">
+            <Codicon name="shield" />
             Schema Validation
           </SheetTitle>
-          <SheetDescription className="text-zinc-500">
-            Automated checks for primary keys, naming collisions, and orphaned
-            references.
+          <SheetDescription className="text-[var(--color-text-muted)]">
+            Checks for primary keys, naming, indexes, and relationship targets.
           </SheetDescription>
         </SheetHeader>
 
-        {/* Summary */}
-        <div className="flex items-center gap-3 border-b border-zinc-800 px-4 py-2.5">
+        <div className="flex items-center gap-3 border-b border-[var(--color-border-subtle)] px-4 py-2.5">
           <Badge
             variant="outline"
-            className={`gap-1.5 border-rose-500/30 ${errorCount > 0 ? 'bg-rose-500/10 text-rose-400' : 'text-zinc-600'}`}
+            className={`gap-1.5 border-[var(--color-accent-danger)]/30 ${summary.errors > 0 ? 'bg-[var(--color-accent-danger)]/10 text-[var(--color-accent-danger)]' : 'text-[var(--color-text-muted)]'}`}
           >
-            <AlertCircle className="h-3 w-3" />
-            {errorCount} error{errorCount !== 1 ? 's' : ''}
+            <Codicon name="error" />
+            {summary.errors} error{summary.errors !== 1 ? 's' : ''}
           </Badge>
           <Badge
             variant="outline"
-            className={`gap-1.5 border-amber-500/30 ${warningCount > 0 ? 'bg-amber-500/10 text-amber-400' : 'text-zinc-600'}`}
+            className={`gap-1.5 border-[var(--color-accent-warning)]/30 ${summary.warnings > 0 ? 'bg-[var(--color-accent-warning)]/10 text-[var(--color-accent-warning)]' : 'text-[var(--color-text-muted)]'}`}
           >
-            <AlertTriangle className="h-3 w-3" />
-            {warningCount} warning{warningCount !== 1 ? 's' : ''}
+            <Codicon name="warning" />
+            {summary.warnings} warning{summary.warnings !== 1 ? 's' : ''}
           </Badge>
           <div className="ml-auto flex gap-1">
-            {(['all', 'error', 'warning'] as const).map((f) => (
+            {(['all', 'error', 'warning', 'info'] as const).map((next) => (
               <button
-                key={f}
-                onClick={() => setFilter(f)}
+                key={next}
+                onClick={() => setFilter(next)}
                 className={`rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${
-                  filter === f
-                    ? 'bg-zinc-800 text-zinc-200'
-                    : 'text-zinc-600 hover:text-zinc-400'
+                  filter === next
+                    ? 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)]'
+                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'
                 }`}
               >
-                {f}
+                {next}
               </button>
             ))}
           </div>
@@ -163,14 +152,12 @@ export function ValidationPanel({ open, onOpenChange }: ValidationPanelProps) {
           <div className="space-y-2 p-4">
             {filtered.length === 0 ? (
               <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/10">
-                  <CheckCircle2 className="h-7 w-7 text-emerald-400" />
-                </div>
+                <Codicon name="pass" className="text-[var(--color-accent-success)]" />
                 <div>
-                  <p className="text-sm font-medium text-zinc-200">
+                  <p className="text-sm font-medium text-[var(--color-text-primary)]">
                     No issues found
                   </p>
-                  <p className="mt-1 text-xs text-zinc-500">
+                  <p className="mt-1 text-xs text-[var(--color-text-muted)]">
                     The schema passes all validation checks.
                   </p>
                 </div>

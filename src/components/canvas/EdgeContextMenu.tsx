@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { Trash2, Link2, ArrowRight } from 'lucide-react';
+import { Codicon } from '@/components/ui/codicon';
 import { useDiagramStore } from '@/store/diagram-store';
 import type { Cardinality, SchemaReference } from '@/types/ast';
 import { toast } from 'sonner';
@@ -19,6 +19,7 @@ const UPDATE_ACTIONS = ['CASCADE', 'SET NULL', 'RESTRICT', 'NO ACTION'] as const
 
 export function EdgeContextMenu({ edgeId, x, y, onClose }: EdgeContextMenuProps) {
   const ast = useDiagramStore((s) => s.ast);
+  const setSelectedEdge = useDiagramStore((s) => s.setSelectedEdge);
   const updateReference = useDiagramStore((s) => s.updateReference);
   const deleteReference = useDiagramStore((s) => s.deleteReference);
   const ref = useRef<HTMLDivElement>(null);
@@ -49,12 +50,14 @@ export function EdgeContextMenu({ edgeId, x, y, onClose }: EdgeContextMenuProps)
   if (!edgeId || !reference) return null;
 
   const handleCardinality = (c: Cardinality) => {
+    setSelectedEdge(edgeId);
     updateReference(edgeId, { cardinality: c });
     toast.success(`Cardinality set to ${c}`);
     onClose();
   };
 
   const handleOnDelete = (action: typeof DELETE_ACTIONS[number]) => {
+    setSelectedEdge(edgeId);
     const next =
       reference.onDelete === action ? undefined : action;
     updateReference(edgeId, { onDelete: next });
@@ -63,6 +66,7 @@ export function EdgeContextMenu({ edgeId, x, y, onClose }: EdgeContextMenuProps)
   };
 
   const handleOnUpdate = (action: typeof UPDATE_ACTIONS[number]) => {
+    setSelectedEdge(edgeId);
     const next =
       reference.onUpdate === action ? undefined : action;
     updateReference(edgeId, { onUpdate: next });
@@ -71,6 +75,7 @@ export function EdgeContextMenu({ edgeId, x, y, onClose }: EdgeContextMenuProps)
   };
 
   const handleDelete = () => {
+    setSelectedEdge(null);
     deleteReference(edgeId);
     toast.success('Relationship deleted');
     onClose();
@@ -79,27 +84,27 @@ export function EdgeContextMenu({ edgeId, x, y, onClose }: EdgeContextMenuProps)
   return (
     <div
       ref={ref}
-      className="fixed z-50 w-60 rounded-lg border border-zinc-800 bg-zinc-950/95 p-2 shadow-2xl backdrop-blur-md"
+      className="fixed z-50 w-60 border border-[var(--color-border-subtle)] bg-[var(--color-bg-app)] p-2"
       style={{ left: x, top: y }}
     >
       {/* Header */}
-      <div className="mb-2 flex items-center gap-1.5 border-b border-zinc-800 px-1 pb-2">
-        <Link2 className="h-3.5 w-3.5 text-indigo-400" />
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+      <div className="mb-2 flex items-center gap-1.5 border-b border-[var(--color-border-subtle)] px-1 pb-2">
+        <Codicon name="link" />
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
           Relationship
         </span>
       </div>
-      <div className="mb-2 px-1 font-mono text-[11px] text-zinc-400">
+      <div className="mb-2 px-1 font-mono text-[11px] text-[var(--color-text-secondary)]">
         <span className="text-indigo-300">{reference.sourceTable}</span>
-        <span className="text-zinc-600">.{reference.sourceField}</span>
-        <ArrowRight className="mx-1 inline h-3 w-3 text-zinc-600" />
+        <span className="text-[var(--color-text-muted)]">.{reference.sourceField}</span>
+        <Codicon name="arrowRight" className="mx-1 text-[var(--color-text-muted)]" />
         <span className="text-emerald-300">{reference.targetTable}</span>
-        <span className="text-zinc-600">.{reference.targetField}</span>
+        <span className="text-[var(--color-text-muted)]">.{reference.targetField}</span>
       </div>
 
       {/* Cardinality */}
       <div className="mb-2">
-        <div className="mb-1 px-1 text-[10px] font-medium text-zinc-500">
+        <div className="mb-1 px-1 text-[10px] font-medium text-[var(--color-text-muted)]">
           Cardinality
         </div>
         <div className="grid grid-cols-3 gap-1">
@@ -107,11 +112,10 @@ export function EdgeContextMenu({ edgeId, x, y, onClose }: EdgeContextMenuProps)
             <button
               key={c}
               onClick={() => handleCardinality(c)}
-              className={`rounded px-2 py-1 text-[11px] font-mono font-medium transition-colors ${
-                reference.cardinality === c
+              className={`rounded px-2 py-1 text-[11px] font-mono font-medium transition-colors ${reference.cardinality === c
                   ? 'bg-indigo-600 text-white'
-                  : 'bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
-              }`}
+                  : 'bg-[var(--color-bg-panel)] text-[var(--color-text-muted)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)]'
+                }`}
             >
               {c}
             </button>
@@ -121,7 +125,7 @@ export function EdgeContextMenu({ edgeId, x, y, onClose }: EdgeContextMenuProps)
 
       {/* ON DELETE */}
       <div className="mb-2">
-        <div className="mb-1 px-1 text-[10px] font-medium text-zinc-500">
+        <div className="mb-1 px-1 text-[10px] font-medium text-[var(--color-text-muted)]">
           On Delete
         </div>
         <div className="grid grid-cols-2 gap-1">
@@ -129,11 +133,10 @@ export function EdgeContextMenu({ edgeId, x, y, onClose }: EdgeContextMenuProps)
             <button
               key={a}
               onClick={() => handleOnDelete(a)}
-              className={`rounded px-1.5 py-1 text-[10px] font-mono transition-colors ${
-                reference.onDelete === a
+              className={`rounded px-1.5 py-1 text-[10px] font-mono transition-colors ${reference.onDelete === a
                   ? 'bg-rose-600/80 text-white'
-                  : 'bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
-              }`}
+                  : 'bg-[var(--color-bg-panel)] text-[var(--color-text-muted)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)]'
+                }`}
             >
               {a}
             </button>
@@ -143,7 +146,7 @@ export function EdgeContextMenu({ edgeId, x, y, onClose }: EdgeContextMenuProps)
 
       {/* ON UPDATE */}
       <div className="mb-2">
-        <div className="mb-1 px-1 text-[10px] font-medium text-zinc-500">
+        <div className="mb-1 px-1 text-[10px] font-medium text-[var(--color-text-muted)]">
           On Update
         </div>
         <div className="grid grid-cols-2 gap-1">
@@ -151,11 +154,10 @@ export function EdgeContextMenu({ edgeId, x, y, onClose }: EdgeContextMenuProps)
             <button
               key={a}
               onClick={() => handleOnUpdate(a)}
-              className={`rounded px-1.5 py-1 text-[10px] font-mono transition-colors ${
-                reference.onUpdate === a
+              className={`rounded px-1.5 py-1 text-[10px] font-mono transition-colors ${reference.onUpdate === a
                   ? 'bg-amber-600/80 text-white'
-                  : 'bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
-              }`}
+                  : 'bg-[var(--color-bg-panel)] text-[var(--color-text-muted)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)]'
+                }`}
             >
               {a}
             </button>
@@ -168,7 +170,7 @@ export function EdgeContextMenu({ edgeId, x, y, onClose }: EdgeContextMenuProps)
         onClick={handleDelete}
         className="mt-1 flex w-full items-center gap-1.5 rounded px-2 py-1.5 text-xs text-rose-400 transition-colors hover:bg-rose-500/10 hover:text-rose-300"
       >
-        <Trash2 className="h-3.5 w-3.5" />
+        <Codicon name="trash" />
         Delete relationship
       </button>
     </div>

@@ -1,0 +1,13 @@
+---
+description: Prefer code over chat; stay terse; no lecture replies
+alwaysApply: true
+---
+
+# Execute-first
+
+- Code and edit. Do not narrate line-by-line or justify every choice.
+- Replies: ≤5 short sentences unless asked for detail. No preamble, no task recap, no “here’s why”.
+- Prefer patches over prose. Cite code only when needed.
+- Do not restate the plan mid-work. Mark todos; ship the next slice.
+- Ask only when blocked on an architecture decision. Otherwise pick a default and continue.
+- No architecture essays in chat — use `docs/BUILD.md`.
