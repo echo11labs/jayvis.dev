@@ -93,7 +93,8 @@ mv "$STAGE" "$APP"
 sudo systemctl restart jayvis
 
 ok=0
-for _ in $(seq 1 30); do
+deadline=$((SECONDS + 180))
+while (( SECONDS < deadline )); do
   if curl -sf -m 3 http://127.0.0.1:3000/ >/dev/null; then
     ok=1
     break
