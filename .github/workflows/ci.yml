@@ -36,12 +36,12 @@ jobs:
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: write
     env:
       DATABASE_URL: file:./prisma/build.db
       DBML_PARSER_URL: http://127.0.0.1:3031
       DBML_PARSER_TIMEOUT_MS: "5000"
-      DEPLOY_HOST: 35.202.154.195
-      DEPLOY_USER: echo11_labs
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -51,23 +51,23 @@ jobs:
       - run: npm ci
       - run: npx prisma generate
       - run: npm run build
-      - uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
-      - name: Trust the VM
+      - name: Pack the built app
         run: |
-          mkdir -p ~/.ssh
-          echo "$DEPLOY_HOST ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPkVblr/OrT0Gr6cJBLO+pBca3wc3Mo/hsAaa+XI98xI" >> ~/.ssh/known_hosts
-      - name: Upload the built app
-        run: |
-          ssh -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" 'rm -rf ~/jayvis-next && mkdir -p ~/jayvis-next'
-          rsync -az \
-            --exclude '.git/' \
-            --exclude 'node_modules/' \
-            --exclude '.env' \
+          tar -czf "$RUNNER_TEMP/jayvis-release.tar.gz" \
+            --exclude node_modules \
+            --exclude .git \
+            --exclude .env \
             --exclude '.env.*' \
             --exclude 'prisma/*.db' \
             --exclude 'prisma/*.db-journal' \
-            ./ "$DEPLOY_USER@$DEPLOY_HOST:~/jayvis-next/"
-      - name: Install, migrate, and restart
-        run: ssh -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" 'bash ~/jayvis-next/scripts/vm-deploy.sh'
+            .
+      - name: Publish the release the VM pulls
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "deploy-${GITHUB_SHA}" \
+            "$RUNNER_TEMP/jayvis-release.tar.gz" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Deploy ${GITHUB_SHA}" \
+            --notes "Built app for the VM." \
+            --latest
