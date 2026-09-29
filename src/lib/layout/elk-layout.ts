@@ -14,6 +14,27 @@ const DEFAULT_OPTIONS: Required<LayoutOptions> = {
   nodeNode: 80,
 };
 
+type ElkInstance = {
+  layout: (graph: unknown) => Promise<{ children?: Array<{ id: string; x?: number; y?: number }> }>;
+};
+
+let elkInstance: Promise<ElkInstance> | null = null;
+
+function loadElk(): Promise<ElkInstance> {
+  if (!elkInstance) {
+    elkInstance = import('elkjs/lib/elk.bundled.js').then(
+      (mod) => new mod.default() as ElkInstance,
+    );
+  }
+  return elkInstance;
+}
+
+/** Start the ELK download before the user asks for a layout. */
+export function warmupLayout(): void {
+  if (typeof window === 'undefined') return;
+  void loadElk();
+}
+
 /**
  * Runs the ELK layout algorithm against the current React Flow graph and
  * returns new nodes with computed positions. Edges are passed through.
@@ -31,9 +52,7 @@ export async function layoutDiagram(
 
   if (nodes.length === 0) return { nodes, edges };
 
-  // Dynamic import — keeps elkjs out of the initial bundle.
-  const ELK = (await import('elkjs/lib/elk.bundled.js')).default;
-  const elk = new ELK();
+  const elk = await loadElk();
   const nodeIds = new Set(nodes.map((node) => node.id));
 
   const elkGraph = {
@@ -43,8 +62,9 @@ export async function layoutDiagram(
       'elk.direction': opts.direction,
       'elk.layered.spacing.nodeNodeBetweenLayers': String(opts.nodeNodeBetweenLayers),
       'elk.spacing.nodeNode': String(opts.nodeNode),
-      'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
-      'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
+      'elk.layered.thoroughness': '1',
+      'elk.layered.crossingMinimization.strategy': 'INTERACTIVE',
+      'elk.layered.nodePlacement.strategy': 'SIMPLE',
       'elk.layered.spacing.edgeNodeBetweenLayers': '60',
     },
     children: nodes.map((node) => ({

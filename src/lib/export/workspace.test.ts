@@ -111,7 +111,7 @@ describe('export workspace files', () => {
   it('builds named files for each format', () => {
     expect(buildExportFile('sql', withRef).filename).toBe('schema.sql');
     expect(buildExportFile('sql', withRef, {}, 'Ecommerce DB').filename).toBe('ecommerce-db.sql');
-    expect(buildExportFile('sqlite', withRef).content).toContain('CREATE TABLE IF NOT EXISTS "users"');
+    expect(buildExportFile('sqlite', withRef).content).toContain('CREATE TABLE "users"');
     expect(buildExportFile('prisma', withRef).filename).toBe('schema.prisma');
     expect(buildExportFile('json', withRef).content).toContain('"users"');
     const svg = exportErdSvg(withRef, {

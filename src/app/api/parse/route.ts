@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isLocalRequest, remoteForbiddenBody } from '@/lib/local-request';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -67,6 +68,10 @@ function unavailableResponse(error: unknown) {
 }
 
 export async function POST(req: NextRequest) {
+  if (!isLocalRequest(req.headers)) {
+    return NextResponse.json(remoteForbiddenBody(), { status: 403 });
+  }
+
   try {
     const body = await req.text();
     const upstream = await fetchParser('/parse', {

@@ -57,11 +57,11 @@ export function ThemePicker({ open, onOpenChange }: ThemePickerProps) {
                     <Codicon name="check" className={option.value === 'light-plus' ? 'text-neutral-900' : 'text-white'} />
                   )}
                 </span>
-                <span className={`mt-auto text-[9px] drop-shadow-sm ${option.value === 'light-plus' ? 'text-neutral-700' : 'text-white/80'}`}>
+                <span className={`mt-auto text-[9px] drop-shadow-sm ${option.value === 'light-plus' || option.value === 'system' ? 'text-neutral-800' : 'text-white/80'}`}>
                   {option.value === 'system' ? 'Follow OS appearance' : option.value.replace('-', ' ')}
                 </span>
                 {option.value === 'system' && (
-                  <Codicon name="desktop" className="absolute bottom-3 right-3 text-white" />
+                  <Codicon name="desktop" className="absolute bottom-3 right-3 text-neutral-900" />
                 )}
               </button>
             );

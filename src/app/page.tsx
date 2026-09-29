@@ -32,15 +32,16 @@ import { ThemePicker } from '@/components/workspace/ThemePicker';
 import { SqlBuilderPanel } from '@/components/workspace/SqlBuilderPanel';
 import { CodeEditor } from '@/components/editor/CodeEditor';
 import { useDiagramStore } from '@/store/diagram-store';
-import { gridLayout, layoutDiagram } from '@/lib/layout/elk-layout';
-import { baselineSlot, buildMigration, readBaseline } from '@/lib/migrations';
+import { gridLayout, layoutDiagram, warmupLayout } from '@/lib/layout/elk-layout';
+import { baselineSlot, buildMigration, clearBaselineStorage, readBaseline, readBaselineMap } from '@/lib/migrations';
 import { SAMPLE_SCHEMAS } from '@/lib/samples';
-import { loadWorkspace, saveWorkspace } from '@/lib/persistence';
+import { loadWorkspace, openStudio, readStudio, saveWorkspace } from '@/lib/persistence';
 import {
   activeBranch,
   activeWorkspace,
   addBranch,
   addWorkspace,
+  clearCatalogStorage,
   createCatalog,
   readCatalog,
   renameActive,
@@ -144,6 +145,7 @@ export default function Home() {
   const [leftWidth, setLeftWidth] = useState(240);
   const [rightWidth, setRightWidth] = useState(300);
   const [activeView, setActiveView] = useState<CanvasView>('split');
+  const [inspectorOpen, setInspectorOpen] = useState(true);
   const [workspaceName, setWorkspaceName] = useState('ecommerce-db');
   const [catalog, setCatalog] = useState<WorkspaceCatalog | null>(null);
   const [parseErrorLine, setParseErrorLine] = useState<number | null>(null);
@@ -174,7 +176,8 @@ export default function Home() {
     let cancelled = false;
     (async () => {
       try {
-        const persisted = await loadWorkspace();
+        const studio = await readStudio();
+        const persisted = studio?.snapshot ?? await loadWorkspace();
         if (cancelled) return;
         const seededText = persisted?.rawText
           ? sanitizeDbmlText(persisted.rawText)
@@ -183,10 +186,24 @@ export default function Home() {
           seededText,
           window.localStorage.getItem(WORKSPACE_NAME_KEY) || 'ecommerce-db',
         );
-        let nextCatalog = readCatalog();
-        if (!nextCatalog) {
-          nextCatalog = createCatalog(seededName, seededText);
-          writeCatalog(nextCatalog);
+        let nextCatalog = studio?.catalog ?? readCatalog();
+        if (!nextCatalog) nextCatalog = createCatalog(seededName, seededText);
+        if (!studio) {
+          await openStudio({
+            fileVersion: 1,
+            snapshot: persisted ?? {
+              workspaceVersion: 2,
+              ast: { version: '1.0', tables: {}, references: {} },
+              rawText: seededText,
+              savedAt: Date.now(),
+            },
+            catalog: nextCatalog,
+            baselines: readBaselineMap(),
+            migrations: [],
+          });
+          clearCatalogStorage();
+          clearBaselineStorage();
+          window.localStorage.removeItem(WORKSPACE_NAME_KEY);
         }
         const workspace = activeWorkspace(nextCatalog);
         const branch = activeBranch(workspace);
@@ -195,7 +212,6 @@ export default function Home() {
           readBaseline(baselineSlot(activeWorkspace(nextCatalog).id, activeBranch(activeWorkspace(nextCatalog)).name)),
         );
         setWorkspaceName(workspace.name);
-        window.localStorage.setItem(WORKSPACE_NAME_KEY, workspace.name);
         if (persisted && branch.rawText === sanitizeDbmlText(persisted.rawText)) {
           hydrateWorkspace(persisted.ast, branch.rawText);
         } else if (useDiagramStore.getState().rawText !== branch.rawText) {
@@ -203,7 +219,7 @@ export default function Home() {
           setRawText(branch.rawText);
         }
         setStatusMessage(
-          persisted ? 'Restored saved workspace from local storage' : `Opened ${workspace.name}`,
+          persisted ? 'Restored saved workspace' : `Opened ${workspace.name}`,
         );
       } catch {
         if (!cancelled && useDiagramStore.getState().rawText === '') {
@@ -229,8 +245,8 @@ export default function Home() {
   useEffect(() => {
     if (!hydrated) return;
     if (sourceOrigin === 'canvas' || sourceOrigin === 'mcp') return;
-    const generation = beginParse();
     if (!rawText.trim()) {
+      const generation = beginParse();
       setParsedAST(
         { version: '1.0', tables: {}, references: {} },
         [],
@@ -244,6 +260,7 @@ export default function Home() {
     if (parseTimer.current) clearTimeout(parseTimer.current);
     const controller = new AbortController();
     parseTimer.current = setTimeout(async () => {
+      const generation = beginParse();
       try {
         const res = await fetch('/api/parse', {
           method: 'POST',
@@ -319,7 +336,7 @@ export default function Home() {
         setParseErrorLine(null);
         setStatusMessage('Parse request failed');
       }
-    }, 300);
+    }, 160);
     return () => {
       if (parseTimer.current) clearTimeout(parseTimer.current);
       controller.abort();
@@ -336,15 +353,20 @@ export default function Home() {
   ]);
 
   useEffect(() => {
+    warmupLayout();
+  }, [hydrated]);
+
+  useEffect(() => {
     if (!hydrated || !settings.autoSave) return;
     const timer = setTimeout(() => {
       const currentAST = useDiagramStore.getState().ast;
       const currentNodes = useDiagramStore.getState().nodes;
+      const nodeById = new Map(currentNodes.map((node) => [node.id, node]));
       const persistable: import('@/types/ast').DatabaseAST = {
         ...currentAST,
         tables: Object.fromEntries(
           Object.entries(currentAST.tables).map(([name, table]) => {
-            const node = currentNodes.find((n) => n.id === name);
+            const node = nodeById.get(name);
             return [
               name,
               {
@@ -413,7 +435,6 @@ export default function Home() {
     const workspace = activeWorkspace(next);
     const branch = activeBranch(workspace);
     setWorkspaceName(workspace.name);
-    window.localStorage.setItem(WORKSPACE_NAME_KEY, workspace.name);
     if (useDiagramStore.getState().rawText !== branch.rawText) {
       armAutoLayout();
       setRawText(branch.rawText);
@@ -490,7 +511,6 @@ export default function Home() {
           });
           const nextName = SAMPLE_WORKSPACES[name];
           setWorkspaceName(nextName);
-          window.localStorage.setItem(WORKSPACE_NAME_KEY, nextName);
           setCatalog((current) => {
             if (!current) return current;
             const next = renameActive(withActiveText(current, SAMPLE_SCHEMAS[name]), nextName);
@@ -506,30 +526,13 @@ export default function Home() {
 
   const handleExport = useCallback((format: ExportFormat) => {
     const state = useDiagramStore.getState();
-    const positions = nodePositions(state.nodes);
-    void (async () => {
-      try {
-        const res = await fetch('/api/export', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            format,
-            ast: state.ast,
-            positions,
-            name: workspaceName,
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok || typeof data.content !== 'string' || typeof data.filename !== 'string') {
-          throw new Error(data.error || 'Export failed');
-        }
-        const { downloadText } = await import('@/lib/export/download');
-        downloadText(data.filename, data.content, data.mime || 'text/plain');
-        toast.success(`Exported ${data.filename}`);
-      } catch {
-        toast.success(exportWorkspace(format, state.ast, positions, workspaceName));
-      }
-    })();
+    try {
+      toast.success(
+        exportWorkspace(format, state.ast, nodePositions(state.nodes), workspaceName),
+      );
+    } catch {
+      toast.error('Export failed');
+    }
   }, [workspaceName]);
 
   const handleSave = useCallback(() => {
@@ -564,6 +567,7 @@ export default function Home() {
     (name: string) => {
       setSelectedEdge(null);
       setSelectedTable(name);
+      setInspectorOpen(true);
     },
     [setSelectedEdge, setSelectedTable],
   );
@@ -615,7 +619,7 @@ export default function Home() {
         setPaletteOpen(true);
         return;
       }
-      if (cmd && e.key.toLowerCase() === 's') {
+      if (cmd && !e.shiftKey && e.key.toLowerCase() === 's') {
         e.preventDefault();
         handleSave();
         return;
@@ -662,8 +666,7 @@ export default function Home() {
       }
       if (cmd && e.shiftKey && e.key.toLowerCase() === 'b') {
         e.preventDefault();
-        setSelectedTable(null);
-        setSelectedEdge(null);
+        setInspectorOpen((open) => !open);
         return;
       }
       if (cmd && e.shiftKey && e.key.toLowerCase() === 'v') {
@@ -729,6 +732,20 @@ export default function Home() {
   }, [handleAutoLayout, handleExport, handleGenerateMigration, handleLeftToggle, handleSave, handleSettings, selectedTable, setSelectedEdge, setSqlBuilderOpen, setSelectedTable]);
 
   useEffect(() => {
+    return useDiagramStore.subscribe((state, prev) => {
+      const pickedTable = state.selectedTable && state.selectedTable !== prev.selectedTable;
+      const pickedEdge = state.selectedEdge && state.selectedEdge !== prev.selectedEdge;
+      if (pickedTable || pickedEdge) setInspectorOpen(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    const openInspector = () => setInspectorOpen(true);
+    window.addEventListener('jayvis:open-inspector', openInspector);
+    return () => window.removeEventListener('jayvis:open-inspector', openInspector);
+  }, []);
+
+  useEffect(() => {
     const addTableHandler = () => setAddTableOpen(true);
     const autoLayoutHandler = () => handleAutoLayout();
     const validateHandler = () => setValidationOpen(true);
@@ -761,7 +778,7 @@ export default function Home() {
     event.currentTarget.setPointerCapture(event.pointerId);
     let lastWidth = leftWidth;
     const move = (moveEvent: PointerEvent) => {
-      lastWidth = Math.min(320, Math.max(48, moveEvent.clientX));
+      lastWidth = Math.min(320, Math.max(200, moveEvent.clientX - 32));
       setLeftWidth(lastWidth);
     };
     const up = () => {
@@ -796,7 +813,7 @@ export default function Home() {
     leftCollapsed,
     leftWidth,
     rightWidth,
-    inspector: true,
+    inspector: inspectorOpen,
     split: activeView === 'split',
   });
 
@@ -870,6 +887,11 @@ export default function Home() {
         onActiveView={setActiveView}
         onSettings={handleSettings}
         onValidate={() => setValidationOpen(true)}
+        onFind={() => {
+          window.dispatchEvent(
+            new Event(activeView === 'erd' ? 'jayvis:canvas-find' : 'jayvis:editor-find'),
+          );
+        }}
         onWorkspaceName={(name) => handleRenameWorkspace(name)}
         workspaces={(catalog ? catalog.workspaces : [{ id: 'current', name: workspaceName, branch: 'main', branches: [] }]).map(
           (workspace) => ({
@@ -927,7 +949,7 @@ export default function Home() {
             />
             <div
               onPointerDown={startResizeLeft}
-              className="absolute right-0 top-0 z-20 h-full w-px cursor-col-resize bg-transparent hover:bg-[var(--color-accent-primary)] hover:shadow-[0_0_0_1px_var(--color-accent-primary)]"
+              className="absolute -right-1 top-0 z-20 h-full w-2 cursor-col-resize bg-transparent hover:bg-[var(--color-accent-primary)]"
               aria-hidden="true"
             />
           </div>
@@ -957,7 +979,7 @@ export default function Home() {
             <>
                 <div
                   onPointerDown={startResizeRight}
-                  className="relative z-10 h-full w-px shrink-0 cursor-col-resize bg-transparent hover:bg-[var(--color-accent-primary)] hover:shadow-[0_0_0_1px_var(--color-accent-primary)]"
+                  className="relative z-10 h-full w-2 shrink-0 cursor-col-resize bg-transparent hover:bg-[var(--color-accent-primary)]"
                   aria-hidden="true"
                 />
                 <div
@@ -968,24 +990,18 @@ export default function Home() {
                     onLoadSample={handleLoadSample}
                     onAddTable={() => setAddTableOpen(true)}
                     onImport={handleImport}
-                    onClose={() => {
-                      setSelectedTable(null);
-                      setSelectedEdge(null);
-                    }}
+                    onClose={() => setInspectorOpen(false)}
                   />
                 </div>
             </>
             )}
-            {!fitted.showRight && (
+            {inspectorOpen && !fitted.showRight && (
               <div className="absolute inset-y-0 right-0 z-30 w-[min(100%,20rem)] border-l border-[var(--color-border-subtle)] bg-[var(--color-bg-panel)] shadow-sm">
                 <ContextPanel
                   onLoadSample={handleLoadSample}
                   onAddTable={() => setAddTableOpen(true)}
                   onImport={handleImport}
-                  onClose={() => {
-                    setSelectedTable(null);
-                    setSelectedEdge(null);
-                  }}
+                  onClose={() => setInspectorOpen(false)}
                 />
               </div>
             )}
@@ -1025,7 +1041,15 @@ export default function Home() {
             : null
         }
       />
-      <SqlBuilderPanel open={sqlBuilderOpen} onOpenChange={setSqlBuilderOpen} />
+      <SqlBuilderPanel
+        open={sqlBuilderOpen}
+        onOpenChange={setSqlBuilderOpen}
+        slot={
+          catalog
+            ? baselineSlot(activeWorkspace(catalog).id, activeWorkspace(catalog).branch)
+            : null
+        }
+      />
       <ValidationPanel open={validationOpen} onOpenChange={setValidationOpen} />
       <AddTableDialog open={addTableOpen} onOpenChange={setAddTableOpen} />
       <ShortcutsOverlay open={shortcutsOpen} onOpenChange={setShortcutsOpen} />

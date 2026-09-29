@@ -1,5 +1,6 @@
 import type { DatabaseAST } from '@/types/ast';
 import { diffSchema, summarizeDiff } from '@/lib/diff/schema-diff';
+import { liveBaselines, storeBaseline } from '@/lib/persistence';
 
 const STORAGE_KEY = 'jayvis-migration-baselines';
 
@@ -38,19 +39,31 @@ function readMap(): Record<string, BaselineRecord> {
   }
 }
 
+export function readBaselineMap(): Record<string, BaselineRecord> {
+  return readMap();
+}
+
+export function clearBaselineStorage() {
+  if (typeof localStorage === 'undefined') return;
+  localStorage.removeItem(STORAGE_KEY);
+}
+
 export function readBaseline(slot: string): DatabaseAST | null {
-  const record = readMap()[slot];
+  const live = liveBaselines();
+  const record = (live ?? readMap())[slot];
   if (!record?.ast || !record.ast.tables || !record.ast.references) return null;
   return record.ast;
 }
 
 export function writeBaseline(slot: string, ast: DatabaseAST, capturedAt = Date.now()) {
-  if (typeof localStorage === 'undefined') return;
-  const next = readMap();
-  next[slot] = {
+  const stored = {
     ast: JSON.parse(JSON.stringify(ast)) as DatabaseAST,
     capturedAt,
   };
+  if (storeBaseline(slot, stored.ast, stored.capturedAt)) return;
+  if (typeof localStorage === 'undefined') return;
+  const next = readMap();
+  next[slot] = stored;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
 }
 

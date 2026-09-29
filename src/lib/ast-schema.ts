@@ -7,6 +7,9 @@ const fieldConstraintSchema = z.object({
   isNullable: z.boolean().optional(),
   defaultValue: z.string().optional(),
   isAutoincrement: z.boolean().optional(),
+  isIdentity: z.boolean().optional(),
+  generated: z.string().optional(),
+  check: z.string().optional(),
 });
 
 const schemaFieldSchema = z.object({
@@ -21,6 +24,13 @@ const schemaIndexSchema = z.object({
   name: z.string().optional(),
   columns: z.array(z.string()),
   isUnique: z.boolean().optional(),
+  method: z.enum(['btree', 'hash', 'gin', 'gist']).optional(),
+  where: z.string().optional(),
+});
+
+const schemaUniqueSchema = z.object({
+  name: z.string().optional(),
+  columns: z.array(z.string()),
 });
 
 const schemaTableSchema = z.object({
@@ -30,6 +40,9 @@ const schemaTableSchema = z.object({
   color: z.string().optional(),
   fields: z.array(schemaFieldSchema),
   indexes: z.array(schemaIndexSchema).optional(),
+  primaryKey: z.array(z.string()).optional(),
+  uniques: z.array(schemaUniqueSchema).optional(),
+  checks: z.array(z.string()).optional(),
   position: z
     .object({
       x: z.number(),
@@ -43,9 +56,13 @@ const schemaReferenceSchema = z.object({
   id: z.string().min(1),
   sourceTable: z.string().min(1),
   sourceField: z.string().min(1),
+  sourceFields: z.array(z.string()).optional(),
   targetTable: z.string().min(1),
   targetField: z.string().min(1),
+  targetFields: z.array(z.string()).optional(),
   cardinality: z.enum(['1:1', '1:N', 'N:M']),
+  name: z.string().optional(),
+  deferrable: z.boolean().optional(),
   onDelete: z.enum(['CASCADE', 'SET NULL', 'RESTRICT', 'NO ACTION']).optional(),
   onUpdate: z.enum(['CASCADE', 'SET NULL', 'RESTRICT', 'NO ACTION']).optional(),
 });

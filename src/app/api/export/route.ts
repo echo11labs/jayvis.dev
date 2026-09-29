@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isLocalRequest, remoteForbiddenBody } from '@/lib/local-request';
 import { z } from 'zod';
 import { databaseASTSchema } from '@/lib/ast-schema';
 import { buildExportFile, type ExportFormat } from '@/lib/export/workspace';
@@ -21,6 +22,10 @@ const bodySchema = z.object({
  * Builds a downloadable schema file from the current AST.
  */
 export async function POST(req: NextRequest) {
+  if (!isLocalRequest(req.headers)) {
+    return NextResponse.json(remoteForbiddenBody(), { status: 403 });
+  }
+
   let body: unknown;
   try {
     body = await req.json();

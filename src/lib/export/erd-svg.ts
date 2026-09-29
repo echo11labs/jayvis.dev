@@ -82,10 +82,10 @@ export function exportErdSvg(
     const ty = tgt.y + HEADER_H + (tgtFieldIdx >= 0 ? tgtFieldIdx : 0) * ROW_H + ROW_H / 2 + offsetY;
     const midX = (sx + tx) / 2;
     parts.push(
-      `<path d="M ${sx} ${sy} C ${midX} ${sy}, ${midX} ${ty}, ${tx} ${ty}" stroke="#6366F1" stroke-width="2" fill="none" opacity="0.8"/>`,
+      `<path d="M ${sx} ${sy} C ${midX} ${sy}, ${midX} ${ty}, ${tx} ${ty}" stroke="#c45c26" stroke-width="2" fill="none" opacity="0.8"/>`,
     );
     parts.push(
-      `<circle cx="${tx}" cy="${ty}" r="3" fill="#6366F1"/>`,
+      `<circle cx="${tx}" cy="${ty}" r="3" fill="#c45c26"/>`,
     );
     if (ref.cardinality) {
       parts.push(
@@ -99,7 +99,7 @@ export function exportErdSvg(
     const box = tableBoxes[t.name];
     const x = box.x + offsetX;
     const y = box.y + offsetY;
-    const color = t.color || '#6366F1';
+    const color = t.color || '#c45c26';
 
     // Card shadow.
     parts.push(

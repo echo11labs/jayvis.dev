@@ -25,6 +25,9 @@ interface FieldConstraint {
   isNullable?: boolean;
   defaultValue?: string;
   isAutoincrement?: boolean;
+  isIdentity?: boolean;
+  generated?: string;
+  check?: string;
 }
 
 function normalizeType(typeObj: any): string {
@@ -130,6 +133,9 @@ export function parseDbml(dbml: string) {
             isNullable: f.pk || f.increment ? false : f.not_null === undefined ? true : !f.not_null,
             defaultValue: normalizeDefault(f.dbdefault),
             isAutoincrement: !!f.increment,
+            isIdentity: f.increment && /identity/i.test(String(f.note || '')) ? true : undefined,
+            generated: f.generated ? String(f.generated) : undefined,
+            check: f.check ? String(f.check) : undefined,
           };
           return {
             id: `${tableName}.${f.name}`,
@@ -140,13 +146,32 @@ export function parseDbml(dbml: string) {
           };
         });
 
-        const indexes = (t.indexes || []).map((idx: any) => ({
-          name: idx.name || undefined,
-          columns: (idx.columns || [])
+        const indexes: Array<{ name?: string; columns: string[]; isUnique: boolean; method?: string; where?: string }> = [];
+        const uniques: Array<{ name?: string; columns: string[] }> = [];
+        const checks: string[] = [];
+        let primaryKey: string[] | undefined;
+        for (const idx of t.indexes || []) {
+          const columns = (idx.columns || [])
             .map((c: any) => c?.value ?? c?.name ?? String(c))
-            .filter(Boolean),
-          isUnique: !!idx.unique,
-        }));
+            .filter(Boolean);
+          const kind = String(idx.type || '').toLowerCase();
+          if (kind === 'check') {
+            checks.push(columns.join(', '));
+            continue;
+          }
+          if (idx.pk && columns.length > 1) primaryKey = columns;
+          if (idx.unique && columns.length > 1) {
+            uniques.push({ name: idx.name || undefined, columns });
+          }
+          const method = kind === 'btree' || kind === 'hash' || kind === 'gin' || kind === 'gist' ? kind : undefined;
+          indexes.push({
+            name: idx.name || undefined,
+            columns,
+            isUnique: !!idx.unique,
+            method,
+            where: idx.where ? String(idx.where) : undefined,
+          });
+        }
 
         const table = {
           id: tableName,
@@ -155,6 +180,9 @@ export function parseDbml(dbml: string) {
           color,
           fields,
           indexes,
+          primaryKey,
+          uniques: uniques.length ? uniques : undefined,
+          checks: checks.length ? checks : undefined,
           position: { x: 0, y: 0 },
         };
         tables[tableName] = table;
@@ -173,8 +201,10 @@ export function parseDbml(dbml: string) {
 
         const source = e[0];
         const target = e[1];
-        const sourceField = (source.fieldNames || [])[0] || 'id';
-        const targetField = (target.fieldNames || [])[0] || 'id';
+        const sourceNames = source.fieldNames || [];
+        const targetNames = target.fieldNames || [];
+        const sourceField = sourceNames[0] || 'id';
+        const targetField = targetNames[0] || 'id';
         const id = refId(r, i);
 
         const cardinality = deriveCardinality(e);
@@ -189,6 +219,9 @@ export function parseDbml(dbml: string) {
           cardinality,
           onDelete: r.onDelete,
           onUpdate: r.onUpdate,
+          sourceFields: sourceNames.length > 1 ? sourceNames : undefined,
+          targetFields: targetNames.length > 1 ? targetNames : undefined,
+          deferrable: r.deferrable === true ? true : undefined,
         };
 
         edges.push({
@@ -259,19 +292,58 @@ export function parseDbml(dbml: string) {
   }
 }
 
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
-};
+const PARSE_CACHE_LIMIT = 32;
+const parseCache = new Map<string, string>();
+
+function cachedParseJson(dbml: string): string {
+  const hit = parseCache.get(dbml);
+  if (hit !== undefined) {
+    parseCache.delete(dbml);
+    parseCache.set(dbml, hit);
+    return hit;
+  }
+  const json = JSON.stringify(parseDbml(dbml));
+  parseCache.set(dbml, json);
+  if (parseCache.size > PARSE_CACHE_LIMIT) {
+    const oldest = parseCache.keys().next().value;
+    if (oldest !== undefined) parseCache.delete(oldest);
+  }
+  return json;
+}
+
+function sendRaw(
+  request: IncomingMessage,
+  response: ServerResponse,
+  status: number,
+  json: string,
+) {
+  response.writeHead(status, {
+    ...corsHeaders(request),
+    'Content-Type': 'application/json; charset=utf-8',
+  });
+  response.end(json);
+}
+
+function corsHeaders(request: IncomingMessage) {
+  const origin = request.headers.origin;
+  const local =
+    typeof origin === 'string' &&
+    /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(origin);
+  return {
+    ...(local ? { 'Access-Control-Allow-Origin': origin, Vary: 'Origin' } : {}),
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+  };
+}
 
 function sendJson(
+  request: IncomingMessage,
   response: ServerResponse,
   status: number,
   payload: unknown,
 ) {
   response.writeHead(status, {
-    ...CORS_HEADERS,
+    ...corsHeaders(request),
     'Content-Type': 'application/json; charset=utf-8',
   });
   response.end(JSON.stringify(payload));
@@ -294,13 +366,13 @@ export function createParserServer() {
     const url = new URL(request.url ?? '/', `http://${HOST}:${PORT}`);
 
     if (request.method === 'OPTIONS') {
-      response.writeHead(204, CORS_HEADERS);
+      response.writeHead(204, corsHeaders(request));
       response.end();
       return;
     }
 
     if (url.pathname === '/health' && request.method === 'GET') {
-      sendJson(response, 200, {
+      sendJson(request, response, 200, {
         ok: true,
         service: 'jayvis-dbml-parser',
       });
@@ -311,17 +383,17 @@ export function createParserServer() {
       try {
         const body = await readJsonBody(request) as { dbml?: unknown };
         if (typeof body.dbml !== 'string') {
-          sendJson(response, 400, {
+          sendJson(request, response, 400, {
             error: 'Missing or invalid "dbml" field',
           });
           return;
         }
 
-        sendJson(response, 200, parseDbml(body.dbml));
+        sendRaw(request, response, 200, cachedParseJson(body.dbml));
       } catch (error) {
         const message =
           error instanceof Error ? error.message : 'Invalid JSON payload';
-        sendJson(response, message === 'Payload too large' ? 413 : 400, {
+        sendJson(request, response, message === 'Payload too large' ? 413 : 400, {
           error:
             message === 'Unexpected end of JSON input'
               ? 'Invalid JSON payload'
@@ -331,7 +403,7 @@ export function createParserServer() {
       return;
     }
 
-    sendJson(response, 404, { error: 'Not found' });
+    sendJson(request, response, 404, { error: 'Not found' });
   });
 }
 

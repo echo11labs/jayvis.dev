@@ -54,8 +54,13 @@ export function SchemaSearch() {
       e.preventDefault();
       setOpen((v) => !v);
     };
+    const openFind = () => setOpen(true);
     window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    window.addEventListener('jayvis:canvas-find', openFind);
+    return () => {
+      window.removeEventListener('keydown', handler);
+      window.removeEventListener('jayvis:canvas-find', openFind);
+    };
   }, []);
 
   return (
@@ -100,7 +105,7 @@ export function SchemaSearch() {
                 >
                   <span
                     className="h-2 w-2 flex-shrink-0 rounded-full"
-                    style={{ backgroundColor: t.color || '#6366F1' }}
+                    style={{ backgroundColor: t.color || 'var(--color-accent-primary)' }}
                   />
                   <span className="font-mono text-[var(--color-text-primary)]">{t.name}</span>
                   <span className="ml-auto font-mono text-[10px] text-[var(--color-text-muted)]">

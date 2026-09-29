@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useDiagramStore } from '@/store/diagram-store';
 import { applyTheme, useThemeName, THEME_OPTIONS } from '@/hooks/use-theme-state';
@@ -40,6 +40,19 @@ function cardinalityMark(value: string) {
   return '1:*';
 }
 
+function EngineLabel() {
+  const [label, setLabel] = useState('SQLite');
+  useEffect(() => {
+    const read = () => {
+      setLabel(window.localStorage.getItem('jayvis-sql-engine') === 'postgres' ? 'PostgreSQL' : 'SQLite');
+    };
+    read();
+    window.addEventListener('jayvis-sql-engine', read);
+    return () => window.removeEventListener('jayvis-sql-engine', read);
+  }, []);
+  return <p className="mt-1 pl-6 text-[11px] text-[var(--color-text-muted)]">{label}</p>;
+}
+
 export function LeftPanel({
   workspaceName,
   onToggle,
@@ -60,6 +73,7 @@ export function LeftPanel({
     enums: false,
     groups: false,
     samples: false,
+    views: true,
     settings: false,
   });
   const [query, setQuery] = useState('');
@@ -180,7 +194,7 @@ export function LeftPanel({
           <Mark name="database" className="text-[var(--color-text-muted)]" />
           <span className="truncate text-[var(--color-text-primary)]">{workspaceName}</span>
         </div>
-        <p className="mt-1 pl-6 text-[11px] text-[var(--color-text-muted)]">PostgreSQL 16</p>
+        <EngineLabel />
       </div>
 
       <ScrollArea className="flex-1">
@@ -294,6 +308,15 @@ export function LeftPanel({
             </div>
           ))}
         </Disclosure>}
+
+        <Disclosure
+          label="Views"
+          count={0}
+          open={open.views}
+          onOpenChange={() => toggleSection('views')}
+        >
+          <EmptyLine>None</EmptyLine>
+        </Disclosure>
 
         <Disclosure
           label="Samples"
@@ -423,7 +446,16 @@ function CatalogRow({
     >
       <Mark name={icon ?? 'link'} className="text-[var(--color-text-muted)]" />
       <span className="min-w-0 flex-1 truncate">{label}</span>
-      {severity && <Mark name={severity} className="text-[var(--color-accent-danger)]" />}
+      {severity && (
+        <Mark
+          name={severity}
+          className={
+            severity === 'warning'
+              ? 'text-[var(--color-accent-warning)]'
+              : 'text-[var(--color-accent-danger)]'
+          }
+        />
+      )}
       {detail && <span className="text-[10px] text-[var(--color-text-muted)]">{detail}</span>}
     </button>
   );

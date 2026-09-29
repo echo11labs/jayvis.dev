@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isLocalRequest, remoteForbiddenBody } from '@/lib/local-request';
 import { databaseASTSchema } from '@/lib/ast-schema';
 import { buildMigration, prepareMigrationAst } from '@/lib/migrations';
 import { z } from 'zod';
@@ -16,6 +17,10 @@ const bodySchema = z.object({
  * Diff a saved baseline against the current schema and return PostgreSQL UP/DOWN SQL.
  */
 export async function POST(req: NextRequest) {
+  if (!isLocalRequest(req.headers)) {
+    return NextResponse.json(remoteForbiddenBody(), { status: 403 });
+  }
+
   let body: unknown;
   try {
     body = await req.json();

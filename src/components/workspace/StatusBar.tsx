@@ -87,11 +87,9 @@ export function StatusBar({
           }`}
         />
         {readyLabel}
-        <span className="select-none font-normal text-[var(--color-text-muted)]"> ·</span>
       </button>
       <button type="button" onClick={onOpenProblems} className="px-3 font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]">
         Problems{problemCount > 0 ? ` ${problemCount}` : ''}
-        <span className="select-none font-normal text-[var(--color-text-muted)]"> ·</span>
       </button>
       </div>
       {(onOpenMigration || onOpenSql) && (
@@ -99,13 +97,11 @@ export function StatusBar({
           {onOpenMigration && (
             <button type="button" onClick={onOpenMigration} className="px-3 hover:text-[var(--color-text-primary)]">
               Migration{migrationCount > 0 ? ` ${migrationCount}` : ''}
-              <span className="select-none text-[var(--color-text-muted)]"> ·</span>
             </button>
           )}
           {onOpenSql && (
             <button type="button" onClick={onOpenSql} className="px-3 hover:text-[var(--color-text-primary)]">
               SQL
-              <span className="select-none text-[var(--color-text-muted)]"> ·</span>
             </button>
           )}
         </div>

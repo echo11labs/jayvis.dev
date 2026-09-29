@@ -40,6 +40,7 @@ interface ToolbarProps {
   onActiveView: (view: CanvasView) => void;
   onSettings: () => void;
   onValidate: () => void;
+  onFind: () => void;
   onWorkspaceName?: (name: string) => void;
   workspaces: Array<{ id: string; name: string; active: boolean }>;
   branches: Array<{ name: string; active: boolean }>;
@@ -79,6 +80,7 @@ export function Toolbar({
   onActiveView,
   onSettings,
   onValidate,
+  onFind,
   onWorkspaceName,
   workspaces,
   branches,
@@ -186,7 +188,7 @@ export function Toolbar({
   return (
     <header
       suppressHydrationWarning
-      className="relative flex h-11 shrink-0 items-center border-b border-[var(--color-border-subtle)] bg-[var(--color-bg-titlebar)] px-3 text-[12px]"
+      className="flex h-11 shrink-0 items-center overflow-x-auto border-b border-[var(--color-border-subtle)] bg-[var(--color-bg-titlebar)] px-3 text-[12px]"
     >
       <input
         id="import-dbml"
@@ -195,7 +197,7 @@ export function Toolbar({
         className="hidden"
         onChange={handleImport}
       />
-      <div role="group" aria-label="Workspace" className="flex min-w-0 items-center gap-2.5">
+      <div role="group" aria-label="Workspace" className="flex shrink-0 items-center gap-2.5">
         <button
           type="button"
           onClick={onToggleSidebar}
@@ -204,7 +206,6 @@ export function Toolbar({
         >
           <span className="h-2 w-2 rounded-full bg-[var(--color-accent-primary)]" />
           JayVis.dev
-          <span className="select-none text-[var(--color-text-muted)]"> ·</span>
         </button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -213,10 +214,9 @@ export function Toolbar({
               suppressHydrationWarning
               className="flex h-7 max-w-[9rem] items-center gap-1 truncate rounded-md px-1.5 text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)]"
               title={workspaceName}
-              aria-label={`${workspaceName} ·`}
+              aria-label={workspaceName}
             >
               <span className="truncate">{workspaceName}</span>
-              <span className="select-none text-[var(--color-text-muted)]"> ·</span>
               <Mark name="chevronDown" className="shrink-0 text-[var(--color-text-muted)]" />
             </button>
           </DropdownMenuTrigger>
@@ -258,11 +258,10 @@ export function Toolbar({
             <button
               type="button"
               className="flex h-7 items-center gap-1.5 rounded-md px-1.5 text-[var(--color-text-muted)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)]"
-              aria-label={`${branches.find((branch) => branch.active)?.name ?? 'main'} ·`}
+              aria-label={branches.find((branch) => branch.active)?.name ?? 'main'}
             >
               <BranchMark />
               <span>{branches.find((branch) => branch.active)?.name ?? 'main'}</span>
-              <span className="select-none text-[var(--color-text-muted)]"> ·</span>
               <Mark name="chevronDown" className="text-[var(--color-text-muted)]" />
             </button>
           </DropdownMenuTrigger>
@@ -296,12 +295,10 @@ export function Toolbar({
         </DropdownMenu>
       </div>
 
-      <span className="select-none px-2 text-[var(--color-text-muted)]">·</span>
-
       <div
         role="group"
         aria-label="View"
-        className="absolute left-1/2 flex h-11 -translate-x-1/2 items-stretch"
+        className="mx-auto flex h-11 shrink-0 items-stretch px-3"
       >
         {MODES.map((mode) => {
           const active = activeView === mode.id;
@@ -318,19 +315,17 @@ export function Toolbar({
             >
               <Mark name={mode.icon} className={active ? 'text-[var(--color-accent-primary)]' : undefined} />
               {mode.label}
-              <span className="select-none text-[var(--color-text-muted)]"> ·</span>
             </button>
           );
         })}
       </div>
 
-      <div role="group" aria-label="Commands" className="ml-auto flex items-center gap-0.5 border-l border-[var(--color-border-default)] pl-2">
-        <span className="select-none px-1 text-[var(--color-text-muted)]">·</span>
+      <div role="group" aria-label="Commands" className="flex shrink-0 items-center gap-0.5 border-l border-[var(--color-border-default)] pl-2">
         <button
           type="button"
           onClick={undo}
           disabled={!canUndo}
-          aria-label="Undo ·"
+          aria-label="Undo"
           title="Undo (⌘Z)"
           className="flex h-7 w-7 items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)] disabled:opacity-30"
         >
@@ -340,7 +335,7 @@ export function Toolbar({
           type="button"
           onClick={redo}
           disabled={!canRedo}
-          aria-label="Redo ·"
+          aria-label="Redo"
           title="Redo (⌘⇧Z)"
           className="flex h-7 w-7 items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)] disabled:opacity-30"
         >
@@ -351,7 +346,7 @@ export function Toolbar({
           label="Find"
           shortcut="⌘F"
           title="Find"
-          onClick={() => window.dispatchEvent(new Event('jayvis:editor-find'))}
+          onClick={onFind}
         />
         <StripButton
           icon="shield"
@@ -525,7 +520,6 @@ function StripButton({
     >
       <Mark name={icon} />
       {label}
-      <span className="select-none text-[var(--color-text-muted)]"> ·</span>
       <Kbd>{shortcut}</Kbd>
     </button>
   );

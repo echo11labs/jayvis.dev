@@ -1,3 +1,5 @@
+import { liveCatalog, storeCatalog } from '@/lib/persistence';
+
 export type BranchRecord = {
   name: string;
   rawText: string;
@@ -158,6 +160,8 @@ function isCatalog(value: unknown): value is WorkspaceCatalog {
 }
 
 export function readCatalog(): WorkspaceCatalog | null {
+  const live = liveCatalog();
+  if (live) return live;
   if (typeof window === 'undefined') return null;
   try {
     const parsed = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? 'null');
@@ -168,6 +172,12 @@ export function readCatalog(): WorkspaceCatalog | null {
 }
 
 export function writeCatalog(catalog: WorkspaceCatalog) {
+  if (storeCatalog(catalog)) return;
   if (typeof window === 'undefined') return;
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(catalog));
+}
+
+export function clearCatalogStorage() {
+  if (typeof window === 'undefined') return;
+  window.localStorage.removeItem(STORAGE_KEY);
 }

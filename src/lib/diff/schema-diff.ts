@@ -14,27 +14,14 @@ import type {
   SchemaReference,
 } from '@/types/ast';
 import { quoteIdent } from '@/lib/ident';
+import { assertExpression, columnSql, sqlDefault, storedType } from '@/lib/sql-literal';
 
 function q(name: string): string {
   return quoteIdent(name);
 }
 
 function columnToSql(field: SchemaField): string {
-  const parts: string[] = [q(field.name), field.type];
-  if (
-    field.constraints.isAutoincrement &&
-    (field.type === 'integer' || field.type === 'serial')
-  ) {
-    parts[1] = 'SERIAL';
-  }
-  if (field.constraints.isPrimaryKey) parts.push('PRIMARY KEY');
-  if (field.constraints.isUnique && !field.constraints.isPrimaryKey)
-    parts.push('UNIQUE');
-  if (field.constraints.isNullable === false && !field.constraints.isPrimaryKey)
-    parts.push('NOT NULL');
-  if (field.constraints.defaultValue)
-    parts.push(`DEFAULT ${field.constraints.defaultValue}`);
-  return parts.join(' ');
+  return columnSql('postgres', field).sql;
 }
 
 function createTableSql(name: string, fields: SchemaField[]): string {
@@ -59,8 +46,9 @@ function addFkSql(ref: SchemaReference): string {
     `ALTER TABLE ${q(ref.sourceTable)} ADD CONSTRAINT ${q(fkName(ref))}`,
     `FOREIGN KEY (${q(ref.sourceField)}) REFERENCES ${q(ref.targetTable)} (${q(ref.targetField)})`,
   ];
-  if (ref.onDelete) parts.push(`ON DELETE ${ref.onDelete}`);
-  if (ref.onUpdate) parts.push(`ON UPDATE ${ref.onUpdate}`);
+  if (ref.onDelete) parts.push(`ON DELETE ${ref.onDelete.toUpperCase()}`);
+  if (ref.onUpdate) parts.push(`ON UPDATE ${ref.onUpdate.toUpperCase()}`);
+  if (ref.deferrable) parts.push('DEFERRABLE INITIALLY DEFERRED');
   return `${parts.join(' ')};`;
 }
 
@@ -70,8 +58,10 @@ function dropFkSql(ref: SchemaReference): string {
 
 function createIndexSql(tableName: string, index: SchemaIndex): string {
   const cols = index.columns.map(q).join(', ');
-  const uniq = index.isUnique ? 'UNIQUE ' : '';
-  return `CREATE ${uniq}INDEX ${q(indexName(tableName, index))} ON ${q(tableName)} (${cols});`;
+  const unique = index.isUnique ? 'UNIQUE ' : '';
+  const using = index.method ? ` USING ${index.method.toUpperCase()}` : '';
+  const where = index.where ? ` WHERE ${assertExpression(index.where, `Index ${indexName(tableName, index)}`)}` : '';
+  return `CREATE ${unique}INDEX ${q(indexName(tableName, index))} ON ${q(tableName)} (${cols})${using}${where};`;
 }
 
 function dropIndexSql(tableName: string, index: SchemaIndex): string {
@@ -85,7 +75,10 @@ function fieldsEqual(left: SchemaField, right: SchemaField): boolean {
     left.constraints.defaultValue === right.constraints.defaultValue &&
     left.constraints.isPrimaryKey === right.constraints.isPrimaryKey &&
     left.constraints.isUnique === right.constraints.isUnique &&
-    left.constraints.isAutoincrement === right.constraints.isAutoincrement
+    left.constraints.isAutoincrement === right.constraints.isAutoincrement &&
+    left.constraints.isIdentity === right.constraints.isIdentity &&
+    left.constraints.check === right.constraints.check &&
+    left.constraints.generated === right.constraints.generated
   );
 }
 
@@ -96,7 +89,8 @@ function refsEqual(left: SchemaReference, right: SchemaReference): boolean {
     left.targetTable === right.targetTable &&
     left.targetField === right.targetField &&
     left.onDelete === right.onDelete &&
-    left.onUpdate === right.onUpdate
+    left.onUpdate === right.onUpdate &&
+    left.deferrable === right.deferrable
   );
 }
 
@@ -141,9 +135,13 @@ function columnAlterSql(
   const table = q(tableName);
   const column = q(newField.name);
   const sql: string[] = [];
-
+  if (oldField.name !== newField.name) {
+    sql.push(`ALTER TABLE ${table} RENAME COLUMN ${q(oldField.name)} TO ${column};`);
+  }
   if (oldField.type !== newField.type) {
-    sql.push(`ALTER TABLE ${table} ALTER COLUMN ${column} TYPE ${newField.type};`);
+    sql.push(
+      `ALTER TABLE ${table} ALTER COLUMN ${column} TYPE ${storedType('postgres', newField.type, newField.name).sql};`,
+    );
   }
   if (oldField.constraints.isNullable !== newField.constraints.isNullable) {
     sql.push(
@@ -155,7 +153,7 @@ function columnAlterSql(
   if (oldField.constraints.defaultValue !== newField.constraints.defaultValue) {
     sql.push(
       newField.constraints.defaultValue
-        ? `ALTER TABLE ${table} ALTER COLUMN ${column} SET DEFAULT ${newField.constraints.defaultValue};`
+        ? `ALTER TABLE ${table} ALTER COLUMN ${column} SET DEFAULT ${sqlDefault('postgres', newField.constraints.defaultValue)};`
         : `ALTER TABLE ${table} ALTER COLUMN ${column} DROP DEFAULT;`,
     );
   }
@@ -173,6 +171,26 @@ function columnAlterSql(
     );
   }
   return sql;
+}
+
+function foldRenames(diffs: ColumnDiff[]): ColumnDiff[] {
+  const drops = diffs.filter((diff) => diff.action === 'DROP' && diff.oldField);
+  const creates = diffs.filter((diff) => diff.action === 'CREATE' && diff.newField);
+  if (drops.length !== 1 || creates.length !== 1) return diffs;
+  const oldField = drops[0].oldField;
+  const newField = creates[0].newField;
+  if (!oldField || !newField || oldField.type !== newField.type) return diffs;
+  if (oldField.constraints.isNullable !== newField.constraints.isNullable) return diffs;
+  return [
+    ...diffs.filter((diff) => diff.action === 'ALTER'),
+    {
+      action: 'ALTER',
+      tableName: drops[0].tableName,
+      columnName: newField.name,
+      oldField,
+      newField,
+    },
+  ];
 }
 
 export function diffSchema(
@@ -294,9 +312,10 @@ export function diffSchema(
   }
 
   for (const name of shared) {
-    const columnDiffs =
+    const columnDiffs = foldRenames(
       tables.find((table) => table.tableName === name && table.action === 'ALTER')
-        ?.columnDiffs ?? [];
+        ?.columnDiffs ?? [],
+    );
     for (const diff of columnDiffs) {
       if (diff.action === 'DROP' && diff.oldField) {
         upSql.push(`ALTER TABLE ${q(name)} DROP COLUMN ${q(diff.columnName)};`);
@@ -307,6 +326,15 @@ export function diffSchema(
     }
     for (const diff of columnDiffs) {
       if (diff.action === 'CREATE' && diff.newField) {
+        if (
+          diff.newField.constraints.isNullable === false &&
+          !diff.newField.constraints.defaultValue &&
+          !diff.newField.constraints.isPrimaryKey
+        ) {
+          throw new Error(
+            `Column "${diff.newField.name}" is NOT NULL and needs a default before it can be added.`,
+          );
+        }
         upSql.push(`ALTER TABLE ${q(name)} ADD COLUMN ${columnToSql(diff.newField)};`);
         downSql.unshift(`ALTER TABLE ${q(name)} DROP COLUMN ${q(diff.columnName)};`);
       }

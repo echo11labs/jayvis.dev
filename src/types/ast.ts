@@ -32,6 +32,9 @@ export interface FieldConstraint {
   isNullable?: boolean;
   defaultValue?: string;
   isAutoincrement?: boolean;
+  isIdentity?: boolean;
+  generated?: string;
+  check?: string;
 }
 
 export interface SchemaField {
@@ -47,6 +50,13 @@ export interface SchemaIndex {
   name?: string;
   columns: string[];
   isUnique?: boolean;
+  method?: 'btree' | 'hash' | 'gin' | 'gist';
+  where?: string;
+}
+
+export interface SchemaUnique {
+  name?: string;
+  columns: string[];
 }
 
 export interface SchemaTable {
@@ -56,6 +66,9 @@ export interface SchemaTable {
   color?: string;
   fields: SchemaField[];
   indexes?: SchemaIndex[];
+  primaryKey?: string[];
+  uniques?: SchemaUnique[];
+  checks?: string[];
   /** Cached canvas position, persisted so reloads keep layout. */
   position?: { x: number; y: number };
   /** Optional descriptive note rendered as a tooltip on the table header. */
@@ -85,9 +98,13 @@ export interface SchemaReference {
   id: string;
   sourceTable: string;
   sourceField: string;
+  sourceFields?: string[];
   targetTable: string;
   targetField: string;
+  targetFields?: string[];
   cardinality: Cardinality;
+  name?: string;
+  deferrable?: boolean;
   onDelete?: 'CASCADE' | 'SET NULL' | 'RESTRICT' | 'NO ACTION';
   onUpdate?: 'CASCADE' | 'SET NULL' | 'RESTRICT' | 'NO ACTION';
 }

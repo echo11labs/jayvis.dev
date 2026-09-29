@@ -65,7 +65,6 @@ function FlowCanvasInner() {
   const setSelectedTable = useDiagramStore((s) => s.setSelectedTable);
   const setSelectedEdge = useDiagramStore((s) => s.setSelectedEdge);
   const { fitView, zoomIn, zoomOut } = useReactFlow();
-  const [canvasTools, setCanvasTools] = useState(false);
   const theme = useTheme();
   const isDark = theme === 'dark';
   const [settings] = useWorkspaceSettings();
@@ -122,12 +121,12 @@ function FlowCanvasInner() {
     () => ({
       type: 'smoothstep',
       animated: true,
-      style: { stroke: '#6366F1', strokeWidth: 2 },
+      style: { stroke: 'var(--color-accent-primary)', strokeWidth: 2 },
       markerEnd: {
         type: 'arrowclosed' as const,
         width: 16,
         height: 16,
-        color: '#6366F1',
+        color: 'var(--color-accent-primary)',
       },
     }),
     [],
@@ -137,6 +136,7 @@ function FlowCanvasInner() {
     (_e: React.MouseEvent, node: Node) => {
       setSelectedTable(node.id);
       setSelectedEdge(null);
+      window.dispatchEvent(new Event('jayvis:open-inspector'));
       setEdgeMenu({ edgeId: null, x: 0, y: 0 });
       setPaneMenu({ open: false, x: 0, y: 0 });
     },
@@ -200,9 +200,27 @@ function FlowCanvasInner() {
         const ref = ast.references[e.id];
         const mark =
           ref?.cardinality === '1:1' ? '1:1' : ref?.cardinality === 'N:M' ? '*:*' : '1:*';
+        const stroke =
+          ref?.cardinality === '1:1'
+            ? 'var(--color-accent-success)'
+            : ref?.cardinality === 'N:M'
+              ? 'var(--color-accent-warning)'
+              : 'var(--color-accent-primary)';
         const labeled = {
           ...e,
           label: mark,
+          style: {
+            ...(typeof e.style === 'object' && e.style ? e.style : {}),
+            stroke,
+            strokeWidth: hoveredEdge === e.id ? 3 : 2,
+            ...(hoveredEdge === e.id ? { filter: 'brightness(1.25)' } : {}),
+          },
+          markerEnd: {
+            type: 'arrowclosed' as const,
+            width: 16,
+            height: 16,
+            color: stroke,
+          },
           labelStyle: {
             fill: 'var(--color-text-muted)',
             fontSize: 11,
@@ -212,21 +230,7 @@ function FlowCanvasInner() {
           labelBgPadding: [8, 4] as [number, number],
           labelBgBorderRadius: 3,
         };
-        const next = labeled;
-        if (hoveredEdge !== e.id) return next;
-        const baseStroke =
-          (typeof e.style === 'object' && e.style && 'stroke' in e.style
-            ? (e.style as { stroke?: string }).stroke
-            : undefined) || '#6366F1';
-        return {
-          ...next,
-          style: {
-            ...(next.style as object),
-            stroke: baseStroke,
-            strokeWidth: 3,
-            filter: 'brightness(1.25)',
-          },
-        };
+        return labeled;
       }),
     [ast.references, edges, hoveredEdge],
   );
@@ -265,14 +269,6 @@ function FlowCanvasInner() {
     <div
       className="relative h-full w-full"
       style={{ background: canvasBg }}
-      onMouseEnter={() => setCanvasTools(true)}
-      onMouseLeave={() => setCanvasTools(false)}
-      onFocus={() => setCanvasTools(true)}
-      onBlur={(event) => {
-        const next = event.relatedTarget;
-        if (next instanceof Element && event.currentTarget.contains(next)) return;
-        setCanvasTools(false);
-      }}
     >
       <ReactFlow
         nodes={displayNodes}
@@ -297,23 +293,20 @@ function FlowCanvasInner() {
         fitView
         minZoom={0.15}
         maxZoom={2.5}
-        proOptions={{ hideAttribution: true }}
         className={reactFlowBg}
       >
         {settings.grid && (
           <Background variant={BackgroundVariant.Dots} gap={22} size={1} color={dotColor} />
         )}
-        <div aria-hidden={canvasTools ? undefined : true} className={canvasTools ? undefined : 'pointer-events-none opacity-0'}>
-          <Controls
-            className={`!border ${controlsCls}`}
-            showInteractive={false}
-          />
-        </div>
+        <Controls
+          className={`!border ${controlsCls}`}
+          showInteractive={false}
+        />
         {settings.minimap && (
           <MiniMap
             className={`!border ${minimapCls}`}
             nodeColor={(node: Node<TableNodeData>) =>
-              (node.data?.table?.color as string) || '#6366F1'
+              (node.data?.table?.color as string) || 'var(--color-accent-primary)'
             }
             nodeStrokeWidth={3}
             nodeStrokeColor={isDark ? '#0a0a0a' : '#ffffff'}

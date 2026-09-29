@@ -35,6 +35,11 @@ function TableNodeComponent({ id, data, selected }: NodeProps<TableNode>) {
       }`}
     >
       <div className="flex items-center gap-2.5 border-b border-[var(--color-border-subtle)] px-3.5 py-2.5">
+        <span
+          className="h-2 w-2 shrink-0"
+          style={{ backgroundColor: table.color || 'var(--color-accent-primary)' }}
+          aria-hidden
+        />
         <Mark name="table" className="text-[var(--color-text-muted)]" />
         <span className="truncate text-[13px] font-medium tracking-tight text-[var(--color-text-primary)]">
           {table.schema && table.schema !== 'public' ? `${table.schema}.` : ''}

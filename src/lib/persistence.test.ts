@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeWorkspaceRecord } from './persistence';
+import { normalizeStudioFile, normalizeWorkspaceRecord } from './persistence';
 import type { DatabaseAST } from '@/types/ast';
 
 const emptyAST: DatabaseAST = {
@@ -59,5 +59,33 @@ describe('workspace persistence migration', () => {
     });
 
     expect(snapshot?.rawText).toBe('Table users {\n  id integer [pk]\n}');
+  });
+
+  it('keeps the catalog and baselines in one studio file', () => {
+    const file = normalizeStudioFile({
+      fileVersion: 1,
+      snapshot: {
+        workspaceVersion: 2,
+        ast: emptyAST,
+        rawText: 'Table users {\n  id integer\n}',
+        savedAt: 5,
+      },
+      catalog: {
+        activeId: 'ws-1',
+        workspaces: [
+          {
+            id: 'ws-1',
+            name: 'ecommerce-db',
+            branch: 'main',
+            branches: [{ name: 'main', rawText: 'Table users {\n  id integer\n}', savedAt: 5 }],
+          },
+        ],
+      },
+      baselines: { 'ws-1:main': { ast: emptyAST, capturedAt: 5 } },
+    });
+
+    expect(file?.catalog.activeId).toBe('ws-1');
+    expect(file?.baselines['ws-1:main']?.capturedAt).toBe(5);
+    expect(normalizeStudioFile({ fileVersion: 1, snapshot: emptyAST })).toBeNull();
   });
 });

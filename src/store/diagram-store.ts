@@ -36,13 +36,13 @@ function edgeLabel(ref: SchemaReference): string {
 function cardinalityStroke(cardinality: string): string {
   switch (cardinality) {
     case '1:1':
-      return '#10B981'; // emerald — one-to-one
+      return 'var(--color-accent-success)';
     case '1:N':
-      return '#6366F1'; // indigo — one-to-many (default)
+      return 'var(--color-accent-primary)';
     case 'N:M':
-      return '#EC4899'; // pink — many-to-many
+      return 'var(--color-accent-warning)';
     default:
-      return '#6366F1';
+      return 'var(--color-accent-primary)';
   }
 }
 
@@ -392,11 +392,13 @@ export const useDiagramStore = create<DiagramStoreState>((set, get) => {
     set((state) => {
       if (generation !== state.parseGeneration) return state;
       const replacePositions = options?.replacePositions === true;
+      const existingNodes = new Map(state.nodes.map((node) => [node.id, node]));
+      const incomingNodes = new Map(nodes.map((node) => [node.id, node]));
       const reconciledTables: Record<string, SchemaTable> = Object.fromEntries(
         Object.entries(ast.tables).map(([name, table]) => {
           const existingTable = state.ast.tables[name];
-          const existingNode = state.nodes.find((node) => node.id === name);
-          const incoming = nodes.find((node) => node.id === name);
+          const existingNode = existingNodes.get(name);
+          const incoming = incomingNodes.get(name);
           return [
             name,
             {

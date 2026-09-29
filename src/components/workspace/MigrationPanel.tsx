@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Sheet,
   SheetContent,
@@ -14,7 +14,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Codicon } from '@/components/ui/codicon';
 import { useDiagramStore } from '@/store/diagram-store';
-import { buildMigration, readBaseline, writeBaseline, type MigrationResult } from '@/lib/migrations';
+import { buildMigration, readBaseline, writeBaseline } from '@/lib/migrations';
+import { appendMigration, checksumText, readMigrations } from '@/lib/persistence';
+import { SQL_ENGINE_KEY } from '@/lib/sql-literal';
 import type {
   TableDiff,
   ColumnDiff,
@@ -263,51 +265,33 @@ export function MigrationPanel({ open, onOpenChange, slot }: MigrationPanelProps
   const captureSnapshot = useDiagramStore((s) => s.captureSnapshot);
   const setPreviousAST = useDiagramStore((s) => s.setPreviousAST);
   const [revision, setRevision] = useState(0);
-  const [remote, setRemote] = useState<MigrationResult | null>(null);
 
   const baseline = useMemo(() => (slot ? readBaseline(slot) : null), [slot, revision]);
-  const local = useMemo(() => buildMigration(baseline, ast), [baseline, ast]);
-  const result = remote ?? local;
+  const result = useMemo(() => buildMigration(baseline, ast), [baseline, ast]);
   const { diff, summary, hasBaseline } = result;
-
-  useEffect(() => {
-    if (!open) return;
-    const controller = new AbortController();
-    setRemote(null);
-    const timer = window.setTimeout(async () => {
-      try {
-        const res = await fetch('/api/migrate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ baseline, current: ast }),
-          signal: controller.signal,
-        });
-        const body = await res.json();
-        if (controller.signal.aborted) return;
-        if (!res.ok || !body?.diff || !body?.summary) return;
-        setRemote({
-          hasBaseline: Boolean(body.hasBaseline),
-          diff: body.diff,
-          summary: body.summary,
-        });
-      } catch {
-        if (!controller.signal.aborted) setRemote(null);
-      }
-    }, 200);
-    return () => {
-      window.clearTimeout(timer);
-      controller.abort();
-    };
-  }, [open, ast, baseline]);
 
   const saveBaseline = () => {
     captureSnapshot();
-    if (slot) writeBaseline(slot, ast);
+    if (slot) {
+      writeBaseline(slot, ast);
+      const up = result.diff.upSql.join('\n');
+      const down = result.diff.downSql.join('\n');
+      appendMigration({
+        slot,
+        engine: window.localStorage.getItem(SQL_ENGINE_KEY) === 'postgres' ? 'postgres' : 'sqlite',
+        up: up || '-- baseline',
+        down,
+        checksum: checksumText(up || slot),
+        appliedAt: Date.now(),
+        ok: true,
+      });
+    }
     setPreviousAST(ast);
-    setRemote(null);
     setRevision((current) => current + 1);
     toast.success('Baseline saved');
   };
+
+  const log = useMemo(() => (slot ? readMigrations(slot) : []), [slot, revision]);
 
   const recapture = () => {
     const hasChanges = summary.tables + summary.indexes + summary.references > 0;
@@ -368,7 +352,46 @@ export function MigrationPanel({ open, onOpenChange, slot }: MigrationPanelProps
                 <Codicon name="camera" />
                 {hasBaseline ? 'Recapture' : 'Save baseline'}
               </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() =>
+                  confirmIf(true, {
+                    title: 'Rebuild from the current schema?',
+                    description: 'Drops JayVis tables, then builds the canvas again. The migration log stays.',
+                    confirmLabel: 'Rebuild',
+                    action: () => {
+                      void (async () => {
+                        const engine = window.localStorage.getItem(SQL_ENGINE_KEY) === 'postgres' ? 'postgres' : 'sqlite';
+                        await fetch('/api/build-sql', { method: 'DELETE' });
+                        const res = await fetch('/api/build-sql', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ ast, execute: true, engine, confirmDestructive: true }),
+                        });
+                        if (!res.ok) {
+                          toast.error('Rebuild failed');
+                          return;
+                        }
+                        toast.success('Rebuilt the current schema');
+                      })();
+                    },
+                  })
+                }
+                className="h-7 text-xs text-[var(--color-text-muted)]"
+              >
+                Rebuild
+              </Button>
             </div>
+            {log.length > 0 && (
+              <div className="max-h-24 overflow-auto border-b border-[var(--color-border-subtle)] px-4 py-2 text-[11px] text-[var(--color-text-muted)]">
+                {log.map((record) => (
+                  <p key={record.version}>
+                    v{record.version} {record.engine} {record.ok ? 'applied' : 'failed'} {record.checksum}
+                  </p>
+                ))}
+              </div>
+            )}
             <Tabs defaultValue="diff" className="flex flex-1 flex-col overflow-hidden">
               <TabsList className="m-3 grid grid-cols-3 bg-[var(--color-bg-tertiary)]">
                 <TabsTrigger

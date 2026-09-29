@@ -17,7 +17,7 @@ export type ThemeName =
 export type ThemeMode = 'dark' | 'light';
 
 export const THEME_OPTIONS: Array<{ value: ThemeName; label: string; swatch: string }> = [
-  { value: 'dark-plus', label: 'Dark+', swatch: '#1e1e1e' },
+  { value: 'dark-plus', label: 'Dark+', swatch: '#141414' },
   { value: 'light-plus', label: 'Light+', swatch: '#f5f5f5' },
   { value: 'dracula', label: 'Dracula', swatch: '#282a36' },
   { value: 'one-dark', label: 'One Dark Pro', swatch: '#282c34' },

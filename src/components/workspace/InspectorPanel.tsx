@@ -309,7 +309,7 @@ export function InspectorPanel({ onClose }: { onClose?: () => void }) {
                             }
                             className="h-7 rounded border border-[var(--color-border-subtle)] bg-[var(--color-bg-app)] px-1.5 font-mono text-xs text-[var(--color-text-primary)]"
                           >
-                            {Object.keys(TYPE_COLORS).map((t) => (
+                            {Array.from(new Set([...Object.keys(TYPE_COLORS), draft.type])).map((t) => (
                               <option key={t} value={t}>
                                 {t}
                               </option>
@@ -377,6 +377,32 @@ export function InspectorPanel({ onClose }: { onClose?: () => void }) {
                             }
                             placeholder="default"
                             className="ml-auto h-6 w-24 border-[var(--color-border-subtle)] bg-[var(--color-bg-app)] px-1.5 font-mono text-[10px]"
+                          />
+                          <label className="flex cursor-pointer items-center gap-1 text-[10px] text-[var(--color-text-muted)]">
+                            <Checkbox
+                              checked={!!draft.constraints.isIdentity}
+                              onCheckedChange={(value) =>
+                                setFieldDraft({
+                                  ...draft,
+                                  constraints: { ...draft.constraints, isIdentity: !!value },
+                                })
+                              }
+                            />
+                            Identity
+                          </label>
+                          <Input
+                            value={draft.constraints.check ?? ''}
+                            onChange={(event) =>
+                              setFieldDraft({
+                                ...draft,
+                                constraints: {
+                                  ...draft.constraints,
+                                  check: event.target.value || undefined,
+                                },
+                              })
+                            }
+                            placeholder="check"
+                            className="h-6 w-24 border-[var(--color-border-subtle)] bg-[var(--color-bg-app)] px-1.5 font-mono text-[10px]"
                           />
                           <div className="flex gap-1">
                             <button

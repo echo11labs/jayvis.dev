@@ -118,7 +118,17 @@ function fieldLookup(fields: SchemaField[]): Map<string, SchemaField> {
   return new Map(fields.map((field) => [field.name, field]));
 }
 
+const validationCache = new WeakMap<DatabaseAST, ValidationIssue[]>();
+
 export function validateSchema(ast: DatabaseAST): ValidationIssue[] {
+  const cached = validationCache.get(ast);
+  if (cached) return cached;
+  const issues = collectIssues(ast);
+  validationCache.set(ast, issues);
+  return issues;
+}
+
+function collectIssues(ast: DatabaseAST): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   const tableNames = Object.keys(ast.tables);
   const seenFieldIds = new Map<string, string>();

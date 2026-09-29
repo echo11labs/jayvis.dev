@@ -62,4 +62,24 @@ describe('sqlite ddl', () => {
     expect(sql).not.toContain('600">');
     expect(sql).not.toContain('<span');
   });
+
+  it('quotes unsafe defaults instead of interpolating them', () => {
+    const poisoned = ast();
+    poisoned.tables.organizations = {
+      ...organizations,
+      fields: organizations.fields.map((field, index) =>
+        index === 1
+          ? {
+              ...field,
+              constraints: { defaultValue: '1); DROP TABLE users' },
+            }
+          : field,
+      ),
+    };
+    const sql = buildSqlStatements(poisoned)
+      .map((statement) => statement.sql)
+      .join('\n');
+    expect(sql).toContain("DEFAULT '1); DROP TABLE users'");
+    expect(sql).not.toContain('DROP TABLE users;');
+  });
 });
