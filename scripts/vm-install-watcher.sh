@@ -6,6 +6,10 @@ curl -fsSL -o "$HOME/jayvis-watch.sh" \
   https://raw.githubusercontent.com/echo11labs/jayvis.dev/main/scripts/vm-watch.sh
 chmod +x "$HOME/jayvis-watch.sh"
 
+# SSH login can sudo. The systemd user cannot, unless this rule exists.
+echo 'echo11_labs ALL=(ALL) NOPASSWD:ALL' | sudo tee /etc/sudoers.d/jayvis >/dev/null
+sudo chmod 440 /etc/sudoers.d/jayvis
+
 sudo tee /etc/systemd/system/jayvis-watch.service >/dev/null <<'EOF'
 [Unit]
 Description=Pull and activate a JayVis release
