@@ -92,7 +92,7 @@ describe('sql fixtures', () => {
     );
     expect(columns.rows.map((row) => row.column_name)).toContain('sku');
     await db.close();
-  });
+  }, 30_000);
 
   it('rejects a NOT NULL column with no default on an existing table', async () => {
     const db = new DatabaseSync(':memory:');

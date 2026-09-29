@@ -41,8 +41,8 @@ DBML_PARSER_URL=http://127.0.0.1:3031
 DBML_PARSER_TIMEOUT_MS=5000
 EOF
 fi
-if ! grep -q '^JAYVIS_ALLOW_REMOTE=' "$STAGE/.env"; then
-  printf '\nJAYVIS_ALLOW_REMOTE=1\n' >>"$STAGE/.env"
+if ! grep -q '^JAYVIS_PUBLIC_HOSTS=' "$STAGE/.env"; then
+  printf '\nJAYVIS_PUBLIC_HOSTS=%s\n' "${JAYVIS_PUBLIC_HOSTS:-35.202.154.195}" >>"$STAGE/.env"
 fi
 
 cd "$STAGE"

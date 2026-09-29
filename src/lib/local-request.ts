@@ -20,13 +20,28 @@ export function remoteForbiddenBody() {
   };
 }
 
+function allowedHost(host: string | null, published: Set<string>): boolean {
+  if (!host) return false;
+  return LOOPBACK.has(host) || published.has(host);
+}
+
+function publishedHosts(): Set<string> {
+  return new Set(
+    (process.env.JAYVIS_PUBLIC_HOSTS ?? '')
+      .split(',')
+      .map((host) => host.trim().toLowerCase())
+      .filter(Boolean),
+  );
+}
+
 export function isLocalRequest(headers: Headers): boolean {
   if (process.env.JAYVIS_ALLOW_REMOTE === '1') return true;
+  const published = publishedHosts();
   const host = hostnameOf(headers.get('host'));
-  if (!host || !LOOPBACK.has(host)) return false;
+  if (!allowedHost(host, published)) return false;
   const forwarded = hostnameOf(headers.get('x-forwarded-host'));
-  if (forwarded && !LOOPBACK.has(forwarded)) return false;
+  if (forwarded && !allowedHost(forwarded, published)) return false;
   const origin = hostnameOf(headers.get('origin'));
-  if (origin && !LOOPBACK.has(origin)) return false;
+  if (origin && !allowedHost(origin, published)) return false;
   return true;
 }
