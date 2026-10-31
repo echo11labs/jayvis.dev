@@ -116,13 +116,34 @@ export function normalizeStudioFile(value: unknown): StudioFile | null {
 let studio: StudioFile | null = null;
 let studioWriteQueued = false;
 
+const BACKUP_STORAGE_KEY = 'jayvis.studio.backup';
+const WORKSPACES_STORAGE_KEY = 'jayvis.workspaces.v1';
+
 export function liveCatalog(): WorkspaceCatalog | null {
   return studio?.catalog ?? null;
 }
 
+export function syncBackupToLocalStorage(file: StudioFile | null): void {
+  if (typeof window === 'undefined' || !file) return;
+  try {
+    window.localStorage.setItem(BACKUP_STORAGE_KEY, JSON.stringify(file));
+    window.localStorage.setItem(WORKSPACES_STORAGE_KEY, JSON.stringify(file.catalog));
+  } catch {
+    // best-effort storage
+  }
+}
+
 export function storeCatalog(catalog: WorkspaceCatalog): boolean {
-  if (!studio) return false;
+  if (!studio) {
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.setItem(WORKSPACES_STORAGE_KEY, JSON.stringify(catalog));
+      } catch {}
+    }
+    return false;
+  }
   studio = { ...studio, catalog };
+  syncBackupToLocalStorage(studio);
   scheduleStudioWrite();
   return true;
 }
@@ -146,6 +167,7 @@ export function appendMigration(record: Omit<MigrationRecord, 'version'>): Migra
   const version = studio.migrations.reduce((max, item) => Math.max(max, item.version), 0) + 1;
   const stored = { ...record, version };
   studio = { ...studio, migrations: [...studio.migrations, stored] };
+  syncBackupToLocalStorage(studio);
   scheduleStudioWrite();
   return stored;
 }
@@ -159,8 +181,20 @@ export function storeBaseline(slot: string, ast: DatabaseAST, capturedAt: number
       [slot]: { ast, capturedAt },
     },
   };
+  syncBackupToLocalStorage(studio);
   scheduleStudioWrite();
   return true;
+}
+
+export async function flushStudio(): Promise<void> {
+  if (!studio) return;
+  const file = studio;
+  syncBackupToLocalStorage(file);
+  try {
+    await putRecord(STUDIO_KEY, file);
+  } catch (err) {
+    console.warn('[persistence] flushStudio IDB write failed:', err);
+  }
 }
 
 function scheduleStudioWrite() {
@@ -170,9 +204,14 @@ function scheduleStudioWrite() {
     studioWriteQueued = false;
     const file = studio;
     if (!file) return;
-    void putRecord(STUDIO_KEY, file).then(() => {
-      if (studio !== file) scheduleStudioWrite();
-    });
+    syncBackupToLocalStorage(file);
+    void putRecord(STUDIO_KEY, file)
+      .then(() => {
+        if (studio !== file) scheduleStudioWrite();
+      })
+      .catch((err) => {
+        console.warn('[persistence] scheduled write failed:', err);
+      });
   });
 }
 
@@ -226,28 +265,38 @@ async function putRecord(key: string, value: unknown): Promise<void> {
 
 export async function saveWorkspace(
   snapshot: WorkspaceSnapshot,
+  explicitCatalog?: WorkspaceCatalog,
 ): Promise<void> {
   try {
     if (studio) {
+      const baseCatalog = explicitCatalog ?? studio.catalog;
       studio = {
         ...studio,
         snapshot,
         catalog: {
-          ...studio.catalog,
-          workspaces: studio.catalog.workspaces.map((workspace) => {
-            if (workspace.id !== studio?.catalog.activeId) return workspace;
+          ...baseCatalog,
+          workspaces: baseCatalog.workspaces.map((workspace) => {
+            if (workspace.id !== baseCatalog.activeId) return workspace;
             return {
               ...workspace,
-              branches: workspace.branches.map((branch) =>
-                branch.name === workspace.branch
-                  ? { ...branch, rawText: snapshot.rawText, savedAt: snapshot.savedAt }
-                  : branch,
-              ),
+              branches: workspace.branches.map((branch) => {
+                if (branch.name !== workspace.branch) return branch;
+                const activeId = branch.activeFileId ?? branch.files?.[0]?.id;
+                const updatedFiles = (branch.files ?? []).map((f) =>
+                  f.id === activeId ? { ...f, rawText: snapshot.rawText, savedAt: snapshot.savedAt } : f,
+                );
+                return {
+                  ...branch,
+                  rawText: snapshot.rawText,
+                  savedAt: snapshot.savedAt,
+                  files: updatedFiles.length > 0 ? updatedFiles : branch.files,
+                };
+              }),
             };
           }),
         },
       };
-      scheduleStudioWrite();
+      await flushStudio();
       return;
     }
     await putRecord(KEY, snapshot);
@@ -259,7 +308,18 @@ export async function saveWorkspace(
 
 export async function readStudio(): Promise<StudioFile | null> {
   try {
-    const file = normalizeStudioFile(await readRecord(DB_NAME, STUDIO_KEY));
+    let file = normalizeStudioFile(await readRecord(DB_NAME, STUDIO_KEY));
+    if (!file && typeof window !== 'undefined') {
+      try {
+        const raw = window.localStorage.getItem(BACKUP_STORAGE_KEY);
+        if (raw) {
+          file = normalizeStudioFile(JSON.parse(raw));
+          if (file) {
+            void putRecord(STUDIO_KEY, file);
+          }
+        }
+      } catch {}
+    }
     studio = file;
     return file;
   } catch (err) {
@@ -271,6 +331,7 @@ export async function readStudio(): Promise<StudioFile | null> {
 export async function openStudio(file: StudioFile): Promise<StudioFile> {
   const normalized = normalizeStudioFile(file) ?? file;
   studio = normalized;
+  syncBackupToLocalStorage(normalized);
   try {
     await putRecord(STUDIO_KEY, normalized);
   } catch (err) {

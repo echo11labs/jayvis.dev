@@ -20,7 +20,7 @@ interface CommandPaletteProps {
   onOpenChange: (open: boolean) => void;
   onAutoLayout: () => void;
   onGenerateMigration: () => void;
-  onSqlBuilderOpenChange: (open: boolean) => void;
+  onSqlBuilderOpenChange: (open: boolean, tab?: string) => void;
   onAddTableOpenChange: (open: boolean) => void;
   onShortcutsOpenChange: (open: boolean) => void;
   onValidationOpenChange: (open: boolean) => void;
@@ -29,6 +29,11 @@ interface CommandPaletteProps {
   onLoadSample: (name: SampleName) => void;
   onClearSchema: () => void;
   onExport: (format: ExportFormat) => void;
+  onFormatDocument?: () => void;
+  onAddFile?: () => void;
+  onManageFiles?: () => void;
+  onOpenDisk?: () => void;
+  onSaveDisk?: () => void;
 }
 
 export function CommandPalette({
@@ -45,6 +50,11 @@ export function CommandPalette({
   onLoadSample,
   onClearSchema,
   onExport,
+  onFormatDocument,
+  onAddFile,
+  onManageFiles,
+  onOpenDisk,
+  onSaveDisk,
 }: CommandPaletteProps) {
   const tableCount = useDiagramStore((s) => Object.keys(s.ast.tables).length);
   const refCount = useDiagramStore((s) => Object.keys(s.ast.references).length);
@@ -76,7 +86,53 @@ export function CommandPalette({
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
 
+        {(onAddFile || onManageFiles || onOpenDisk || onSaveDisk) && (
+          <>
+            <CommandGroup heading="Files & Storage">
+              {onAddFile && (
+                <CommandItem onSelect={run(onAddFile)}>
+                  <Codicon name="plus" className="mr-2" />
+                  New Schema File (max 3)
+                  <kbd className={`ml-auto font-mono text-[10px] ${kbdCls}`}>⌘N</kbd>
+                </CommandItem>
+              )}
+              {onManageFiles && (
+                <CommandItem onSelect={run(onManageFiles)}>
+                  <Codicon name="file" className="mr-2" />
+                  Manage Workspace Files & Templates…
+                  <kbd className={`ml-auto font-mono text-[10px] ${kbdCls}`}>⌘U</kbd>
+                </CommandItem>
+              )}
+              {onOpenDisk && (
+                <CommandItem onSelect={run(onOpenDisk)}>
+                  <Codicon name="folder" className="mr-2" />
+                  Open file from disk…
+                  <kbd className={`ml-auto font-mono text-[10px] ${kbdCls}`}>⌘O</kbd>
+                </CommandItem>
+              )}
+              {onSaveDisk && (
+                <CommandItem onSelect={run(onSaveDisk)}>
+                  <Codicon name="download" className="mr-2" />
+                  Save active file to disk…
+                  <kbd className={`ml-auto font-mono text-[10px] ${kbdCls}`}>⌘S</kbd>
+                </CommandItem>
+              )}
+            </CommandGroup>
+            <CommandSeparator />
+          </>
+        )}
+
         <CommandGroup heading="Actions">
+          <CommandItem
+            onSelect={run(() => {
+              if (onFormatDocument) onFormatDocument();
+              else window.dispatchEvent(new Event('jayvis:editor-format'));
+            })}
+          >
+            <Codicon name="code" className="mr-2" />
+            Format document
+            <kbd className={`ml-auto font-mono text-[10px] ${kbdCls}`}>⌥⇧F</kbd>
+          </CommandItem>
           <CommandItem onSelect={run(() => onAddTableOpenChange(true))}>
             <Codicon name="plus" className="mr-2" />
             Create table
@@ -92,10 +148,22 @@ export function CommandPalette({
             Generate migration
             <kbd className={`ml-auto font-mono text-[10px] ${kbdCls}`}>⌘M</kbd>
           </CommandItem>
-          <CommandItem onSelect={run(() => onSqlBuilderOpenChange(true))} disabled={tableCount === 0}>
+          <CommandItem onSelect={run(() => onSqlBuilderOpenChange(true, 'preview'))} disabled={tableCount === 0}>
             <Codicon name="terminal" className="mr-2" />
             Build SQL — create tables in database
             <kbd className={`ml-auto font-mono text-[10px] ${kbdCls}`}>⌘⇧S</kbd>
+          </CommandItem>
+          <CommandItem onSelect={run(() => onSqlBuilderOpenChange(true, 'seed'))} disabled={tableCount === 0}>
+            <Codicon name="database" className="mr-2" />
+            Seed database with mock data…
+          </CommandItem>
+          <CommandItem onSelect={run(() => onSqlBuilderOpenChange(true, 'query'))} disabled={tableCount === 0}>
+            <Codicon name="play" className="mr-2" />
+            Run SQL query in database…
+          </CommandItem>
+          <CommandItem onSelect={run(() => onSqlBuilderOpenChange(true, 'tables'))}>
+            <Codicon name="table" className="mr-2" />
+            Inspect database tables…
           </CommandItem>
           <CommandItem onSelect={run(() => onShortcutsOpenChange(true))}>
             <Codicon name="keyboard" className="mr-2" />

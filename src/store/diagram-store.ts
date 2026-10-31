@@ -19,17 +19,40 @@ import {
   TABLE_COLORS,
 } from '@/types/ast';
 import { positionsCollapsed } from '@/lib/layout/elk-layout';
-import { sanitizeDbmlText, serializeDBML } from '@/lib/parser/dbml';
+import { sanitizeDbmlText, serializeDBML, serializeDBMLTable } from '@/lib/parser/dbml';
 import { hasDuplicateIdents, normalizeIdent } from '@/lib/ident';
+
+function dedupeEdges(edges: Edge[]): Edge[] {
+  const seen = new Set<string>();
+  const result: Edge[] = [];
+  for (const edge of edges) {
+    if (!seen.has(edge.id)) {
+      seen.add(edge.id);
+      result.push(edge);
+    }
+  }
+  return result;
+}
 
 /**
  * Build a React Flow edge label showing the source field → target field
  * plus cardinality, so relationships are self-documenting on the canvas.
  */
-function edgeLabel(ref: SchemaReference): string {
-  if (ref.cardinality === '1:1') return '1:1';
-  if (ref.cardinality === 'N:M') return '*:*';
-  return '1:*';
+function edgeLabel(ref: SchemaReference, astTables?: Record<string, SchemaTable>): string {
+  if (ref.cardinality === '1:1') return '1 : 1';
+  if (ref.cardinality === 'N:M') return '* : *';
+  if (ref.cardinality === 'N:1') return '* : 1';
+  if (astTables) {
+    const srcTable = astTables[ref.sourceTable];
+    const tgtTable = astTables[ref.targetTable];
+    const srcField = srcTable?.fields.find((f) => f.name === ref.sourceField);
+    const tgtField = tgtTable?.fields.find((f) => f.name === ref.targetField);
+    const isSrcPk = srcField?.constraints.isPrimaryKey || srcField?.constraints.isUnique;
+    const isTgtPk = tgtField?.constraints.isPrimaryKey || tgtField?.constraints.isUnique;
+    if (!isSrcPk && isTgtPk) return '* : 1';
+    if (isSrcPk && !isTgtPk) return '1 : *';
+  }
+  return '1 : *';
 }
 
 /** Stroke color per cardinality for visual distinction. */
@@ -38,8 +61,13 @@ function cardinalityStroke(cardinality: string): string {
     case '1:1':
       return 'var(--color-accent-success)';
     case '1:N':
+    case '1:*':
       return 'var(--color-accent-primary)';
+    case 'N:1':
+    case '*:1':
+      return '#818cf8';
     case 'N:M':
+    case '*:*':
       return 'var(--color-accent-warning)';
     default:
       return 'var(--color-accent-primary)';
@@ -70,18 +98,27 @@ function syncNodePositions(ast: DatabaseAST, nodes: Node[]): DatabaseAST {
 }
 
 /** Build a full Edge object from a SchemaReference. */
-function refToEdge(ref: SchemaReference): Edge {
+function refToEdge(ref: SchemaReference, astTables?: Record<string, SchemaTable>): Edge {
   const stroke = cardinalityStroke(ref.cardinality);
+  const mark = edgeLabel(ref, astTables);
   return {
     id: ref.id,
     source: ref.sourceTable,
     target: ref.targetTable,
     sourceHandle: `${ref.sourceTable}.${ref.sourceField}-source`,
     targetHandle: `${ref.targetTable}.${ref.targetField}-target`,
-    type: 'smoothstep',
+    type: 'relationship',
     animated: true,
     style: { stroke, strokeWidth: 2 },
-    label: edgeLabel(ref),
+    label: mark,
+    data: {
+      label: mark,
+      cardinality: ref.cardinality,
+      sourceTable: ref.sourceTable,
+      targetTable: ref.targetTable,
+      sourceField: ref.sourceField,
+      targetField: ref.targetField,
+    },
     labelStyle: { fontSize: 10, fill: '#737373', fontWeight: 500 },
     labelBgStyle: { fill: '#141414', fillOpacity: 0.85 },
     markerEnd: {
@@ -367,7 +404,7 @@ export const useDiagramStore = create<DiagramStoreState>((set, get) => {
       nodes,
       ast: syncNodePositions(state.ast, nodes),
     })),
-  setEdges: (edges) => set({ edges }),
+  setEdges: (edges) => set({ edges: dedupeEdges(edges) }),
 
   armAutoLayout: () => set({ layoutOnNextParse: true }),
 
@@ -394,19 +431,39 @@ export const useDiagramStore = create<DiagramStoreState>((set, get) => {
       const replacePositions = options?.replacePositions === true;
       const existingNodes = new Map(state.nodes.map((node) => [node.id, node]));
       const incomingNodes = new Map(nodes.map((node) => [node.id, node]));
+
+      // Sensible offset for brand new tables added while editing an existing diagram
+      let nextNewX = 36;
+      let nextNewY = 36;
+      if (state.nodes.length > 0) {
+        const maxX = Math.max(...state.nodes.map((n) => n.position.x));
+        const minY = Math.min(...state.nodes.map((n) => n.position.y));
+        nextNewX = maxX + 360;
+        nextNewY = Math.max(36, minY);
+      }
+
       const reconciledTables: Record<string, SchemaTable> = Object.fromEntries(
         Object.entries(ast.tables).map(([name, table]) => {
           const existingTable = state.ast.tables[name];
           const existingNode = existingNodes.get(name);
           const incoming = incomingNodes.get(name);
+          let pos = existingNode?.position ?? table.position;
+          if (replacePositions) {
+            pos = incoming?.position ?? table.position;
+          } else if (!existingNode) {
+            if (incoming?.position && (incoming.position.x !== 0 || incoming.position.y !== 0)) {
+              pos = incoming.position;
+            } else {
+              pos = { x: nextNewX, y: nextNewY };
+              nextNewY += 260;
+            }
+          }
           return [
             name,
             {
               ...table,
               color: existingTable?.color ?? table.color,
-              position: replacePositions
-                ? (incoming?.position ?? table.position)
-                : (existingNode?.position ?? table.position),
+              position: pos,
             },
           ];
         }),
@@ -431,13 +488,16 @@ export const useDiagramStore = create<DiagramStoreState>((set, get) => {
             }
           : { ...n, selected: n.id === selectedTable };
       });
+
       return {
         ast: reconciledAST,
         nodes: reconciledNodes,
-        edges: edges.map((edge) => ({
-          ...edge,
-          selected: edge.id === selectedEdge,
-        })),
+        edges: dedupeEdges(
+          edges.map((edge) => ({
+            ...edge,
+            selected: edge.id === selectedEdge,
+          })),
+        ),
         selectedTable,
         selectedEdge,
         sourceOrigin:
@@ -490,7 +550,7 @@ export const useDiagramStore = create<DiagramStoreState>((set, get) => {
 
   addTable: (table: SchemaTable) => {
     if (!requireSynced('add a table')) return;
-    const { ast } = get();
+    const { ast, rawText } = get();
     const name = normalizeIdent(table.name);
     if (!name) {
       set({ statusMessage: 'Table name is required' });
@@ -533,16 +593,22 @@ export const useDiagramStore = create<DiagramStoreState>((set, get) => {
       data: { table: newTable },
       selected: true,
     };
+
+    const tableSnippet = serializeDBMLTable(newTable);
+    const existingRaw = rawText.trimEnd();
+    const newRawText = existingRaw.length > 0 ? `${existingRaw}\n\n${tableSnippet}\n` : `${tableSnippet}\n`;
+
     set({
       ast: newAST,
       nodes: [
         ...get().nodes.map((node) => ({ ...node, selected: false })),
         newNode,
       ],
-      rawText: serializeDBML(newAST),
+      rawText: newRawText,
       selectedTable: newTable.name,
       selectedEdge: null,
       sourceOrigin: 'canvas',
+      syncStatus: 'synced',
       statusMessage: `Created table "${name}"`,
     });
   },
@@ -673,7 +739,7 @@ export const useDiagramStore = create<DiagramStoreState>((set, get) => {
     const newAST = { ...ast, references: newRefs };
     set({
       ast: newAST,
-      edges: [...get().edges, newEdge],
+      edges: dedupeEdges([...get().edges.filter((e) => e.id !== newEdge.id), newEdge]),
       rawText: serializeDBML(newAST),
       sourceOrigin: 'canvas',
       statusMessage: `Created relationship ${ref.sourceTable}.${ref.sourceField} → ${ref.targetTable}.${ref.targetField}`,
@@ -1005,11 +1071,12 @@ export const useDiagramStore = create<DiagramStoreState>((set, get) => {
           ...node,
           selected: node.id === selection.selectedTable,
         })) ?? tablesToNodes(input.ast, selection.selectedTable);
-      const edges =
+      const edges = dedupeEdges(
         input.edges?.map((edge) => ({
           ...edge,
           selected: edge.id === selection.selectedEdge,
-        })) ?? refsToEdges(input.ast, selection.selectedEdge);
+        })) ?? refsToEdges(input.ast, selection.selectedEdge),
+      );
       const rawText = sanitizeDbmlText(input.rawText ?? serializeDBML(input.ast));
       const origin = input.origin;
       set({
@@ -1189,8 +1256,8 @@ export const useDiagramStore = create<DiagramStoreState>((set, get) => {
       position: table.position ?? { x: 0, y: 0 },
       data: { table },
     }));
-    const edges: Edge[] = Object.values(ast.references).map((reference) =>
-      refToEdge(reference),
+    const edges: Edge[] = dedupeEdges(
+      Object.values(ast.references).map((reference) => refToEdge(reference)),
     );
     const collapsed = positionsCollapsed(nodes);
     set({

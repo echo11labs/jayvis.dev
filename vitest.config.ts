@@ -10,5 +10,6 @@ export default defineConfig({
   test: {
     environment: 'node',
     execArgv: ['--experimental-sqlite'],
+    exclude: ['**/node_modules/**', '**/dist/**', '**/.kilo/**', '**/.git/**'],
   },
 });

@@ -82,8 +82,8 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
   );
 
   const handleSubmit = useCallback(() => {
-    if (useDiagramStore.getState().syncStatus !== 'synced') {
-      toast.error('Cannot add a table while DBML is not synced');
+    if (useDiagramStore.getState().syncStatus === 'offline') {
+      toast.error('Cannot add a table while parser service is offline');
       return;
     }
     const name = normalizeIdent(tableName);
@@ -147,8 +147,8 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
         onOpenChange(v);
       }}
     >
-      <DialogContent className={`${dialogCls} sm:max-w-[560px]`}>
-        <DialogHeader>
+      <DialogContent className={`${dialogCls} max-h-[90vh] flex flex-col sm:max-w-[580px] p-6`}>
+        <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Codicon name="table" />
             Create Table
@@ -159,114 +159,121 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-2 gap-3 py-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="table-name" className="text-xs text-[var(--color-text-muted)]">
-              Table name
-            </Label>
-            <Input
-              id="table-name"
-              autoFocus
-              value={tableName}
-              onChange={(e) => setTableName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSubmit();
-              }}
-              placeholder="e.g. orders, users"
-              className={`font-mono text-sm focus:border-indigo-500 ${inputCls}`}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="schema-name" className="text-xs text-[var(--color-text-muted)]">
-              Schema
-            </Label>
-            <Input
-              id="schema-name"
-              value={schema}
-              onChange={(e) => setSchema(e.target.value)}
-              placeholder="public"
-              className={`font-mono text-sm focus:border-indigo-500 ${inputCls}`}
-            />
-          </div>
-        </div>
-
-        <div className="mt-2 space-y-2">
-          <div className="flex items-center justify-between">
-            <Label className="text-xs text-[var(--color-text-muted)]">Columns</Label>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={addField}
-              className="h-7 gap-1 text-xs text-indigo-400 hover:bg-[var(--color-bg-panel)] hover:text-indigo-300"
-            >
-              <Codicon name="plus" />
-              Add column
-            </Button>
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto pr-1 py-1 space-y-4">
+          <div className="grid grid-cols-2 gap-3 shrink-0">
+            <div className="space-y-1.5">
+              <Label htmlFor="table-name" className="text-xs text-[var(--color-text-muted)]">
+                Table name
+              </Label>
+              <Input
+                id="table-name"
+                autoFocus
+                value={tableName}
+                onChange={(e) => setTableName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSubmit();
+                }}
+                placeholder="e.g. orders, users"
+                className={`font-mono text-sm focus:border-[var(--color-accent-primary)] ${inputCls}`}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="schema-name" className="text-xs text-[var(--color-text-muted)]">
+                Schema
+              </Label>
+              <Input
+                id="schema-name"
+                value={schema}
+                onChange={(e) => setSchema(e.target.value)}
+                placeholder="public"
+                className={`font-mono text-sm focus:border-[var(--color-accent-primary)] ${inputCls}`}
+              />
+            </div>
           </div>
 
-          <div className={`max-h-[260px] space-y-2 overflow-y-auto rounded-lg border p-2 ${fieldsContainerCls}`}>
-            {fields.map((f, idx) => (
-              <div
-                key={idx}
-                className="grid grid-cols-[1fr_1fr_auto_auto_auto_auto] items-center gap-2"
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs text-[var(--color-text-muted)]">Columns ({fields.length})</Label>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={addField}
+                className="h-7 gap-1 text-xs text-[var(--color-accent-primary)] hover:bg-[var(--color-bg-panel)] hover:opacity-85"
               >
-                <Input
-                  value={f.name}
-                  onChange={(e) => updateField(idx, { name: e.target.value })}
-                  placeholder="column name"
-                  className={`h-8 font-mono text-xs focus:border-indigo-500 ${fieldRowCls}`}
-                />
-                <select
-                  value={f.type}
-                  onChange={(e) => updateField(idx, { type: e.target.value })}
-                  className={`h-8 rounded border px-2 font-mono text-xs focus:border-indigo-500 ${selectCls}`}
-                >
-                  {COMMON_TYPES.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
-                <label className="flex cursor-pointer items-center gap-1 text-[10px] text-[var(--color-text-muted)]">
-                  <Checkbox
-                    checked={f.isPrimaryKey}
-                    onCheckedChange={(v) =>
-                      updateField(idx, { isPrimaryKey: !!v, isNullable: !!v ? false : f.isNullable })
-                    }
-                  />
-                  PK
-                </label>
-                <label className="flex cursor-pointer items-center gap-1 text-[10px] text-[var(--color-text-muted)]">
-                  <Checkbox
-                    checked={f.isUnique && !f.isPrimaryKey}
-                    onCheckedChange={(v) => updateField(idx, { isUnique: !!v })}
-                    disabled={f.isPrimaryKey}
-                  />
-                  UQ
-                </label>
-                <label className="flex cursor-pointer items-center gap-1 text-[10px] text-[var(--color-text-muted)]">
-                  <Checkbox
-                    checked={f.isNullable}
-                    onCheckedChange={(v) => updateField(idx, { isNullable: !!v })}
-                    disabled={f.isPrimaryKey}
-                  />
-                  Null
-                </label>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => removeField(idx)}
-                  className="h-7 w-7 text-[var(--color-text-muted)] hover:bg-[var(--color-bg-panel)] hover:text-rose-400"
-                  disabled={fields.length <= 1}
-                >
-                  <Codicon name="trash" />
-                </Button>
+                <Codicon name="plus" />
+                Add column
+              </Button>
+            </div>
+
+            <div className={`max-h-[300px] min-h-[140px] space-y-2 overflow-y-auto rounded-lg border p-2.5 ${fieldsContainerCls}`}>
+              <div className="grid grid-cols-[1fr_1fr_auto_auto_auto_auto] items-center gap-2 px-1 text-[10px] font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
+                <span>Name</span>
+                <span>Type</span>
+                <span className="w-7 text-center">PK</span>
+                <span className="w-7 text-center">UQ</span>
+                <span className="w-8 text-center">Null</span>
+                <span className="w-7"></span>
               </div>
-            ))}
+              {fields.map((f, idx) => (
+                <div
+                  key={idx}
+                  className="grid grid-cols-[1fr_1fr_auto_auto_auto_auto] items-center gap-2"
+                >
+                  <Input
+                    value={f.name}
+                    onChange={(e) => updateField(idx, { name: e.target.value })}
+                    placeholder="column name"
+                    className={`h-8 font-mono text-xs focus:border-[var(--color-accent-primary)] ${fieldRowCls}`}
+                  />
+                  <select
+                    value={f.type}
+                    onChange={(e) => updateField(idx, { type: e.target.value })}
+                    className={`h-8 rounded border px-2 font-mono text-xs focus:border-indigo-500 ${selectCls}`}
+                  >
+                    {COMMON_TYPES.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                  <label className="flex w-7 cursor-pointer items-center justify-center text-[10px] text-[var(--color-text-muted)]" title="Primary Key">
+                    <Checkbox
+                      checked={f.isPrimaryKey}
+                      onCheckedChange={(v) =>
+                        updateField(idx, { isPrimaryKey: !!v, isNullable: !!v ? false : f.isNullable })
+                      }
+                    />
+                  </label>
+                  <label className="flex w-7 cursor-pointer items-center justify-center text-[10px] text-[var(--color-text-muted)]" title="Unique">
+                    <Checkbox
+                      checked={f.isUnique && !f.isPrimaryKey}
+                      onCheckedChange={(v) => updateField(idx, { isUnique: !!v })}
+                      disabled={f.isPrimaryKey}
+                    />
+                  </label>
+                  <label className="flex w-8 cursor-pointer items-center justify-center text-[10px] text-[var(--color-text-muted)]" title="Nullable">
+                    <Checkbox
+                      checked={f.isNullable}
+                      onCheckedChange={(v) => updateField(idx, { isNullable: !!v })}
+                      disabled={f.isPrimaryKey}
+                    />
+                  </label>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => removeField(idx)}
+                    className="h-7 w-7 text-[var(--color-text-muted)] hover:bg-[var(--color-bg-panel)] hover:text-rose-400"
+                    disabled={fields.length <= 1}
+                  >
+                    <Codicon name="trash" />
+                  </Button>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
-        <DialogFooter className="mt-2">
+        <DialogFooter className="shrink-0 mt-3 pt-2 border-t border-[var(--color-border-subtle)]">
           <Button
             variant="ghost"
             onClick={() => onOpenChange(false)}
@@ -277,7 +284,7 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
           <Button
             onClick={handleSubmit}
             disabled={syncStatus !== 'synced'}
-            className="gap-1.5 bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-40"
+            className="gap-1.5 bg-[var(--color-accent-primary)] text-white hover:opacity-90 disabled:opacity-40"
           >
             <Codicon name="table" />
             Create table

@@ -55,7 +55,7 @@ function TableNodeComponent({ id, data, selected }: NodeProps<TableNode>) {
             No columns
           </div>
         )}
-        {table.fields.map((field: SchemaField) => {
+        {table.fields.map((field: SchemaField, index: number) => {
           const handleKey = `${id}.${field.name}`;
           const isPK = !!field.constraints.isPrimaryKey;
           const isUQ = !!field.constraints.isUnique && !isPK;
@@ -64,7 +64,7 @@ function TableNodeComponent({ id, data, selected }: NodeProps<TableNode>) {
 
           return (
             <div
-              key={field.id}
+              key={field.id || `${id}.${field.name}-${index}`}
               className="group relative grid h-9 grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-3.5 text-[12px] hover:bg-[var(--color-bg-tertiary)]"
             >
               <Handle

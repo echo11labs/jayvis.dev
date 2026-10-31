@@ -13,7 +13,7 @@
  */
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { pathToFileURL } from 'node:url';
-import { Parser } from '@dbml/core';
+import { Parser, importer } from '@dbml/core';
 
 const PORT = Number(process.env.DBML_PARSER_PORT ?? 3031);
 const HOST = process.env.DBML_PARSER_HOST ?? '127.0.0.1';
@@ -56,34 +56,45 @@ function cardinalityStroke(cardinality: string): string {
     case '1:1':
       return '#10B981';
     case '1:N':
-      return '#6366F1';
+    case '1:*':
+      return '#38BDF8';
+    case 'N:1':
+    case '*:1':
+      return '#818CF8';
     case 'N:M':
-      return '#EC4899';
+    case '*:*':
+      return '#F59E0B';
     default:
-      return '#6366F1';
+      return '#38BDF8';
   }
 }
 
 function edgeLabel(_sourceField: string, _targetField: string, cardinality: string): string {
   if (cardinality === '1:1') return '1:1';
   if (cardinality === 'N:M') return '*:*';
+  if (cardinality === 'N:1') return '*:1';
   return '1:*';
 }
 
-function deriveCardinality(endpoints: any[]): string {
+function deriveCardinality(endpoints: any[]): '1:1' | '1:N' | 'N:1' | 'N:M' {
   if (!endpoints || endpoints.length < 2) return '1:N';
   const [a, b] = endpoints;
   const aMany = a?.relation === '*';
   const bMany = b?.relation === '*';
   if (aMany && bMany) return 'N:M';
   if (!aMany && !bMany) return '1:1';
+  if (aMany && !bMany) return 'N:1';
   return '1:N';
 }
 
 function refId(r: any, idx: number): string {
   const e = r.endpoints || [];
   if (e.length >= 2) {
-    return `ref_${e[0].tableName}.${(e[0].fieldNames || [])[0]}__${e[1].tableName}.${(e[1].fieldNames || [])[0]}`;
+    const sTable = e[0].tableName;
+    const tTable = e[1].tableName;
+    const sFields = (e[0].fieldNames || []).filter(Boolean).join('_') || 'id';
+    const tFields = (e[1].fieldNames || []).filter(Boolean).join('_') || 'id';
+    return `ref_${sTable}.${sFields}__${tTable}.${tFields}`;
   }
   return `ref_${idx}`;
 }
@@ -92,6 +103,16 @@ const TABLE_COLORS = [
   '#6366F1', '#10B981', '#F59E0B', '#EC4899', '#8B5CF6',
   '#06B6D4', '#EF4444', '#84CC16', '#14B8A6', '#F97316',
 ];
+
+function sanitizeMultiWordTypes(text: string): string {
+  return text
+    .replace(/(?<!["'])\bdouble\s+precision\b(?!["'])/gi, '"double precision"')
+    .replace(/(?<!["'])\btimestamp\s+with\s+time\s+zone\b(?!["'])/gi, '"timestamp with time zone"')
+    .replace(/(?<!["'])\btimestamp\s+without\s+time\s+zone\b(?!["'])/gi, '"timestamp without time zone"')
+    .replace(/(?<!["'])\btime\s+with\s+time\s+zone\b(?!["'])/gi, '"time with time zone"')
+    .replace(/(?<!["'])\btime\s+without\s+time\s+zone\b(?!["'])/gi, '"time without time zone"')
+    .replace(/(?<!["'])\bcharacter\s+varying\b(?!["'])/gi, '"character varying"');
+}
 
 export function parseDbml(dbml: string) {
   if (!dbml || !dbml.trim()) {
@@ -104,7 +125,18 @@ export function parseDbml(dbml: string) {
   }
 
   try {
-    const db = Parser.parse(dbml, 'dbmlv2');
+    let db: any;
+    try {
+      db = Parser.parse(dbml, 'dbmlv2');
+    } catch (parseErr: any) {
+      const sanitized = sanitizeMultiWordTypes(dbml);
+      if (sanitized !== dbml) {
+        db = Parser.parse(sanitized, 'dbmlv2');
+      } else {
+        throw parseErr;
+      }
+    }
+
     const exported = (db as any).export() as any;
 
     const tables: Record<string, any> = {};
@@ -205,7 +237,12 @@ export function parseDbml(dbml: string) {
         const targetNames = target.fieldNames || [];
         const sourceField = sourceNames[0] || 'id';
         const targetField = targetNames[0] || 'id';
-        const id = refId(r, i);
+        const baseId = r.name ? `ref_${r.name}` : refId(r, i);
+        let id = baseId;
+        let suffix = 1;
+        while (references[id]) {
+          id = `${baseId}__${suffix++}`;
+        }
 
         const cardinality = deriveCardinality(e);
         const stroke = cardinalityStroke(cardinality);
@@ -398,6 +435,32 @@ export function createParserServer() {
             message === 'Unexpected end of JSON input'
               ? 'Invalid JSON payload'
               : message,
+        });
+      }
+      return;
+    }
+
+    if (url.pathname === '/import-sql' && request.method === 'POST') {
+      try {
+        const body = (await readJsonBody(request)) as { sql?: unknown; dialect?: string };
+        if (typeof body.sql !== 'string') {
+          sendJson(request, response, 400, {
+            error: 'Missing or invalid "sql" field',
+          });
+          return;
+        }
+
+        const dialect = (body.dialect || 'postgres') as 'postgres' | 'mysql';
+        const converted = importer.import(body.sql, dialect as any);
+        sendJson(request, response, 200, {
+          ok: true,
+          dbml: converted,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'SQL conversion failed';
+        sendJson(request, response, 400, {
+          ok: false,
+          error: message,
         });
       }
       return;

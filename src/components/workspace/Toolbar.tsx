@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,6 +11,7 @@ import {
 import { useDiagramStore } from '@/store/diagram-store';
 import { serializeDBML } from '@/lib/parser/dbml';
 import { toast } from 'sonner';
+import { AuthNavAction, useAuthContext } from '@/components/auth/AuthProvider';
 import { parseImportedFile } from '@/lib/ast-schema';
 import { layoutFreshNodes } from '@/lib/layout/elk-layout';
 import { confirmIf } from '@/lib/confirm-action';
@@ -18,6 +20,7 @@ import type { ExportFormat } from '@/lib/export/workspace';
 import { summarizeValidation } from '@/lib/validation/schema-validation';
 import { Mark, type MarkName } from '@/lib/ui/marks';
 import { useEffect, useMemo, useState } from 'react';
+import { useWorkspaceSettings } from '@/hooks/use-workspace-settings';
 
 export type SampleName = 'ecommerce' | 'blog' | 'saas' | 'auth' | 'analytics';
 export type { ExportFormat };
@@ -26,7 +29,11 @@ export type CanvasView = 'split' | 'dbml' | 'erd';
 interface ToolbarProps {
   activeView: CanvasView;
   workspaceName: string;
-  onAutoLayout: () => Promise<void>;
+  onAutoLayout: (optionsOverride?: {
+    groupByDomain?: boolean;
+    direction?: 'RIGHT' | 'LEFT' | 'DOWN' | 'UP';
+    algorithm?: 'layered' | 'grid';
+  }) => Promise<void> | void;
   onGenerateMigration: () => void;
   onMigrationOpenChange: (open: boolean) => void;
   onSqlBuilderOpenChange: (open: boolean) => void;
@@ -50,6 +57,8 @@ interface ToolbarProps {
   onSelectBranch: (name: string) => void;
   onCreateBranch: (name: string) => void;
   isLayouting: boolean;
+  onCloudSync?: () => void;
+  isSyncing?: boolean;
 }
 
 const menuCls =
@@ -90,13 +99,18 @@ export function Toolbar({
   onSelectBranch,
   onCreateBranch,
   isLayouting,
+  onCloudSync,
+  isSyncing,
 }: ToolbarProps) {
+  const { isSignedIn } = useAuthContext();
   const tableCount = useDiagramStore((s) => Object.keys(s.ast.tables).length);
   const ast = useDiagramStore((s) => s.ast);
   const canUndo = useDiagramStore((s) => s.undoStack.length > 0);
   const canRedo = useDiagramStore((s) => s.redoStack.length > 0);
   const undo = useDiagramStore((s) => s.undo);
   const redo = useDiagramStore((s) => s.redo);
+  const [settings, updateSettings] = useWorkspaceSettings();
+  const hasGroups = Object.keys(ast.tableGroups ?? {}).length > 0;
   const { errors, warnings } = useMemo(() => summarizeValidation(ast), [ast]);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -198,14 +212,21 @@ export function Toolbar({
         onChange={handleImport}
       />
       <div role="group" aria-label="Workspace" className="flex shrink-0 items-center gap-2.5">
+        <Link
+          href="/"
+          className="flex shrink-0 items-center gap-2 font-medium tracking-tight text-[var(--color-text-primary)] transition hover:opacity-80"
+          title="Back to JayVis.dev Home"
+        >
+          <span className="h-2 w-2 rounded-full bg-[var(--color-accent-primary)] shadow-[0_0_8px_var(--color-accent-primary)]" />
+          JayVis.dev
+        </Link>
         <button
           type="button"
           onClick={onToggleSidebar}
-          className="flex shrink-0 items-center gap-2 font-medium tracking-tight text-[var(--color-text-primary)]"
+          className="flex h-6 w-6 items-center justify-center rounded text-[var(--color-text-muted)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)]"
           title="Toggle Schema Explorer"
         >
-          <span className="h-2 w-2 rounded-full bg-[var(--color-accent-primary)]" />
-          JayVis.dev
+          <Mark name="layout" />
         </button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -375,6 +396,109 @@ export function Toolbar({
           disabled={empty}
           onClick={() => onSqlBuilderOpenChange(true)}
         />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              disabled={empty || isLayouting}
+              className="flex h-7 items-center gap-1.5 rounded-md px-2 text-[var(--color-text-muted)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)] disabled:opacity-30 transition-colors"
+              title="Layout options"
+            >
+              <Mark name={isLayouting ? 'loading' : 'layout'} spin={isLayouting} />
+              <span>Layout</span>
+              <Mark name="chevronDown" className="h-3 w-3 opacity-60" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className={menuCls}>
+            <DropdownMenuItem
+              className={itemCls}
+              onClick={() => void onAutoLayout({ direction: 'RIGHT', algorithm: 'layered' })}
+            >
+              <Mark name="arrowRight" className="mr-2 h-3.5 w-3.5 text-[var(--color-text-muted)]" />
+              <div className="flex flex-1 items-center justify-between gap-4">
+                <span>Hierarchical (Left → Right)</span>
+                <Kbd>⌘L</Kbd>
+              </div>
+            </DropdownMenuItem>
+
+            <DropdownMenuItem
+              className={itemCls}
+              onClick={() => void onAutoLayout({ direction: 'DOWN', algorithm: 'layered' })}
+            >
+              <Mark name="arrowDown" className="mr-2 h-3.5 w-3.5 text-[var(--color-text-muted)]" />
+              <span>Hierarchical (Top → Bottom)</span>
+            </DropdownMenuItem>
+
+            <DropdownMenuItem
+              className={itemCls}
+              onClick={() => void onAutoLayout({ algorithm: 'grid' })}
+            >
+              <Mark name="table" className="mr-2 h-3.5 w-3.5 text-[var(--color-text-muted)]" />
+              <span>Compact Grid</span>
+            </DropdownMenuItem>
+
+            <DropdownMenuSeparator className="bg-[var(--color-border-subtle)]" />
+
+            <DropdownMenuItem
+              className={itemCls}
+              onClick={() => {
+                const next = !settings.groupByDomain;
+                updateSettings({ groupByDomain: next });
+                void onAutoLayout({ groupByDomain: next });
+              }}
+            >
+              <Mark name="folder" className="mr-2 h-3.5 w-3.5 text-[var(--color-text-muted)]" />
+              <div className="flex flex-1 items-center justify-between gap-4">
+                <span>Group by Domain Pods</span>
+                <span
+                  className={`rounded px-1.5 py-0.5 font-mono text-[10px] font-medium ${
+                    settings.groupByDomain
+                      ? 'bg-[var(--color-accent-primary)]/20 text-[var(--color-accent-primary)]'
+                      : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-muted)]'
+                  }`}
+                >
+                  {settings.groupByDomain ? 'On' : 'Off'}
+                </span>
+              </div>
+            </DropdownMenuItem>
+
+            <DropdownMenuSeparator className="bg-[var(--color-border-subtle)]" />
+
+            <DropdownMenuItem
+              className={itemCls}
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('jayvis:fit-view'));
+                toast.success('Centered and fit diagram to view');
+              }}
+            >
+              <Mark name="maximize" className="mr-2 h-3.5 w-3.5 text-[var(--color-text-muted)]" />
+              <div className="flex flex-1 items-center justify-between gap-4">
+                <span>Fit to View</span>
+                <Kbd>⌘0</Kbd>
+              </div>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {hasGroups && (
+          <button
+            type="button"
+            onClick={() => {
+              const next = !settings.groupByDomain;
+              updateSettings({ groupByDomain: next });
+              void onAutoLayout({ groupByDomain: next });
+            }}
+            className={`flex h-7 items-center gap-1.5 rounded px-2 font-mono text-[11px] transition-colors ${
+              settings.groupByDomain
+                ? 'border border-[var(--color-accent-primary)]/40 bg-[var(--color-selection)] font-medium text-[var(--color-accent-primary)]'
+                : 'border border-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)]'
+            }`}
+            title="Toggle Grouped Domain Layout"
+          >
+            <Mark name="table" />
+            Groups: {settings.groupByDomain ? 'On' : 'Off'}
+          </button>
+        )}
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -463,6 +587,21 @@ export function Toolbar({
         >
           ⌘K
         </button>
+        <div className="ml-2 flex items-center gap-1.5">
+          {isSignedIn && onCloudSync && (
+            <button
+              type="button"
+              onClick={onCloudSync}
+              disabled={isSyncing}
+              className="flex h-7 items-center gap-1 rounded-md border border-[#38BDF8]/40 bg-[#38BDF8]/10 px-2 font-mono text-[11px] font-medium text-[#38BDF8] hover:bg-[#38BDF8]/20 transition disabled:opacity-50"
+              title="Push workspaces & files to Cloud Storage"
+            >
+              <Mark name={isSyncing ? 'loading' : 'upload'} spin={isSyncing} className="h-3 w-3" />
+              <span>{isSyncing ? 'Syncing...' : 'Sync Cloud'}</span>
+            </button>
+          )}
+          <AuthNavAction />
+        </div>
       </div>
     </header>
   );

@@ -75,7 +75,7 @@ export interface SchemaTable {
   note?: string;
 }
 
-export type Cardinality = '1:1' | '1:N' | 'N:M';
+export type Cardinality = '1:1' | '1:N' | 'N:1' | 'N:M';
 
 export interface SchemaEnumValue {
   name: string;
@@ -163,12 +163,22 @@ export interface ReferenceDiff {
   current?: SchemaReference;
 }
 
+export interface SchemaHazard {
+  id: string;
+  level: 'danger' | 'warning';
+  title: string;
+  description: string;
+  tableName: string;
+  columnName?: string;
+}
+
 export interface SchemaDiffResult {
   tables: TableDiff[];
   indexes: IndexDiff[];
   references: ReferenceDiff[];
   upSql: string[];
   downSql: string[];
+  hazards?: SchemaHazard[];
 }
 
 /* ----------------------------------------------------------------------------

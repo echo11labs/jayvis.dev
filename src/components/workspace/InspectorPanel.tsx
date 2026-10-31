@@ -284,7 +284,7 @@ export function InspectorPanel({ onClose }: { onClose?: () => void }) {
 
                 return (
                   <div
-                    key={f.id}
+                    key={f.id || `${f.name}-${fieldIdx}`}
                     className={`group rounded-md border border-transparent px-2 py-2.5 ${fieldRow}`}
                   >
                     {isEditing ? (
@@ -607,14 +607,20 @@ export function InspectorPanel({ onClose }: { onClose?: () => void }) {
                   No relations
                 </p>
               )}
-              {tableRefs.map((ref) => {
+              {tableRefs.map((ref, idx) => {
                 const other = ref.sourceTable === table.name ? ref.targetTable : ref.sourceTable;
                 const otherField = ref.sourceTable === table.name ? ref.targetField : ref.sourceField;
                 const mark =
-                  ref.cardinality === '1:1' ? '1:1' : ref.cardinality === 'N:M' ? '*:*' : '1:*';
+                  ref.cardinality === '1:1'
+                    ? '1:1'
+                    : ref.cardinality === 'N:M'
+                      ? '*:*'
+                      : ref.cardinality === 'N:1'
+                        ? '*:1'
+                        : '1:*';
                 return (
                   <button
-                    key={ref.id}
+                    key={ref.id || `ref-${idx}`}
                     type="button"
                     onClick={() => setSelectedTable(other)}
                     className="flex w-full flex-col items-start gap-0.5 px-2.5 py-1.5 text-left hover:bg-[var(--color-bg-tertiary)]"

@@ -13,17 +13,25 @@ import type { SampleName } from '@/components/workspace/Toolbar';
 import { Mark } from '@/lib/ui/marks';
 import { summarizeValidation } from '@/lib/validation/schema-validation';
 import { Disclosure } from '@/components/workspace/Disclosure';
+import type { WorkspaceFile } from '@/lib/workspaces';
 
 export type LeftTab = 'files' | 'tables' | 'schema' | 'settings';
 
 interface LeftPanelProps {
   workspaceName: string;
+  files?: WorkspaceFile[];
+  activeFileId?: string;
   onToggle: () => void;
   onSelectTable: (name: string) => void;
   onOpenSample: (name: SampleName) => void;
   onImport: () => void;
   onAddTable: () => void;
   onGenerateMigration: () => void;
+  onAutoLayout?: (optionsOverride?: { groupByDomain?: boolean }) => Promise<void> | void;
+  onSelectFile?: (id: string) => void;
+  onAddFile?: () => void;
+  onRemoveFile?: (id: string) => void;
+  onRenameFile?: (id: string, name: string) => void;
 }
 
 const sampleNames: Array<{ name: SampleName; label: string }> = [
@@ -36,7 +44,8 @@ const sampleNames: Array<{ name: SampleName; label: string }> = [
 
 function cardinalityMark(value: string) {
   if (value === '1:1') return '1:1';
-  if (value === 'N:M') return '*:*';
+  if (value === 'N:M' || value === '*:*') return '*:*';
+  if (value === 'N:1' || value === '*:1') return '*:1';
   return '1:*';
 }
 
@@ -55,12 +64,19 @@ function EngineLabel() {
 
 export function LeftPanel({
   workspaceName,
+  files = [],
+  activeFileId,
   onToggle,
   onSelectTable,
   onOpenSample,
   onImport,
   onAddTable,
   onGenerateMigration,
+  onAutoLayout,
+  onSelectFile,
+  onAddFile,
+  onRemoveFile,
+  onRenameFile,
 }: LeftPanelProps) {
   const ast = useDiagramStore((s) => s.ast);
   const selectedTable = useDiagramStore((s) => s.selectedTable);
@@ -68,8 +84,10 @@ export function LeftPanel({
   const [settings, updateSettings] = useWorkspaceSettings();
   const [searchOpen, setSearchOpen] = useState(false);
   const [open, setOpen] = useState({
+    files: true,
     tables: true,
     relations: true,
+    diagnostics: false,
     enums: false,
     groups: false,
     samples: false,
@@ -199,6 +217,63 @@ export function LeftPanel({
 
       <ScrollArea className="flex-1">
         <Disclosure
+          label={`Files (${files.length})`}
+          count={files.length}
+          open={open.files}
+          onOpenChange={() => toggleSection('files')}
+          action={
+            onAddFile ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddFile();
+                }}
+                className="flex h-7 w-7 items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+                aria-label="Add file"
+                title="Add new file"
+              >
+                +
+              </button>
+            ) : undefined
+          }
+        >
+          {files.length === 0 && <EmptyLine>No files</EmptyLine>}
+          {files.map((file) => (
+            <div key={file.id} className="group flex items-center pr-2">
+              <div className="min-w-0 flex-1">
+                <CatalogRow
+                  icon={
+                    file.name.endsWith('.json')
+                      ? 'file'
+                      : file.name.endsWith('.sql')
+                        ? 'file'
+                        : 'file'
+                  }
+                  label={file.name}
+                  active={activeFileId ? file.id === activeFileId : false}
+                  onClick={() => onSelectFile?.(file.id)}
+                />
+              </div>
+              {files.length > 1 && onRemoveFile && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRemoveFile(file.id);
+                  }}
+                  className="hidden h-5 w-5 items-center justify-center rounded text-[var(--color-text-muted)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-accent-danger)] group-hover:flex"
+                  title={`Delete ${file.name} permanently`}
+                  aria-label={`Delete ${file.name} permanently`}
+                >
+                  <Mark name="trash" />
+                </button>
+              )}
+            </div>
+          ))}
+        </Disclosure>
+
+        <Disclosure
           label="Tables"
           count={tableEntries.length}
           open={open.tables}
@@ -246,9 +321,9 @@ export function LeftPanel({
           {visibleRefs.length === 0 && (
             <EmptyLine>{references.length === 0 ? 'No relations' : 'No matches'}</EmptyLine>
           )}
-          {visibleRefs.map((ref) => (
+          {visibleRefs.map((ref, idx) => (
             <button
-              key={ref.id}
+              key={ref.id || `ref-${idx}`}
               type="button"
               onClick={() => onSelectTable(ref.sourceTable)}
               aria-label={`${ref.sourceTable} to ${ref.targetTable}`}
@@ -262,6 +337,73 @@ export function LeftPanel({
               </span>
             </button>
           ))}
+        </Disclosure>
+
+        <Disclosure
+          label="Diagnostics"
+          count={issues.issues.length}
+          open={open.diagnostics}
+          onOpenChange={() => toggleSection('diagnostics')}
+          detail={
+            issues.errors > 0 ? (
+              <span className="text-[10px] text-[var(--color-accent-danger)] font-semibold">
+                {issues.errors} err
+              </span>
+            ) : issues.warnings > 0 ? (
+              <span className="text-[10px] text-[var(--color-accent-warning)] font-semibold">
+                {issues.warnings} warn
+              </span>
+            ) : undefined
+          }
+        >
+          {issues.issues.length === 0 ? (
+            <EmptyLine>No issues detected</EmptyLine>
+          ) : (
+            <div className="space-y-1 p-1">
+              {issues.issues.map((issue) => {
+                const isError = issue.severity === 'error';
+                const isWarn = issue.severity === 'warning';
+                return (
+                  <button
+                    key={issue.id}
+                    type="button"
+                    onClick={() => {
+                      if (issue.tableName) onSelectTable(issue.tableName);
+                    }}
+                    className="flex w-full flex-col items-start gap-1 rounded p-2 text-left transition-colors hover:bg-[var(--color-bg-tertiary)]"
+                  >
+                    <div className="flex w-full items-center gap-1.5 text-[10px]">
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full shrink-0 ${
+                          isError
+                            ? 'bg-[var(--color-accent-danger)]'
+                            : isWarn
+                              ? 'bg-[var(--color-accent-warning)]'
+                              : 'bg-[var(--color-accent-primary)]'
+                        }`}
+                      />
+                      <span className="font-semibold uppercase text-[var(--color-text-muted)]">
+                        {issue.category}
+                      </span>
+                      {issue.tableName && (
+                        <span className="ml-auto font-mono text-[var(--color-text-secondary)] truncate max-w-[120px]">
+                          {issue.tableName}{issue.fieldName ? `.${issue.fieldName}` : ''}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] leading-tight text-[var(--color-text-primary)]">
+                      {issue.message}
+                    </p>
+                    {issue.fix && (
+                      <p className="text-[10px] text-[var(--color-text-muted)] italic">
+                        {issue.fix}
+                      </p>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </Disclosure>
 
         {enums.length > 0 && <Disclosure
@@ -356,6 +498,15 @@ export function LeftPanel({
           <SettingRow label="Auto-save" checked={settings.autoSave} onChange={() => toggleSetting('autoSave')} />
           <SettingRow label="Minimap" checked={settings.minimap} onChange={() => toggleSetting('minimap')} />
           <SettingRow label="Grid" checked={settings.grid} onChange={() => toggleSetting('grid')} />
+          <SettingRow
+            label="Group by domain"
+            checked={settings.groupByDomain}
+            onChange={() => {
+              const next = !settings.groupByDomain;
+              updateSettings({ groupByDomain: next });
+              onAutoLayout?.({ groupByDomain: next });
+            }}
+          />
           <SettingRow label="Word wrap" checked={settings.wordWrap} onChange={() => toggleSetting('wordWrap')} />
           <SettingRow label="Line numbers" checked={settings.lineNumbers} onChange={() => toggleSetting('lineNumbers')} />
           <label className="flex h-8 items-center justify-between px-2.5 text-[12px]">

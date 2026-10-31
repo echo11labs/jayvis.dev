@@ -20,7 +20,7 @@ interface ContextPanelProps {
   onClose: () => void;
 }
 
-const cardinalities: Cardinality[] = ['1:1', '1:N', 'N:M'];
+const cardinalities: Cardinality[] = ['1:1', '1:N', 'N:1', 'N:M'];
 const actions = ['CASCADE', 'SET NULL', 'RESTRICT', 'NO ACTION'] as const;
 
 export function ContextPanel({ onClose }: ContextPanelProps) {
@@ -50,7 +50,7 @@ export function ContextPanel({ onClose }: ContextPanelProps) {
   const input = 'border-[var(--color-border-subtle)] bg-[var(--color-bg-app)] text-[var(--color-text-primary)]';
 
   return (
-    <div className={`flex h-full flex-col border-l ${panelClasses}`} role="complementary" aria-label="Table Inspector">
+    <div className={`flex h-full flex-col ${panelClasses}`} role="complementary" aria-label="Table Inspector">
       <div className="group flex h-8 shrink-0 items-center justify-between border-b border-[var(--color-border-subtle)] px-3">
         <span className="text-[12px] text-[var(--color-text-primary)]">
           {reference ? 'Relationship' : 'Table Inspector'}

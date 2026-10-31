@@ -16,12 +16,13 @@ import { Codicon } from '@/components/ui/codicon';
 import { useDiagramStore } from '@/store/diagram-store';
 import { buildMigration, readBaseline, writeBaseline } from '@/lib/migrations';
 import { appendMigration, checksumText, readMigrations } from '@/lib/persistence';
-import { SQL_ENGINE_KEY } from '@/lib/sql-literal';
+import { SQL_ENGINE_KEY, type SqlEngine } from '@/lib/sql-literal';
 import type {
   TableDiff,
   ColumnDiff,
   IndexDiff,
   ReferenceDiff,
+  SchemaHazard,
 } from '@/types/ast';
 import { toast } from 'sonner';
 import { confirmIf } from '@/lib/confirm-action';
@@ -83,8 +84,8 @@ function SqlBlock({ lines, title, filename }: { lines: string[]; title: string; 
   const sql = lines.length > 0 ? lines.join('\n') : '-- no changes --';
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-[var(--color-border-subtle)] px-4 py-2">
+    <div className="flex h-full min-h-0 w-full flex-col">
+      <div className="shrink-0 flex items-center justify-between border-b border-[var(--color-border-subtle)] px-4 py-2">
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold text-[var(--color-text-primary)]">{title}</span>
           <Badge variant="outline" className="border-[var(--color-border-subtle)] text-[10px] text-[var(--color-text-muted)]">
@@ -119,8 +120,8 @@ function SqlBlock({ lines, title, filename }: { lines: string[]; title: string; 
           </Button>
         </div>
       </div>
-      <ScrollArea className="flex-1">
-        <pre className="whitespace-pre-wrap break-words p-4 font-mono text-[12px] leading-relaxed text-[var(--color-text-primary)]">
+      <ScrollArea className="min-h-0 flex-1">
+        <pre className="whitespace-pre-wrap break-words p-4 font-mono text-[12px] leading-relaxed text-[var(--color-text-primary)] select-text">
           <code>{sql}</code>
         </pre>
       </ScrollArea>
@@ -132,10 +133,12 @@ function DiffTree({
   tables,
   indexes,
   references,
+  hazards = [],
 }: {
   tables: TableDiff[];
   indexes: IndexDiff[];
   references: ReferenceDiff[];
+  hazards?: SchemaHazard[];
 }) {
   const setSelectedTable = useDiagramStore((s) => s.setSelectedTable);
   const setSelectedEdge = useDiagramStore((s) => s.setSelectedEdge);
@@ -155,56 +158,110 @@ function DiffTree({
   }
 
   return (
-    <ScrollArea className="h-full">
+    <ScrollArea className="h-full min-h-0 flex-1">
       <div className="space-y-3 p-4">
-        {tables.map((td) => (
-          <div
-            key={`${td.action}-${td.tableName}`}
-            className="overflow-hidden rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-bg-panel)]"
-          >
-            <button
-              type="button"
-              className="flex w-full items-center justify-between border-b border-[var(--color-border-subtle)] px-3 py-2 text-left"
-              onClick={() => setSelectedTable(td.tableName)}
-            >
-              <div className="flex items-center gap-2">
-                <Codicon name="database" className="text-[var(--color-text-muted)]" />
-                <span className="font-mono text-xs font-medium text-[var(--color-text-primary)]">
-                  {td.tableName}
-                </span>
-              </div>
-              <Badge variant="outline" className={`text-[10px] ${actionColor(td.action)}`}>
-                {td.action}
+        {hazards.length > 0 && (
+          <div className="rounded-lg border border-[var(--color-accent-danger)]/30 bg-[var(--color-accent-danger)]/5 p-3 space-y-2.5">
+            <div className="flex items-center gap-2">
+              <Codicon name="warning" className="text-[var(--color-accent-danger)] text-sm" />
+              <span className="text-xs font-semibold text-[var(--color-accent-danger)]">
+                Potential Data Loss Hazards ({hazards.length})
+              </span>
+              <Badge variant="outline" className="ml-auto text-[9px] uppercase border-[var(--color-accent-danger)]/40 text-[var(--color-accent-danger)] bg-[var(--color-accent-danger)]/10">
+                Action Required
               </Badge>
-            </button>
-            {td.columnDiffs.length > 0 && (
-              <div className="divide-y divide-[var(--color-border-subtle)]">
-                {td.columnDiffs.map((cd: ColumnDiff) => (
-                  <div
-                    key={`${cd.action}-${cd.columnName}`}
-                    className="flex items-center justify-between px-3 py-1.5 text-xs"
+            </div>
+            <div className="space-y-1.5 pt-0.5">
+              {hazards.map((h) => (
+                <div
+                  key={h.id}
+                  className="flex items-start gap-2 text-xs rounded bg-[var(--color-bg-app)]/80 p-2 border border-[var(--color-border-subtle)]"
+                >
+                  <span
+                    className={`shrink-0 text-[9px] px-1.5 py-0.5 rounded font-mono uppercase font-bold ${
+                      h.level === 'danger'
+                        ? 'bg-[var(--color-accent-danger)]/15 text-[var(--color-accent-danger)]'
+                        : 'bg-[var(--color-accent-warning)]/15 text-[var(--color-accent-warning)]'
+                    }`}
                   >
-                    <div className="flex items-center gap-2">
-                      <span className={`font-mono font-bold ${columnActionColor(cd.action)}`}>
-                        {cd.action === 'CREATE' ? '+' : cd.action === 'DROP' ? '-' : '~'}
-                      </span>
-                      <span className="font-mono text-[var(--color-text-primary)]">
-                        {cd.columnName}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 font-mono text-[10px] text-[var(--color-text-muted)]">
-                      {cd.oldField && (
-                        <span className="line-through">{cd.oldField.type}</span>
-                      )}
-                      {cd.oldField && cd.newField && <span>→</span>}
-                      {cd.newField && <span>{cd.newField.type}</span>}
-                    </div>
+                    {h.level}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-[var(--color-text-primary)] text-xs">{h.title}</p>
+                    <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5 leading-normal">{h.description}</p>
                   </div>
-                ))}
-              </div>
-            )}
+                </div>
+              ))}
+            </div>
           </div>
-        ))}
+        )}
+
+        {tables.map((td) => {
+          const isTableDropped = td.action === 'DROP';
+          return (
+            <div
+              key={`${td.action}-${td.tableName}`}
+              className="overflow-hidden rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-bg-panel)]"
+            >
+              <button
+                type="button"
+                className="flex w-full items-center justify-between border-b border-[var(--color-border-subtle)] px-3 py-2 text-left"
+                onClick={() => setSelectedTable(td.tableName)}
+              >
+                <div className="flex items-center gap-2">
+                  <Codicon name="database" className="text-[var(--color-text-muted)]" />
+                  <span className="font-mono text-xs font-medium text-[var(--color-text-primary)]">
+                    {td.tableName}
+                  </span>
+                  {isTableDropped && (
+                    <Badge variant="outline" className="text-[9px] border-[var(--color-accent-danger)]/30 bg-[var(--color-accent-danger)]/10 text-[var(--color-accent-danger)]">
+                      DESTRUCTIVE
+                    </Badge>
+                  )}
+                </div>
+                <Badge variant="outline" className={`text-[10px] ${actionColor(td.action)}`}>
+                  {td.action}
+                </Badge>
+              </button>
+              {td.columnDiffs.length > 0 && (
+                <div className="divide-y divide-[var(--color-border-subtle)]">
+                  {td.columnDiffs.map((cd: ColumnDiff) => {
+                    const hasColHazard = hazards.some(
+                      (h) => h.tableName === td.tableName && h.columnName === cd.columnName,
+                    );
+                    return (
+                      <div
+                        key={`${cd.action}-${cd.columnName}`}
+                        className="flex items-center justify-between px-3 py-1.5 text-xs"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className={`font-mono font-bold ${columnActionColor(cd.action)}`}>
+                            {cd.action === 'CREATE' ? '+' : cd.action === 'DROP' ? '-' : '~'}
+                          </span>
+                          <span className="font-mono text-[var(--color-text-primary)]">
+                            {cd.columnName}
+                          </span>
+                          {hasColHazard && (
+                            <Badge variant="outline" className="text-[9px] border-[var(--color-accent-danger)]/30 bg-[var(--color-accent-danger)]/10 text-[var(--color-accent-danger)]">
+                              HAZARD
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 font-mono text-[10px] text-[var(--color-text-muted)]">
+                          {cd.oldField && (
+                            <span className="line-through">{cd.oldField.type}</span>
+                          )}
+                          {cd.oldField && cd.newField && <span>→</span>}
+                          {cd.newField && <span>{cd.newField.type}</span>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
 
         {indexes.map((idx) => (
           <button
@@ -265,9 +322,23 @@ export function MigrationPanel({ open, onOpenChange, slot }: MigrationPanelProps
   const captureSnapshot = useDiagramStore((s) => s.captureSnapshot);
   const setPreviousAST = useDiagramStore((s) => s.setPreviousAST);
   const [revision, setRevision] = useState(0);
+  const [engine, setEngine] = useState<SqlEngine>(() => {
+    if (typeof window === 'undefined') return 'postgres';
+    return window.localStorage.getItem(SQL_ENGINE_KEY) === 'sqlite' ? 'sqlite' : 'postgres';
+  });
 
   const baseline = useMemo(() => (slot ? readBaseline(slot) : null), [slot, revision]);
-  const result = useMemo(() => buildMigration(baseline, ast), [baseline, ast]);
+  const result = useMemo(() => {
+    try {
+      return buildMigration(baseline, ast, engine);
+    } catch {
+      return {
+        hasBaseline: Boolean(baseline),
+        diff: { tables: [], indexes: [], references: [], hazards: [], upSql: [], downSql: [] },
+        summary: { tables: 0, indexes: 0, references: 0, up: 0, down: 0, hazards: 0 },
+      };
+    }
+  }, [baseline, ast, engine]);
   const { diff, summary, hasBaseline } = result;
 
   const saveBaseline = () => {
@@ -278,7 +349,7 @@ export function MigrationPanel({ open, onOpenChange, slot }: MigrationPanelProps
       const down = result.diff.downSql.join('\n');
       appendMigration({
         slot,
-        engine: window.localStorage.getItem(SQL_ENGINE_KEY) === 'postgres' ? 'postgres' : 'sqlite',
+        engine,
         up: up || '-- baseline',
         down,
         checksum: checksumText(up || slot),
@@ -307,22 +378,62 @@ export function MigrationPanel({ open, onOpenChange, slot }: MigrationPanelProps
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="w-full border-[var(--color-border-subtle)] bg-[var(--color-bg-app)] p-0 sm:max-w-2xl"
+        className="flex h-full w-full flex-col gap-0 border-[var(--color-border-subtle)] bg-[var(--color-bg-app)] p-0 sm:max-w-2xl"
       >
-        <SheetHeader className="border-b border-[var(--color-border-subtle)] px-4 py-3">
-          <SheetTitle className="flex items-center gap-2 text-[var(--color-text-primary)]">
-            <Codicon name="diff" />
-            Migration Preview
-          </SheetTitle>
+        <SheetHeader className="shrink-0 border-b border-[var(--color-border-subtle)] px-4 py-3">
+          <div className="flex items-center justify-between">
+            <SheetTitle className="flex items-center gap-2 text-[var(--color-text-primary)]">
+              <Codicon name="diff" />
+              Migration Preview
+              {diff.hazards && diff.hazards.length > 0 && (
+                <Badge
+                  variant="outline"
+                  className="bg-[var(--color-accent-danger)]/15 text-[var(--color-accent-danger)] border-[var(--color-accent-danger)]/30 text-[10px]"
+                >
+                  {diff.hazards.length} hazard{diff.hazards.length > 1 ? 's' : ''}
+                </Badge>
+              )}
+            </SheetTitle>
+            <div className="flex items-center gap-1 rounded-md border border-[var(--color-border-subtle)] bg-[var(--color-bg-tertiary)] p-0.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setEngine('postgres');
+                  window.localStorage.setItem(SQL_ENGINE_KEY, 'postgres');
+                }}
+                className={`rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
+                  engine === 'postgres'
+                    ? 'bg-[var(--color-bg-panel)] text-[var(--color-text-primary)] shadow-sm'
+                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
+                }`}
+              >
+                PostgreSQL
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEngine('sqlite');
+                  window.localStorage.setItem(SQL_ENGINE_KEY, 'sqlite');
+                }}
+                className={`rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
+                  engine === 'sqlite'
+                    ? 'bg-[var(--color-bg-panel)] text-[var(--color-text-primary)] shadow-sm'
+                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
+                }`}
+              >
+                SQLite
+              </button>
+            </div>
+          </div>
           <SheetDescription className="text-[var(--color-text-muted)]">
             {hasBaseline
-              ? 'PostgreSQL diff between the saved baseline and the current schema.'
-              : 'No baseline saved. This migration creates the current schema.'}
+              ? `${engine === 'postgres' ? 'PostgreSQL' : 'SQLite'} diff between saved baseline and current schema.`
+              : `No baseline saved. This migration creates the current schema in ${engine === 'postgres' ? 'PostgreSQL' : 'SQLite'}.`}
           </SheetDescription>
         </SheetHeader>
 
-        <div className="flex h-[calc(100%-100px)] flex-col">
-            <div className="flex items-center gap-4 border-b border-[var(--color-border-subtle)] px-4 py-2 text-xs">
+        <div className="flex min-h-0 flex-1 flex-col">
+            <div className="shrink-0 flex items-center gap-4 border-b border-[var(--color-border-subtle)] px-4 py-2 text-xs">
               <div className="flex items-center gap-1.5">
                 <span className="text-[var(--color-text-muted)]">Tables:</span>
                 <span className="font-mono text-[var(--color-text-primary)]">{summary.tables}</span>
@@ -362,7 +473,6 @@ export function MigrationPanel({ open, onOpenChange, slot }: MigrationPanelProps
                     confirmLabel: 'Rebuild',
                     action: () => {
                       void (async () => {
-                        const engine = window.localStorage.getItem(SQL_ENGINE_KEY) === 'postgres' ? 'postgres' : 'sqlite';
                         await fetch('/api/build-sql', { method: 'DELETE' });
                         const res = await fetch('/api/build-sql', {
                           method: 'POST',
@@ -384,7 +494,7 @@ export function MigrationPanel({ open, onOpenChange, slot }: MigrationPanelProps
               </Button>
             </div>
             {log.length > 0 && (
-              <div className="max-h-24 overflow-auto border-b border-[var(--color-border-subtle)] px-4 py-2 text-[11px] text-[var(--color-text-muted)]">
+              <div className="shrink-0 max-h-24 overflow-auto border-b border-[var(--color-border-subtle)] px-4 py-2 text-[11px] text-[var(--color-text-muted)]">
                 {log.map((record) => (
                   <p key={record.version}>
                     v{record.version} {record.engine} {record.ok ? 'applied' : 'failed'} {record.checksum}
@@ -392,8 +502,8 @@ export function MigrationPanel({ open, onOpenChange, slot }: MigrationPanelProps
                 ))}
               </div>
             )}
-            <Tabs defaultValue="diff" className="flex flex-1 flex-col overflow-hidden">
-              <TabsList className="m-3 grid grid-cols-3 bg-[var(--color-bg-tertiary)]">
+            <Tabs defaultValue="diff" className="flex min-h-0 flex-1 flex-col gap-0 overflow-hidden">
+              <TabsList className="shrink-0 m-3 grid grid-cols-3 bg-[var(--color-bg-tertiary)]">
                 <TabsTrigger
                   value="diff"
                   className="data-[state=active]:bg-[var(--color-bg-panel)] data-[state=active]:text-[var(--color-text-primary)]"
@@ -415,17 +525,18 @@ export function MigrationPanel({ open, onOpenChange, slot }: MigrationPanelProps
                   DOWN SQL
                 </TabsTrigger>
               </TabsList>
-              <TabsContent value="diff" className="mt-0 flex-1 overflow-hidden">
+              <TabsContent value="diff" className="mt-0 flex min-h-0 flex-1 flex-col overflow-hidden data-[state=inactive]:hidden">
                 <DiffTree
                   tables={diff.tables}
                   indexes={diff.indexes}
                   references={diff.references}
+                  hazards={diff.hazards}
                 />
               </TabsContent>
-              <TabsContent value="up" className="mt-0 flex-1 overflow-hidden">
+              <TabsContent value="up" className="mt-0 flex min-h-0 flex-1 flex-col overflow-hidden data-[state=inactive]:hidden">
                 <SqlBlock lines={diff.upSql} title="Forward Migration (up.sql)" filename="up.sql" />
               </TabsContent>
-              <TabsContent value="down" className="mt-0 flex-1 overflow-hidden">
+              <TabsContent value="down" className="mt-0 flex min-h-0 flex-1 flex-col overflow-hidden data-[state=inactive]:hidden">
                 <SqlBlock lines={diff.downSql} title="Rollback Migration (down.sql)" filename="down.sql" />
               </TabsContent>
             </Tabs>

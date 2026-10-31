@@ -538,3 +538,24 @@ html[data-theme='system'] {
   text-decoration: underline dotted var(--color-accent-info);
   text-underline-offset: 3px;
 }
+
+@keyframes editorial-marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-editorial-marquee {
+  display: flex;
+  width: max-content;
+  animation: editorial-marquee 35s linear infinite;
+  will-change: transform;
+}
+
+.animate-editorial-marquee:hover {
+  animation-play-state: paused;
+}
+

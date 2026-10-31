@@ -100,4 +100,43 @@ describe('DBML parser mini-service', () => {
       ast: { tables: { posts: { name: 'posts' } } },
     });
   });
+
+  it('converts SQL DDL to DBML over /import-sql HTTP endpoint', async () => {
+    const res = await fetch(`${baseUrl}/import-sql`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sql: 'CREATE TABLE customers (id serial primary key, email text not null);',
+      }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { ok: boolean; dbml: string };
+    expect(body.ok).toBe(true);
+    expect(body.dbml).toContain('customers');
+    expect(body.dbml).toContain('pk');
+  });
+
+  it('disambiguates composite multi-tenant references sharing first column', () => {
+    const dbml = `
+      Table bundle_edges {
+        tenant_id text
+        variant_id text
+        parent_variant_id text
+      }
+      Table variants {
+        tenant_id text
+        id text
+      }
+      Ref: bundle_edges.(tenant_id, variant_id) > variants.(tenant_id, id)
+      Ref: bundle_edges.(tenant_id, parent_variant_id) > variants.(tenant_id, id)
+    `;
+    const parsed = parseDbml(dbml);
+    expect(parsed.error).toBeNull();
+    const edgeIds = parsed.edges.map((e) => e.id);
+    const uniqueIds = new Set(edgeIds);
+    expect(edgeIds.length).toBe(2);
+    expect(uniqueIds.size).toBe(2);
+    expect(Object.keys(parsed.ast.references).length).toBe(2);
+    expect(edgeIds[0]).not.toBe(edgeIds[1]);
+  });
 });

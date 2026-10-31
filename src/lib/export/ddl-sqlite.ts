@@ -1,7 +1,7 @@
 import type { DatabaseAST } from '@/types/ast';
 import { buildSchemaScript, type BuiltStatement } from '@/lib/sql-script';
 
-export interface SqlStatement extends BuiltStatement {}
+export type SqlStatement = BuiltStatement;
 
 export function buildSqlStatements(ast: DatabaseAST): SqlStatement[] {
   return buildSchemaScript(ast, 'sqlite').statements;

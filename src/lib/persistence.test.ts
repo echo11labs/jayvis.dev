@@ -88,4 +88,47 @@ describe('workspace persistence migration', () => {
     expect(file?.baselines['ws-1:main']?.capturedAt).toBe(5);
     expect(normalizeStudioFile({ fileVersion: 1, snapshot: emptyAST })).toBeNull();
   });
+
+  it('preserves multi-file workspace records inside the catalog', () => {
+    const file = normalizeStudioFile({
+      fileVersion: 1,
+      snapshot: {
+        workspaceVersion: 2,
+        ast: emptyAST,
+        rawText: 'Table orders {\n  id integer\n}',
+        savedAt: 10,
+      },
+      catalog: {
+        activeId: 'ws-1',
+        workspaces: [
+          {
+            id: 'ws-1',
+            name: 'ecommerce-db',
+            branch: 'main',
+            branches: [
+              {
+                name: 'main',
+                rawText: 'Table orders {\n  id integer\n}',
+                savedAt: 10,
+                activeFileId: 'file-2',
+                openFileIds: ['file-1', 'file-2'],
+                files: [
+                  { id: 'file-1', name: 'schema.dbml', rawText: 'Table users {}', savedAt: 1 },
+                  { id: 'file-2', name: 'orders.dbml', rawText: 'Table orders {\n  id integer\n}', savedAt: 10 },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      baselines: {},
+      migrations: [],
+    });
+
+    expect(file).not.toBeNull();
+    const branch = file!.catalog.workspaces[0]!.branches[0]!;
+    expect(branch.files).toHaveLength(2);
+    expect(branch.activeFileId).toBe('file-2');
+    expect(branch.files?.[1]?.name).toBe('orders.dbml');
+  });
 });

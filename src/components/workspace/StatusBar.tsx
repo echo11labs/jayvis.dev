@@ -15,6 +15,8 @@ interface StatusBarProps {
   showCursor: boolean;
   problemCount?: number;
   migrationCount?: number;
+  dialect?: string;
+  onFormat?: () => void;
   onOpenProblems: () => void;
   onOpenMigration?: () => void;
   onOpenSql?: () => void;
@@ -31,6 +33,8 @@ export function StatusBar({
   showCursor,
   problemCount = 0,
   migrationCount = 0,
+  dialect,
+  onFormat,
   onOpenProblems,
   onOpenMigration,
   onOpenSql,
@@ -113,14 +117,33 @@ export function StatusBar({
           {relationCount} {relationCount === 1 ? 'relation' : 'relations'}
         </span>
         {showCursor && (
-          <button
-            type="button"
-            onClick={() => window.dispatchEvent(new Event('jayvis:editor-goto'))}
-            className="border-l border-[var(--color-border-default)] pl-4 font-mono hover:text-[var(--color-text-primary)]"
-            title="Go to line"
-          >
-            L {cursor.line} C {cursor.col}
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new Event('jayvis:editor-goto'))}
+              className="border-l border-[var(--color-border-default)] pl-4 font-mono hover:text-[var(--color-text-primary)]"
+              title="Go to line"
+            >
+              L {cursor.line} C {cursor.col}
+            </button>
+            <span className="hidden sm:inline border-l border-[var(--color-border-default)] pl-4">
+              Spaces: 2
+            </span>
+            <span className="hidden sm:inline border-l border-[var(--color-border-default)] pl-4">
+              UTF-8
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                if (onFormat) onFormat();
+                else window.dispatchEvent(new Event('jayvis:editor-format'));
+              }}
+              className="border-l border-[var(--color-border-default)] pl-4 font-mono uppercase font-semibold text-[var(--color-accent-primary)] hover:underline"
+              title="Format document (⌥⇧F)"
+            >
+              {dialect ? dialect.toUpperCase() : 'DBML'}
+            </button>
+          </>
         )}
       </div>
     </footer>

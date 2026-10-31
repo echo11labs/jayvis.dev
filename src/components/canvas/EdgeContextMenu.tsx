@@ -13,7 +13,7 @@ interface EdgeContextMenuProps {
   onClose: () => void;
 }
 
-const CARDINALITIES: Cardinality[] = ['1:1', '1:N', 'N:M'];
+const CARDINALITIES: Cardinality[] = ['1:1', '1:N', 'N:1', 'N:M'];
 const DELETE_ACTIONS = ['CASCADE', 'SET NULL', 'RESTRICT', 'NO ACTION'] as const;
 const UPDATE_ACTIONS = ['CASCADE', 'SET NULL', 'RESTRICT', 'NO ACTION'] as const;
 
@@ -107,12 +107,12 @@ export function EdgeContextMenu({ edgeId, x, y, onClose }: EdgeContextMenuProps)
         <div className="mb-1 px-1 text-[10px] font-medium text-[var(--color-text-muted)]">
           Cardinality
         </div>
-        <div className="grid grid-cols-3 gap-1">
+        <div className="grid grid-cols-4 gap-1">
           {CARDINALITIES.map((c) => (
             <button
               key={c}
               onClick={() => handleCardinality(c)}
-              className={`rounded px-2 py-1 text-[11px] font-mono font-medium transition-colors ${reference.cardinality === c
+              className={`rounded px-1.5 py-1 text-[10px] font-mono font-medium transition-colors text-center ${reference.cardinality === c
                   ? 'bg-indigo-600 text-white'
                   : 'bg-[var(--color-bg-panel)] text-[var(--color-text-muted)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)]'
                 }`}

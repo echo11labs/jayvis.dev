@@ -5,8 +5,8 @@ export function backupSqliteDatabase(): string | null {
   const url = process.env.DATABASE_URL ?? 'file:./dev.db';
   const relative = url.replace(/^file:/, '');
   const candidates = [
-    path.resolve(process.cwd(), relative),
-    path.resolve(process.cwd(), 'prisma', path.basename(relative)),
+    path.resolve(/*turbopackIgnore: true*/ process.cwd(), relative),
+    path.resolve(/*turbopackIgnore: true*/ process.cwd(), 'prisma', path.basename(relative)),
   ];
   const source = candidates.find((candidate) => existsSync(candidate));
   if (!source) return null;

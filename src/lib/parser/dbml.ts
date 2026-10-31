@@ -8,7 +8,7 @@
  * back into the editor.
  */
 import { quoteIdent } from '@/lib/ident';
-import { DatabaseAST } from '@/types/ast';
+import { DatabaseAST, SchemaTable } from '@/types/ast';
 
 function dbmlIdent(name: string): string {
   return /^[A-Za-z_][A-Za-z0-9_]*$/.test(name) ? name : quoteIdent(name);
@@ -28,40 +28,49 @@ export function sanitizeDbmlText(text: string): string {
     .replace(/<(?:div|p)[^>]*>/gi, '');
 }
 
+export function serializeDBMLTable(table: SchemaTable): string {
+  const lines: string[] = [];
+  const tableName =
+    table.schema && table.schema !== 'public'
+      ? `${dbmlIdent(table.schema)}.${dbmlIdent(table.name)}`
+      : dbmlIdent(table.name);
+
+  lines.push(`Table ${tableName} {`);
+  if (table.note) {
+    lines.push(`  note: '${table.note.replace(/'/g, "\\'")}'`);
+  }
+  for (const f of table.fields) {
+    const settings: string[] = [];
+    if (f.constraints.isPrimaryKey) settings.push('pk');
+    if (f.constraints.isUnique && !f.constraints.isPrimaryKey)
+      settings.push('unique');
+    if (f.constraints.isNullable === false) settings.push('not null');
+    if (f.constraints.isAutoincrement) settings.push('increment');
+    if (f.constraints.defaultValue)
+      settings.push(`default: ${f.constraints.defaultValue}`);
+    if (f.note) settings.push(`note: '${f.note.replace(/'/g, "\\'")}'`);
+    const settingStr = settings.length > 0 ? ` [${settings.join(', ')}]` : '';
+    lines.push(`  ${dbmlIdent(f.name)} ${f.type}${settingStr}`);
+  }
+  if (table.indexes && table.indexes.length > 0) {
+    lines.push('  indexes {');
+    for (const idx of table.indexes) {
+      const cols = idx.columns.join(', ');
+      const settings = idx.isUnique ? ' [unique]' : '';
+      const namePart = idx.name ? `${idx.name} ` : '';
+      lines.push(`    ${namePart}(${cols})${settings}`);
+    }
+    lines.push('  }');
+  }
+  lines.push('}');
+  return lines.join('\n');
+}
+
 export function serializeDBML(ast: DatabaseAST): string {
   const lines: string[] = [];
 
   for (const table of Object.values(ast.tables)) {
-    if (table.note) {
-      lines.push(`Table ${dbmlIdent(table.name)} {`);
-      lines.push(`  note: '${table.note.replace(/'/g, "\\'")}'`);
-    } else {
-      lines.push(`Table ${dbmlIdent(table.name)} {`);
-    }
-    for (const f of table.fields) {
-      const settings: string[] = [];
-      if (f.constraints.isPrimaryKey) settings.push('pk');
-      if (f.constraints.isUnique && !f.constraints.isPrimaryKey)
-        settings.push('unique');
-      if (f.constraints.isNullable === false) settings.push('not null');
-      if (f.constraints.isAutoincrement) settings.push('increment');
-      if (f.constraints.defaultValue)
-        settings.push(`default: ${f.constraints.defaultValue}`);
-      if (f.note) settings.push(`note: '${f.note.replace(/'/g, "\\'")}'`);
-      const settingStr = settings.length > 0 ? ` [${settings.join(', ')}]` : '';
-      lines.push(`  ${dbmlIdent(f.name)} ${f.type}${settingStr}`);
-    }
-    if (table.indexes && table.indexes.length > 0) {
-      lines.push('  indexes {');
-      for (const idx of table.indexes) {
-        const cols = idx.columns.join(', ');
-        const settings = idx.isUnique ? ' [unique]' : '';
-        const namePart = idx.name ? `${idx.name} ` : '';
-        lines.push(`    ${namePart}(${cols})${settings}`);
-      }
-      lines.push('  }');
-    }
-    lines.push('}');
+    lines.push(serializeDBMLTable(table));
     lines.push('');
   }
 

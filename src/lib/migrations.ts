@@ -1,6 +1,7 @@
 import type { DatabaseAST } from '@/types/ast';
 import { diffSchema, summarizeDiff } from '@/lib/diff/schema-diff';
 import { liveBaselines, storeBaseline } from '@/lib/persistence';
+import type { SqlEngine } from '@/lib/sql-literal';
 
 const STORAGE_KEY = 'jayvis-migration-baselines';
 
@@ -16,6 +17,7 @@ export type MigrationResult = {
   hasBaseline: boolean;
   diff: ReturnType<typeof diffSchema>;
   summary: ReturnType<typeof summarizeDiff>;
+  error?: string;
 };
 
 type BaselineRecord = {
@@ -117,11 +119,30 @@ export function prepareMigrationAst(value: unknown): unknown {
 export function buildMigration(
   baseline: DatabaseAST | null,
   current: DatabaseAST,
+  engine?: SqlEngine,
 ): MigrationResult {
-  const diff = diffSchema(baseline ?? EMPTY_BASELINE, current);
-  return {
-    hasBaseline: baseline !== null,
-    diff,
-    summary: summarizeDiff(diff),
-  };
+  try {
+    const diff = diffSchema(baseline ?? EMPTY_BASELINE, current, { engine });
+    return {
+      hasBaseline: baseline !== null,
+      diff,
+      summary: summarizeDiff(diff),
+    };
+  } catch (err) {
+    console.warn('[buildMigration] diff generation failed:', err);
+    const emptyDiff = {
+      tables: [],
+      indexes: [],
+      references: [],
+      hazards: [],
+      upSql: [],
+      downSql: [],
+    };
+    return {
+      hasBaseline: baseline !== null,
+      diff: emptyDiff,
+      summary: summarizeDiff(emptyDiff),
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
 }

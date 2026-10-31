@@ -30,6 +30,7 @@ const SHORTCUTS = [
   { keys: ['⌘', '⇧', 'Z'], label: 'Redo (or ⌘Y)' },
   { keys: ['⌘', '⇧', 'V'], label: 'Open Problems / validate' },
   { keys: ['⌘', 'F'], label: 'Find in Code or Board' },
+  { keys: ['⌥', '⇧', 'F'], label: 'Format active document' },
   { keys: ['⌘', '0'], label: 'Fit canvas to view' },
   { keys: ['⌘', 'L'], label: 'Auto layout' },
   { keys: ['⌘', 'M'], label: 'Open Migration' },

@@ -8,6 +8,7 @@ describe('workspace settings', () => {
       minimap: false,
       grid: true,
       snap: true,
+      groupByDomain: false,
       wordWrap: true,
       lineNumbers: true,
       fontSize: 13,

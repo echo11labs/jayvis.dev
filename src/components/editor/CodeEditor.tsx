@@ -8,20 +8,24 @@ import { gotoLine, openSearchPanel } from '@codemirror/search';
 import { useDiagramStore } from '@/store/diagram-store';
 import { validateSchema } from '@/lib/validation/schema-validation';
 import {
-  dbmlEditorExtensions,
+  baseEditorExtensions,
+  dialectExtensions,
   editorFontTheme,
   gutterExtension,
   wrapExtension,
 } from '@/lib/editor/dbml-codemirror';
+import { detectDialect, formatCode } from '@/lib/editor/code-formatter';
 import { sanitizeDbmlText } from '@/lib/parser/dbml';
 import type {
   EditorFontSize,
   EditorFontWeight,
 } from '@/hooks/use-workspace-settings';
+import { toast } from 'sonner';
 
 interface CodeEditorProps {
   value: string;
   onChange: (value: string) => void;
+  fileName?: string;
   errorMessage?: string | null;
   errorLine?: number | null;
   wordWrap?: boolean;
@@ -36,6 +40,7 @@ const ExternalChange = Annotation.define<boolean>();
 export function CodeEditor({
   value,
   onChange,
+  fileName,
   errorMessage,
   errorLine,
   wordWrap = true,
@@ -49,8 +54,12 @@ export function CodeEditor({
   const wrapComp = useRef(new Compartment());
   const gutterComp = useRef(new Compartment());
   const fontComp = useRef(new Compartment());
+  const langComp = useRef(new Compartment());
   const onChangeRef = useRef(onChange);
   const astRef = useRef(useDiagramStore.getState().ast);
+
+  const dialect = useMemo(() => detectDialect(fileName, value), [fileName, value]);
+
   const lintRef = useRef({
     errorMessage: errorMessage ?? null,
     errorLine,
@@ -76,22 +85,29 @@ export function CodeEditor({
   }, [errorMessage, errorLine, issues]);
 
   useEffect(() => {
-    const cleaned = sanitizeDbmlText(value);
-    if (cleaned !== value) onChangeRef.current(cleaned);
-  }, [value]);
+    if (dialect === 'dbml') {
+      const cleaned = sanitizeDbmlText(value);
+      if (cleaned !== value) onChangeRef.current(cleaned);
+    }
+  }, [value, dialect]);
 
   useEffect(() => {
     if (!parentRef.current) return;
 
+    const initialText = dialect === 'dbml' ? sanitizeDbmlText(value) : value;
+
     const view = new EditorView({
       parent: parentRef.current,
       state: EditorState.create({
-        doc: sanitizeDbmlText(value),
+        doc: initialText,
         extensions: [
-          ...dbmlEditorExtensions({
-            getAst: () => astRef.current,
-            getLint: () => lintRef.current,
-          }),
+          baseEditorExtensions(),
+          langComp.current.of(
+            dialectExtensions(dialect, {
+              getAst: () => astRef.current,
+              getLint: () => lintRef.current,
+            }),
+          ),
           wrapComp.current.of(wrapExtension(wordWrap)),
           gutterComp.current.of(gutterExtension(lineNumbers)),
           fontComp.current.of(editorFontTheme(fontSize, fontWeight, fontLigatures)),
@@ -144,17 +160,30 @@ export function CodeEditor({
     };
   }, []);
 
+  // Update text when external value changes
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;
-    const next = sanitizeDbmlText(value);
+    const next = dialect === 'dbml' ? sanitizeDbmlText(value) : value;
     const current = view.state.doc.toString();
     if (current === next) return;
     view.dispatch({
       changes: { from: 0, to: current.length, insert: next },
       annotations: ExternalChange.of(true),
     });
-  }, [value]);
+  }, [value, dialect]);
+
+  // Reconfigure dialect
+  useEffect(() => {
+    viewRef.current?.dispatch({
+      effects: langComp.current.reconfigure(
+        dialectExtensions(dialect, {
+          getAst: () => astRef.current,
+          getLint: () => lintRef.current,
+        }),
+      ),
+    });
+  }, [dialect]);
 
   useEffect(() => {
     viewRef.current?.dispatch({
@@ -177,8 +206,8 @@ export function CodeEditor({
   }, [fontSize, fontWeight, fontLigatures]);
 
   useEffect(() => {
-    if (viewRef.current) forceLinting(viewRef.current);
-  }, [errorMessage, errorLine, issues]);
+    if (viewRef.current && dialect === 'dbml') forceLinting(viewRef.current);
+  }, [errorMessage, errorLine, issues, dialect]);
 
   useEffect(() => {
     const runFind = () => {
@@ -189,21 +218,40 @@ export function CodeEditor({
       const view = viewRef.current;
       if (view) gotoLine(view);
     };
+    const runFormat = () => {
+      const view = viewRef.current;
+      if (!view) return;
+      const current = view.state.doc.toString();
+      const result = formatCode(current, dialect, astRef.current);
+      if (result.changed) {
+        view.dispatch({
+          changes: { from: 0, to: current.length, insert: result.formatted },
+          annotations: ExternalChange.of(true),
+        });
+        onChangeRef.current(result.formatted);
+        toast.success(`Formatted ${dialect.toUpperCase()} code`);
+      } else {
+        toast.info('Code is already formatted');
+      }
+    };
+
     window.addEventListener('jayvis:editor-find', runFind);
     window.addEventListener('jayvis:editor-goto', runGoto);
+    window.addEventListener('jayvis:editor-format', runFormat);
     return () => {
       window.removeEventListener('jayvis:editor-find', runFind);
       window.removeEventListener('jayvis:editor-goto', runGoto);
+      window.removeEventListener('jayvis:editor-format', runFormat);
     };
-  }, []);
+  }, [dialect]);
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-[var(--color-bg-editor)]">
       <textarea
         readOnly
         tabIndex={-1}
-        aria-label="DBML editor"
-        value={sanitizeDbmlText(value)}
+        aria-label={`${dialect.toUpperCase()} editor`}
+        value={dialect === 'dbml' ? sanitizeDbmlText(value) : value}
         className="pointer-events-none absolute h-px w-px overflow-hidden whitespace-pre opacity-0"
       />
       <div ref={parentRef} className="h-full w-full" />

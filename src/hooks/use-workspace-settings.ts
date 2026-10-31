@@ -10,6 +10,7 @@ export interface WorkspaceSettings {
   minimap: boolean;
   grid: boolean;
   snap: boolean;
+  groupByDomain: boolean;
   wordWrap: boolean;
   lineNumbers: boolean;
   fontSize: EditorFontSize;
@@ -22,6 +23,7 @@ export const DEFAULT_WORKSPACE_SETTINGS: WorkspaceSettings = {
   minimap: false,
   grid: true,
   snap: true,
+  groupByDomain: false,
   wordWrap: true,
   lineNumbers: true,
   fontSize: 13,
@@ -56,6 +58,10 @@ export function normalizeWorkspaceSettings(value: unknown): WorkspaceSettings {
       typeof candidate.snap === 'boolean'
         ? candidate.snap
         : DEFAULT_WORKSPACE_SETTINGS.snap,
+    groupByDomain:
+      typeof candidate.groupByDomain === 'boolean'
+        ? candidate.groupByDomain
+        : DEFAULT_WORKSPACE_SETTINGS.groupByDomain,
     wordWrap:
       typeof candidate.wordWrap === 'boolean'
         ? candidate.wordWrap
@@ -85,6 +91,7 @@ function sameSettings(a: WorkspaceSettings, b: WorkspaceSettings): boolean {
     a.minimap === b.minimap &&
     a.grid === b.grid &&
     a.snap === b.snap &&
+    a.groupByDomain === b.groupByDomain &&
     a.wordWrap === b.wordWrap &&
     a.lineNumbers === b.lineNumbers &&
     a.fontSize === b.fontSize &&

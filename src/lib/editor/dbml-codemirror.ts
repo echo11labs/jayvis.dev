@@ -421,17 +421,49 @@ export function editorFontTheme(
   });
 }
 
-export function dbmlEditorExtensions(options: {
-  getAst: () => DatabaseAST;
-  getLint: () => {
-    errorMessage: string | null;
-    errorLine?: number | null;
-    issues: ValidationIssue[];
-  };
-}) {
+import { sql } from '@codemirror/lang-sql';
+import type { EditorDialect } from './code-formatter';
+
+export function dialectExtensions(
+  dialect: EditorDialect,
+  options: {
+    getAst: () => DatabaseAST;
+    getLint: () => {
+      errorMessage: string | null;
+      errorLine?: number | null;
+      issues: ValidationIssue[];
+    };
+  },
+) {
+  if (dialect === 'sql') {
+    return [
+      sql(),
+      placeholder('-- Write SQL here…'),
+    ];
+  }
+
+  if (dialect === 'json') {
+    return [
+      placeholder('// Write JSON here…'),
+    ];
+  }
+
   return [
     dbmlLanguage,
     syntaxHighlighting(dbmlHighlight),
+    foldService.of(dbmlFoldService),
+    placeholder('// Write DBML here…'),
+    autocompletion({
+      override: [dbmlCompletionSource(options.getAst)],
+      activateOnTyping: true,
+      icons: true,
+    }),
+    dbmlLinter(options.getLint),
+  ];
+}
+
+export function baseEditorExtensions() {
+  return [
     history(),
     drawSelection(),
     dropCursor(),
@@ -440,23 +472,15 @@ export function dbmlEditorExtensions(options: {
     bracketMatching(),
     closeBrackets(),
     codeFolding(),
-    foldService.of(dbmlFoldService),
     highlightActiveLine(),
     highlightSelectionMatches(),
     search({ top: true, createPanel: createStudioSearchPanel }),
     indentUnit.of('  '),
     EditorState.tabSize.of(2),
-    placeholder('// Write DBML here…'),
     EditorView.contentAttributes.of({
       role: 'presentation',
       'aria-hidden': 'true',
     }),
-    autocompletion({
-      override: [dbmlCompletionSource(options.getAst)],
-      activateOnTyping: true,
-      icons: true,
-    }),
-    dbmlLinter(options.getLint),
     keymap.of([
       { key: 'Mod-/', run: toggleComment },
       ...closeBracketsKeymap,
@@ -468,5 +492,19 @@ export function dbmlEditorExtensions(options: {
       ...defaultKeymap,
       indentWithTab,
     ]),
+  ];
+}
+
+export function dbmlEditorExtensions(options: {
+  getAst: () => DatabaseAST;
+  getLint: () => {
+    errorMessage: string | null;
+    errorLine?: number | null;
+    issues: ValidationIssue[];
+  };
+}) {
+  return [
+    ...baseEditorExtensions(),
+    ...dialectExtensions('dbml', options),
   ];
 }

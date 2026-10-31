@@ -5,6 +5,7 @@
 import type {
   DatabaseAST,
   SchemaDiffResult,
+  SchemaHazard,
   TableDiff,
   ColumnDiff,
   IndexDiff,
@@ -12,21 +13,68 @@ import type {
   SchemaField,
   SchemaIndex,
   SchemaReference,
+  SchemaTable,
 } from '@/types/ast';
 import { quoteIdent } from '@/lib/ident';
-import { assertExpression, columnSql, sqlDefault, storedType } from '@/lib/sql-literal';
+import {
+  assertExpression,
+  columnSql,
+  refColumns,
+  sqlDefault,
+  storedType,
+  type SqlEngine,
+} from '@/lib/sql-literal';
+
+export interface SchemaDiffOptions {
+  engine?: SqlEngine;
+}
 
 function q(name: string): string {
   return quoteIdent(name);
 }
 
-function columnToSql(field: SchemaField): string {
-  return columnSql('postgres', field).sql;
+function columnToSql(
+  engine: SqlEngine,
+  field: SchemaField,
+  enumNames?: ReadonlySet<string>,
+): string {
+  return columnSql(engine, field, enumNames).sql;
 }
 
-function createTableSql(name: string, fields: SchemaField[]): string {
-  const cols = fields.map((field) => columnToSql(field)).join(',\n  ');
-  return `CREATE TABLE ${q(name)} (\n  ${cols}\n);`;
+function createTableSql(
+  engine: SqlEngine,
+  name: string,
+  table: SchemaTable,
+  enumNames?: ReadonlySet<string>,
+): string {
+  const pk =
+    table.primaryKey && table.primaryKey.length > 0
+      ? table.primaryKey
+      : table.fields.filter((field) => field.constraints.isPrimaryKey).map((field) => field.name);
+  const inlinePrimary = pk.length <= 1;
+  const lines: string[] = [];
+  for (const field of table.fields) {
+    const rendered = columnSql(
+      engine,
+      field,
+      enumNames,
+      inlinePrimary && pk.includes(field.name),
+    );
+    lines.push(`  ${rendered.sql}`);
+  }
+  if (pk.length > 1) {
+    lines.push(`  PRIMARY KEY (${pk.map(q).join(', ')})`);
+  }
+  for (const unique of table.uniques ?? []) {
+    const uName = unique.name && engine === 'postgres' ? `CONSTRAINT ${q(unique.name)} ` : '';
+    lines.push(`  ${uName}UNIQUE (${unique.columns.map(q).join(', ')})`);
+  }
+  for (const check of table.checks ?? []) {
+    lines.push(`  CHECK (${assertExpression(check, `Check on "${name}"`)})`);
+  }
+  const schemaPrefix =
+    engine === 'postgres' && table.schema && table.schema !== 'public' ? `${q(table.schema)}.` : '';
+  return `CREATE TABLE ${schemaPrefix}${q(name)} (\n${lines.join(',\n')}\n);`;
 }
 
 function indexName(tableName: string, index: SchemaIndex): string {
@@ -37,14 +85,33 @@ function indexKey(tableName: string, index: SchemaIndex): string {
   return `${indexName(tableName, index)}::${index.columns.join(',')}::${index.isUnique ? 'u' : 'i'}`;
 }
 
-function fkName(ref: SchemaReference): string {
-  return `fk_${ref.sourceTable}_${ref.sourceField}`;
+function fkName(ref: SchemaReference, allRefs?: SchemaReference[]): string {
+  if (ref.name) return ref.name;
+  const src = refColumns(ref, 'source').join('_');
+  const base = `fk_${ref.sourceTable}_${src}`;
+  if (allRefs && allRefs.length > 0) {
+    const collisions = allRefs.filter(
+      (r) =>
+        r.sourceTable === ref.sourceTable &&
+        refColumns(r, 'source').join('_') === src,
+    );
+    if (collisions.length > 1) {
+      const tgt = refColumns(ref, 'target').join('_');
+      return `${base}__${ref.targetTable}_${tgt}`;
+    }
+  }
+  return base;
 }
 
-function addFkSql(ref: SchemaReference): string {
+function addFkSql(ref: SchemaReference, allRefs?: SchemaReference[], engine: SqlEngine = 'postgres'): string {
+  if (engine === 'sqlite') {
+    return `-- SQLite: foreign key ${ref.sourceTable}.${ref.sourceField} references ${ref.targetTable}.${ref.targetField}`;
+  }
+  const source = refColumns(ref, 'source').map(q).join(', ');
+  const target = refColumns(ref, 'target').map(q).join(', ');
   const parts = [
-    `ALTER TABLE ${q(ref.sourceTable)} ADD CONSTRAINT ${q(fkName(ref))}`,
-    `FOREIGN KEY (${q(ref.sourceField)}) REFERENCES ${q(ref.targetTable)} (${q(ref.targetField)})`,
+    `ALTER TABLE ${q(ref.sourceTable)} ADD CONSTRAINT ${q(fkName(ref, allRefs))}`,
+    `FOREIGN KEY (${source}) REFERENCES ${q(ref.targetTable)} (${target})`,
   ];
   if (ref.onDelete) parts.push(`ON DELETE ${ref.onDelete.toUpperCase()}`);
   if (ref.onUpdate) parts.push(`ON UPDATE ${ref.onUpdate.toUpperCase()}`);
@@ -52,8 +119,31 @@ function addFkSql(ref: SchemaReference): string {
   return `${parts.join(' ')};`;
 }
 
-function dropFkSql(ref: SchemaReference): string {
-  return `ALTER TABLE ${q(ref.sourceTable)} DROP CONSTRAINT IF EXISTS ${q(fkName(ref))};`;
+function dropFkSql(ref: SchemaReference, allRefs?: SchemaReference[], engine: SqlEngine = 'postgres'): string {
+  if (engine === 'sqlite') {
+    return `-- SQLite: drop foreign key on ${ref.sourceTable}.${ref.sourceField}`;
+  }
+  return `ALTER TABLE ${q(ref.sourceTable)} DROP CONSTRAINT IF EXISTS ${q(fkName(ref, allRefs))};`;
+}
+
+function dropTableSql(engine: SqlEngine, name: string): string {
+  if (engine === 'sqlite') {
+    return `DROP TABLE IF EXISTS ${q(name)};`;
+  }
+  return `DROP TABLE IF EXISTS ${q(name)} CASCADE;`;
+}
+
+function dedupe(lines: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const line of lines) {
+    if (!line) continue;
+    if (!seen.has(line)) {
+      seen.add(line);
+      out.push(line);
+    }
+  }
+  return out;
 }
 
 function createIndexSql(tableName: string, index: SchemaIndex): string {
@@ -128,9 +218,11 @@ function compareColumns(
 }
 
 function columnAlterSql(
+  engine: SqlEngine,
   tableName: string,
   oldField: SchemaField,
   newField: SchemaField,
+  enumNames?: ReadonlySet<string>,
 ): string[] {
   const table = q(tableName);
   const column = q(newField.name);
@@ -138,9 +230,15 @@ function columnAlterSql(
   if (oldField.name !== newField.name) {
     sql.push(`ALTER TABLE ${table} RENAME COLUMN ${q(oldField.name)} TO ${column};`);
   }
+  if (engine === 'sqlite') {
+    if (oldField.type !== newField.type || oldField.constraints.isNullable !== newField.constraints.isNullable) {
+      sql.push(`-- SQLite: Column alterations on ${table}.${column} require recreating table ${table}.`);
+    }
+    return sql;
+  }
   if (oldField.type !== newField.type) {
     sql.push(
-      `ALTER TABLE ${table} ALTER COLUMN ${column} TYPE ${storedType('postgres', newField.type, newField.name).sql};`,
+      `ALTER TABLE ${table} ALTER COLUMN ${column} TYPE ${storedType('postgres', newField.type, newField.name, enumNames).sql};`,
     );
   }
   if (oldField.constraints.isNullable !== newField.constraints.isNullable) {
@@ -196,12 +294,20 @@ function foldRenames(diffs: ColumnDiff[]): ColumnDiff[] {
 export function diffSchema(
   previousAST: DatabaseAST,
   currentAST: DatabaseAST,
+  options?: SchemaDiffOptions,
 ): SchemaDiffResult {
+  const engine: SqlEngine = options?.engine ?? 'postgres';
   const tables: TableDiff[] = [];
   const indexes: IndexDiff[] = [];
   const references: ReferenceDiff[] = [];
+  const hazards: SchemaHazard[] = [];
   const upSql: string[] = [];
   const downSql: string[] = [];
+
+  const enumNames = new Set<string>([
+    ...Object.values(previousAST.enums ?? {}).map((e) => e.name),
+    ...Object.values(currentAST.enums ?? {}).map((e) => e.name),
+  ]);
 
   const prevTables = Object.keys(previousAST.tables);
   const currTables = Object.keys(currentAST.tables);
@@ -217,6 +323,13 @@ export function diffSchema(
   for (const name of dropped) {
     const table = previousAST.tables[name];
     tables.push({ action: 'DROP', tableName: name, table, columnDiffs: [] });
+    hazards.push({
+      id: `drop-table-${name}`,
+      level: 'danger',
+      title: `Drop table "${name}"`,
+      description: `Table "${name}" and all of its rows will be permanently deleted.`,
+      tableName: name,
+    });
   }
   for (const name of shared) {
     const columnDiffs = compareColumns(
@@ -288,17 +401,18 @@ export function diffSchema(
     }
   }
 
+  const allRefsList = [...prevRefs, ...currRefs];
   const droppedRefs = references.filter((diff) => diff.action === 'DROP' && diff.previous);
   const alteredRefs = references.filter((diff) => diff.action === 'ALTER');
   const createdRefs = references.filter((diff) => diff.action === 'CREATE' && diff.current);
 
   for (const diff of droppedRefs) {
-    upSql.push(dropFkSql(diff.previous!));
-    downSql.unshift(addFkSql(diff.previous!));
+    upSql.push(dropFkSql(diff.previous!, allRefsList, engine));
+    downSql.unshift(addFkSql(diff.previous!, allRefsList, engine));
   }
   for (const diff of alteredRefs) {
-    upSql.push(dropFkSql(diff.previous!));
-    downSql.unshift(addFkSql(diff.previous!));
+    upSql.push(dropFkSql(diff.previous!, allRefsList, engine));
+    downSql.unshift(addFkSql(diff.previous!, allRefsList, engine));
   }
 
   for (const name of dropped) {
@@ -307,8 +421,8 @@ export function diffSchema(
       upSql.push(dropIndexSql(name, index));
       downSql.unshift(createIndexSql(name, index));
     }
-    upSql.push(`DROP TABLE IF EXISTS ${q(name)} CASCADE;`);
-    downSql.unshift(createTableSql(name, table.fields));
+    upSql.push(dropTableSql(engine, name));
+    downSql.unshift(createTableSql(engine, name, table, enumNames));
   }
 
   for (const name of shared) {
@@ -318,9 +432,17 @@ export function diffSchema(
     );
     for (const diff of columnDiffs) {
       if (diff.action === 'DROP' && diff.oldField) {
+        hazards.push({
+          id: `drop-column-${name}-${diff.columnName}`,
+          level: 'danger',
+          title: `Drop column "${name}.${diff.columnName}"`,
+          description: `Column "${diff.columnName}" on table "${name}" and all data stored within it will be permanently lost.`,
+          tableName: name,
+          columnName: diff.columnName,
+        });
         upSql.push(`ALTER TABLE ${q(name)} DROP COLUMN ${q(diff.columnName)};`);
         downSql.unshift(
-          `ALTER TABLE ${q(name)} ADD COLUMN ${columnToSql(diff.oldField)};`,
+          `ALTER TABLE ${q(name)} ADD COLUMN ${columnToSql(engine, diff.oldField, enumNames)};`,
         );
       }
     }
@@ -335,14 +457,38 @@ export function diffSchema(
             `Column "${diff.newField.name}" is NOT NULL and needs a default before it can be added.`,
           );
         }
-        upSql.push(`ALTER TABLE ${q(name)} ADD COLUMN ${columnToSql(diff.newField)};`);
+        upSql.push(`ALTER TABLE ${q(name)} ADD COLUMN ${columnToSql(engine, diff.newField, enumNames)};`);
         downSql.unshift(`ALTER TABLE ${q(name)} DROP COLUMN ${q(diff.columnName)};`);
       }
     }
     for (const diff of columnDiffs) {
       if (diff.action === 'ALTER' && diff.oldField && diff.newField) {
-        const forward = columnAlterSql(name, diff.oldField, diff.newField);
-        const backward = columnAlterSql(name, diff.newField, diff.oldField);
+        if (diff.oldField.type !== diff.newField.type) {
+          hazards.push({
+            id: `type-change-${name}-${diff.columnName}`,
+            level: 'warning',
+            title: `Type changed on "${name}.${diff.columnName}"`,
+            description: `Column "${diff.columnName}" converted from ${diff.oldField.type} to ${diff.newField.type}. Existing values may be truncated or fail to cast.`,
+            tableName: name,
+            columnName: diff.columnName,
+          });
+        }
+        if (
+          diff.oldField.constraints.isNullable &&
+          diff.newField.constraints.isNullable === false &&
+          !diff.newField.constraints.defaultValue
+        ) {
+          hazards.push({
+            id: `not-null-${name}-${diff.columnName}`,
+            level: 'warning',
+            title: `NOT NULL added to "${name}.${diff.columnName}" without default`,
+            description: `Applying NOT NULL without a default will fail if existing rows contain NULL values.`,
+            tableName: name,
+            columnName: diff.columnName,
+          });
+        }
+        const forward = columnAlterSql(engine, name, diff.oldField, diff.newField, enumNames);
+        const backward = columnAlterSql(engine, name, diff.newField, diff.oldField, enumNames);
         upSql.push(...forward);
         downSql.unshift(...backward);
       }
@@ -351,8 +497,8 @@ export function diffSchema(
 
   for (const name of created) {
     const table = currentAST.tables[name];
-    upSql.push(createTableSql(name, table.fields));
-    downSql.unshift(`DROP TABLE IF EXISTS ${q(name)} CASCADE;`);
+    upSql.push(createTableSql(engine, name, table, enumNames));
+    downSql.unshift(dropTableSql(engine, name));
   }
 
   for (const [key, value] of prevIndexMap) {
@@ -367,20 +513,21 @@ export function diffSchema(
   }
 
   for (const diff of alteredRefs) {
-    upSql.push(addFkSql(diff.current!));
-    downSql.unshift(dropFkSql(diff.current!));
+    upSql.push(addFkSql(diff.current!, allRefsList, engine));
+    downSql.unshift(dropFkSql(diff.current!, allRefsList, engine));
   }
   for (const diff of createdRefs) {
-    upSql.push(addFkSql(diff.current!));
-    downSql.unshift(dropFkSql(diff.current!));
+    upSql.push(addFkSql(diff.current!, allRefsList, engine));
+    downSql.unshift(dropFkSql(diff.current!, allRefsList, engine));
   }
 
   return {
     tables,
     indexes,
     references,
-    upSql: upSql.filter(Boolean),
-    downSql: downSql.filter(Boolean),
+    hazards,
+    upSql: dedupe(upSql.filter(Boolean)),
+    downSql: dedupe(downSql.filter(Boolean)),
   };
 }
 
@@ -393,6 +540,7 @@ export function summarizeDiff(result: SchemaDiffResult) {
     references: result.references.length,
     up: statements(result.upSql),
     down: statements(result.downSql),
+    hazards: (result.hazards ?? []).length,
   };
 }
 
@@ -400,7 +548,9 @@ export class SchemaDiffEngine {
   public static compare(
     previousAST: DatabaseAST,
     currentAST: DatabaseAST,
+    options?: SchemaDiffOptions,
   ): SchemaDiffResult {
-    return diffSchema(previousAST, currentAST);
+    return diffSchema(previousAST, currentAST, options);
   }
 }
+

@@ -14,7 +14,7 @@ export function Disclosure({
 }: {
   label: string;
   count?: number;
-  detail?: string;
+  detail?: ReactNode;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   action?: ReactNode;

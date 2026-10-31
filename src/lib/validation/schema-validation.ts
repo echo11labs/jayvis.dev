@@ -3,6 +3,7 @@
  * and returns a prioritized list of warnings/errors.
  */
 import type { DatabaseAST, SchemaField } from '@/types/ast';
+import { KNOWN_TYPES, baseType } from '@/lib/sql-literal';
 
 export type ValidationSeverity = 'error' | 'warning' | 'info';
 export type ValidationCategory = 'primary-key' | 'naming' | 'reference' | 'type' | 'index';
@@ -62,25 +63,7 @@ const CHECK_CATALOG: Array<Pick<ValidationCheck, 'id' | 'category' | 'label'>> =
   { id: 'group-tables-exist', category: 'reference', label: 'Table group members exist' },
 ];
 
-const KNOWN_TYPES = new Set([
-  'uuid',
-  'text',
-  'varchar',
-  'integer',
-  'bigint',
-  'boolean',
-  'timestamp',
-  'timestamptz',
-  'jsonb',
-  'serial',
-  'bigserial',
-  'decimal',
-  'numeric',
-  'real',
-  'date',
-  'time',
-  'interval',
-]);
+
 
 const RESERVED_NAMES = new Set([
   'user',
@@ -106,10 +89,10 @@ const SEVERITY_RANK: Record<ValidationSeverity, number> = {
 };
 
 function canonicalType(type: string): string {
-  const base = type.split('(')[0].toLowerCase();
+  const base = baseType(type);
   if (base === 'serial' || base === 'int' || base === 'int4') return 'integer';
   if (base === 'bigserial' || base === 'int8') return 'bigint';
-  if (base === 'varchar' || base === 'character' || base === 'char') return 'text';
+  if (base === 'varchar' || base === 'character' || base === 'char' || base === 'character varying' || base === 'bpchar' || base === 'nchar') return 'text';
   if (base === 'timestamptz') return 'timestamp';
   return base;
 }
@@ -244,11 +227,11 @@ function collectIssues(ast: DatabaseAST): ValidationIssue[] {
         });
       }
 
-      const baseType = field.type.split('(')[0].toLowerCase();
+      const base = baseType(field.type);
       const enumNames = new Set(
         Object.keys(ast.enums ?? {}).map((name) => name.toLowerCase()),
       );
-      if (!KNOWN_TYPES.has(baseType) && !enumNames.has(baseType)) {
+      if (!KNOWN_TYPES.has(base) && !enumNames.has(base)) {
         issues.push({
           id: `unknown-type-${table.name}-${field.name}`,
           checkId: 'known-type',

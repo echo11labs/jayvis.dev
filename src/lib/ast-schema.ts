@@ -60,7 +60,7 @@ const schemaReferenceSchema = z.object({
   targetTable: z.string().min(1),
   targetField: z.string().min(1),
   targetFields: z.array(z.string()).optional(),
-  cardinality: z.enum(['1:1', '1:N', 'N:M']),
+  cardinality: z.enum(['1:1', '1:N', 'N:1', 'N:M']),
   name: z.string().optional(),
   deferrable: z.boolean().optional(),
   onDelete: z.enum(['CASCADE', 'SET NULL', 'RESTRICT', 'NO ACTION']).optional(),

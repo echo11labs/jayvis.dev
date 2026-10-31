@@ -16,6 +16,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import { useDiagramStore } from '@/store/diagram-store';
 import { TableNode, type TableNodeData } from '@/components/canvas/TableNode';
+import { TableGroupNode } from '@/components/canvas/TableGroupNode';
 import { EdgeContextMenu } from '@/components/canvas/EdgeContextMenu';
 import { SchemaSearch } from '@/components/canvas/SchemaSearch';
 import { PaneContextMenu } from '@/components/canvas/PaneContextMenu';
@@ -26,7 +27,18 @@ import {
   validateSchema,
 } from '@/lib/validation/schema-validation';
 
-const nodeTypes: NodeTypes = { table: TableNode };
+import { RelationshipEdge } from '@/components/canvas/RelationshipEdge';
+import type { EdgeTypes } from '@xyflow/react';
+
+const nodeTypes: NodeTypes = {
+  table: TableNode,
+  tableGroup: TableGroupNode,
+};
+
+const edgeTypes: EdgeTypes = {
+  relationship: RelationshipEdge,
+  smoothstep: RelationshipEdge,
+};
 
 function clampMenuPosition(
   x: number,
@@ -64,6 +76,8 @@ function FlowCanvasInner() {
   const endVisualGesture = useDiagramStore((s) => s.endVisualGesture);
   const setSelectedTable = useDiagramStore((s) => s.setSelectedTable);
   const setSelectedEdge = useDiagramStore((s) => s.setSelectedEdge);
+  const selectedTable = useDiagramStore((s) => s.selectedTable);
+  const selectedEdge = useDiagramStore((s) => s.selectedEdge);
   const { fitView, zoomIn, zoomOut } = useReactFlow();
   const theme = useTheme();
   const isDark = theme === 'dark';
@@ -120,16 +134,14 @@ function FlowCanvasInner() {
   const defaultEdgeOptions = useMemo(
     () => ({
       type: 'smoothstep',
-      animated: true,
-      style: { stroke: 'var(--color-accent-primary)', strokeWidth: 2 },
-      markerEnd: {
-        type: 'arrowclosed' as const,
-        width: 16,
-        height: 16,
-        color: 'var(--color-accent-primary)',
+      animated: false,
+      style: {
+        stroke: isDark ? 'rgba(255, 255, 255, 0.25)' : 'rgba(0, 0, 0, 0.2)',
+        strokeWidth: 1.2,
+        opacity: 0.45,
       },
     }),
-    [],
+    [isDark],
   );
 
   const onNodeClick = useCallback(
@@ -150,12 +162,30 @@ function FlowCanvasInner() {
     },
     [setSelectedEdge],
   );
+  // Highlight an edge on hover (thicker + brighter stroke).
+  const [hoveredEdge, setHoveredEdge] = useState<string | null>(null);
+  const onEdgeEnter = useCallback(
+    (_e: React.MouseEvent, edge: Edge) => setHoveredEdge(edge.id),
+    [setHoveredEdge],
+  );
+  const onEdgeLeave = useCallback(() => setHoveredEdge(null), [setHoveredEdge]);
+
+  // Highlight connected edges when a table node is hovered.
+  const [hoveredTable, setHoveredTable] = useState<string | null>(null);
+  const onNodeMouseEnter = useCallback(
+    (_e: React.MouseEvent, node: Node) => setHoveredTable(node.id),
+    [setHoveredTable],
+  );
+  const onNodeMouseLeave = useCallback(() => setHoveredTable(null), [setHoveredTable]);
+
   const onPaneClick = useCallback(() => {
     setSelectedTable(null);
     setSelectedEdge(null);
+    setHoveredTable(null);
+    setHoveredEdge(null);
     setEdgeMenu({ edgeId: null, x: 0, y: 0 });
     setPaneMenu({ open: false, x: 0, y: 0 });
-  }, [setSelectedEdge, setSelectedTable]);
+  }, [setSelectedEdge, setSelectedTable, setHoveredEdge, setHoveredTable]);
 
   const onPaneContextMenu = useCallback((e: React.MouseEvent<Element> | MouseEvent) => {
     e.preventDefault();
@@ -186,54 +216,145 @@ function FlowCanvasInner() {
     };
   }, [zoomIn, zoomOut]);
 
-  // Highlight an edge on hover (thicker + brighter stroke).
-  const [hoveredEdge, setHoveredEdge] = useState<string | null>(null);
-  const onEdgeEnter = useCallback(
-    (_e: React.MouseEvent, edge: Edge) => setHoveredEdge(edge.id),
-    [],
-  );
-  const onEdgeLeave = useCallback(() => setHoveredEdge(null), []);
+  const displayEdges = useMemo(() => {
+    const seen = new Set<string>();
+    const uniqueEdges: Edge[] = [];
+    for (const e of edges) {
+      if (!seen.has(e.id)) {
+        seen.add(e.id);
+        uniqueEdges.push(e);
+      }
+    }
 
-  const displayEdges = useMemo(
-    () =>
-      edges.map((e) => {
-        const ref = ast.references[e.id];
-        const mark =
-          ref?.cardinality === '1:1' ? '1:1' : ref?.cardinality === 'N:M' ? '*:*' : '1:*';
-        const stroke =
-          ref?.cardinality === '1:1'
-            ? 'var(--color-accent-success)'
-            : ref?.cardinality === 'N:M'
-              ? 'var(--color-accent-warning)'
+    const activeTable = hoveredTable || selectedTable;
+    const activeEdgeId = hoveredEdge || selectedEdge;
+    const hasFocus = Boolean(activeTable || activeEdgeId);
+
+    return uniqueEdges.map((e) => {
+      const ref = ast.references[e.id];
+      const isConnectedToActiveTable = Boolean(
+        activeTable && (e.source === activeTable || e.target === activeTable),
+      );
+      const isDirectlyActiveEdge = Boolean(activeEdgeId && e.id === activeEdgeId);
+      const isActive = isConnectedToActiveTable || isDirectlyActiveEdge;
+
+      // Determine cardinality mark (1:*, *:1, 1:1, *:*)
+      let mark = '1:*';
+      if (ref?.cardinality === '1:1') {
+        mark = '1:1';
+      } else if (ref?.cardinality === 'N:M') {
+        mark = '*:*';
+      } else if (ref?.cardinality === 'N:1') {
+        mark = '*:1';
+      } else if (ref) {
+        const srcTable = ast.tables[ref.sourceTable];
+        const tgtTable = ast.tables[ref.targetTable];
+        const srcField = srcTable?.fields.find((f) => f.name === ref.sourceField);
+        const tgtField = tgtTable?.fields.find((f) => f.name === ref.targetField);
+        const isSrcPk = srcField?.constraints.isPrimaryKey || srcField?.constraints.isUnique;
+        const isTgtPk = tgtField?.constraints.isPrimaryKey || tgtField?.constraints.isUnique;
+
+        if (!isSrcPk && isTgtPk) {
+          mark = '*:1';
+        } else if (isSrcPk && !isTgtPk) {
+          mark = '1:*';
+        }
+      }
+
+      const stroke =
+        mark === '1:1'
+          ? 'var(--color-accent-success)'
+          : mark === '*:*'
+            ? 'var(--color-accent-warning)'
+            : mark === '*:1'
+              ? '#818cf8'
               : 'var(--color-accent-primary)';
-        const labeled = {
+
+      if (isActive) {
+        return {
           ...e,
+          type: 'relationship',
           label: mark,
+          animated: true,
+          zIndex: 40,
+          data: {
+            ...((e.data as Record<string, unknown>) || {}),
+            label: mark,
+            isActive: true,
+            isDirectlyActive: isDirectlyActiveEdge,
+            sourceTable: ref?.sourceTable,
+            targetTable: ref?.targetTable,
+            sourceField: ref?.sourceField,
+            targetField: ref?.targetField,
+          },
           style: {
             ...(typeof e.style === 'object' && e.style ? e.style : {}),
             stroke,
-            strokeWidth: hoveredEdge === e.id ? 3 : 2,
-            ...(hoveredEdge === e.id ? { filter: 'brightness(1.25)' } : {}),
+            strokeWidth: isDirectlyActiveEdge ? 3 : 2.5,
+            opacity: 1,
+            filter: isDirectlyActiveEdge ? 'brightness(1.25)' : undefined,
           },
           markerEnd: {
             type: 'arrowclosed' as const,
-            width: 16,
-            height: 16,
+            width: 14,
+            height: 14,
             color: stroke,
           },
-          labelStyle: {
-            fill: 'var(--color-text-muted)',
-            fontSize: 11,
-            fontWeight: 500,
-          },
-          labelBgStyle: { fill: 'var(--color-bg-canvas)', fillOpacity: 1 },
-          labelBgPadding: [8, 4] as [number, number],
-          labelBgBorderRadius: 3,
         };
-        return labeled;
-      }),
-    [ast.references, edges, hoveredEdge],
-  );
+      }
+
+      // Edge is NOT active: clean, quiet architectural lines
+      const idleColor = isDark
+        ? 'rgba(255, 255, 255, 0.28)'
+        : 'rgba(0, 0, 0, 0.22)';
+      const dimmedColor = isDark
+        ? 'rgba(255, 255, 255, 0.08)'
+        : 'rgba(0, 0, 0, 0.08)';
+
+      const idleStroke = hasFocus ? dimmedColor : idleColor;
+      const opacity = hasFocus ? 0.12 : 0.65;
+      const strokeWidth = 1.2;
+
+      return {
+        ...e,
+        type: 'relationship',
+        label: hasFocus ? undefined : mark,
+        animated: false,
+        zIndex: hasFocus ? 1 : 2,
+        data: {
+          ...((e.data as Record<string, unknown>) || {}),
+          label: hasFocus ? undefined : mark,
+          isActive: false,
+          isDirectlyActive: false,
+          sourceTable: ref?.sourceTable,
+          targetTable: ref?.targetTable,
+          sourceField: ref?.sourceField,
+          targetField: ref?.targetField,
+        },
+        style: {
+          ...(typeof e.style === 'object' && e.style ? e.style : {}),
+          stroke: idleStroke,
+          strokeWidth,
+          opacity,
+        },
+        markerEnd: {
+          type: 'arrowclosed' as const,
+          width: hasFocus ? 8 : 10,
+          height: hasFocus ? 8 : 10,
+          color: idleStroke,
+        },
+      };
+    });
+  }, [
+    edges,
+    ast.references,
+    ast.tables,
+    hoveredTable,
+    selectedTable,
+    hoveredEdge,
+    selectedEdge,
+    isDark,
+  ]);
 
   const issues = useMemo(() => validateSchema(ast), [ast]);
   const fkByTable = useMemo(() => {
@@ -246,24 +367,70 @@ function FlowCanvasInner() {
     return map;
   }, [ast.references]);
 
-  const displayNodes = useMemo(
-    () =>
-      nodes.map((node) => {
-        const severity = tableIssueSeverity(issues, node.id);
-        const data = node.data as TableNodeData;
-        const fkFields = fkByTable.get(node.id) ?? [];
-        const sameSeverity = (data.issueSeverity ?? null) === severity;
-        const sameFk =
-          (data.fkFields?.length ?? 0) === fkFields.length &&
-          (data.fkFields ?? []).every((field, index) => field === fkFields[index]);
-        if (sameSeverity && sameFk) return node;
-        return {
-          ...node,
-          data: { ...data, issueSeverity: severity, fkFields },
-        };
-      }),
-    [nodes, issues, fkByTable],
-  );
+  const displayNodes = useMemo(() => {
+    const seen = new Set<string>();
+    const uniqueNodes: Node[] = [];
+    for (const n of nodes) {
+      if (!seen.has(n.id)) {
+        seen.add(n.id);
+        uniqueNodes.push(n);
+      }
+    }
+    const tableNodes = uniqueNodes.map((node) => {
+      const severity = tableIssueSeverity(issues, node.id);
+      const data = node.data as TableNodeData;
+      const fkFields = fkByTable.get(node.id) ?? [];
+      const sameSeverity = (data.issueSeverity ?? null) === severity;
+      const sameFk =
+        (data.fkFields?.length ?? 0) === fkFields.length &&
+        (data.fkFields ?? []).every((field, index) => field === fkFields[index]);
+      if (sameSeverity && sameFk) return node;
+      return {
+        ...node,
+        data: { ...data, issueSeverity: severity, fkFields },
+      };
+    });
+
+    if (!settings.groupByDomain || !ast.tableGroups || Object.keys(ast.tableGroups).length === 0) {
+      return tableNodes;
+    }
+
+    const groupNodes: Node[] = [];
+    for (const group of Object.values(ast.tableGroups)) {
+      const groupTableNames = new Set(group.tables);
+      const memberNodes = tableNodes.filter((n) => groupTableNames.has(n.id));
+      if (memberNodes.length === 0) continue;
+
+      const minX = Math.min(...memberNodes.map((n) => n.position.x));
+      const minY = Math.min(...memberNodes.map((n) => n.position.y));
+      const maxX = Math.max(...memberNodes.map((n) => n.position.x + (n.measured?.width ?? 320)));
+      const maxY = Math.max(...memberNodes.map((n) => n.position.y + (n.measured?.height ?? 220)));
+
+      const padX = 24;
+      const padTop = 46;
+      const padBottom = 24;
+
+      groupNodes.push({
+        id: `tablegroup_${group.name}`,
+        type: 'tableGroup',
+        position: { x: minX - padX, y: minY - padTop },
+        style: {
+          width: maxX - minX + padX * 2,
+          height: maxY - minY + padTop + padBottom,
+          zIndex: -1,
+        },
+        data: {
+          name: group.name,
+          tableCount: memberNodes.length,
+          color: (memberNodes[0]?.data as TableNodeData)?.table?.color,
+        },
+        selectable: false,
+        draggable: false,
+      });
+    }
+
+    return [...groupNodes, ...tableNodes];
+  }, [nodes, issues, fkByTable, settings.groupByDomain, ast.tableGroups]);
 
   return (
     <div
@@ -274,6 +441,7 @@ function FlowCanvasInner() {
         nodes={displayNodes}
         edges={displayEdges}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
@@ -288,6 +456,8 @@ function FlowCanvasInner() {
         onEdgeContextMenu={onEdgeContextMenu}
         onEdgeMouseEnter={onEdgeEnter}
         onEdgeMouseLeave={onEdgeLeave}
+        onNodeMouseEnter={onNodeMouseEnter}
+        onNodeMouseLeave={onNodeMouseLeave}
         defaultEdgeOptions={defaultEdgeOptions}
         connectionRadius={28}
         fitView
@@ -305,11 +475,19 @@ function FlowCanvasInner() {
         {settings.minimap && (
           <MiniMap
             className={`!border ${minimapCls}`}
-            nodeColor={(node: Node<TableNodeData>) =>
-              (node.data?.table?.color as string) || 'var(--color-accent-primary)'
+            nodeColor={(node: any) =>
+              node.type === 'tableGroup'
+                ? 'transparent'
+                : (node.data?.table?.color as string) || 'var(--color-accent-primary)'
             }
-            nodeStrokeWidth={3}
-            nodeStrokeColor={isDark ? '#0a0a0a' : '#ffffff'}
+            nodeStrokeWidth={2}
+            nodeStrokeColor={(node: any) =>
+              node.type === 'tableGroup'
+                ? 'var(--color-border-subtle)'
+                : isDark
+                  ? '#0a0a0a'
+                  : '#ffffff'
+            }
             maskColor={minimapMask}
             pannable
             zoomable

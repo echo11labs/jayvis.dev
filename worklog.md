@@ -1,5 +1,16 @@
 # JayVis.dev — Project Worklog
 
+## Frontend overhaul & design audit (2026-10-12)
+
+Verified locally: `npm run check` (0 lint errors, 0 typecheck errors, 36 test files / 163 tests passing).
+
+Shipped:
+1. **Modal background & transparency bug fix**: Fixed undefined `--color-bg-primary`, `--color-bg-secondary`, and `--color-bg-input` CSS variables that caused transparent modal backdrops and severe code editor text bleed-through.
+2. **Backdrop blur**: Added `backdrop-blur-sm bg-black/60` to `DialogOverlay` across all dialogs.
+3. **Workspace File Hub redesign**: Replaced bloated AI-style template modal with a compact (480px), developer-focused dialog featuring unified input+extension pills, clean 2x2 starter templates, zero marketing badges, and quiet quota tracking.
+4. **Design token normalization**: Normalized color tokens in `AddTableDialog`, `EditorTabs`, and `FileManagerModal` to use canonical theme tokens (`--color-accent-primary`, `--color-bg-app`, `--color-bg-panel`, `--color-selection`).
+5. **Living documentation**: Overhauled `docs/FRONTEND.md` with complete architecture specifications, token standards, file hub workflows, and keyboard shortcuts.
+
 ## Robustness stabilization (2026-09-21)
 
 Verified locally: `npm run check` (lint, tsc, 20 tests), parser `/health`, `/api/parse`, `/api/build-sql`.
@@ -129,16 +140,36 @@ them against the local SQLite database**.
   dialog interactions due to memory pressure. A production build
   (`next build`) would eliminate this.
 
-### Priority Recommendations for Next Phase
-1. **Wire MCP to the live store** via a WebSocket mini-service so agent
-   edits appear on the canvas in real time.
-2. **Production build test** (`next build`) — would eliminate the HMR crash
-   and memory issues, enabling full interactive QA.
-3. **Multi-select + bulk actions** — shift-click to select multiple tables,
-   then move/delete as a group.
-4. **Schema diff timeline** — show a visual history of schema changes with
-   timestamps, clickable to restore any prior state.
-5. **Data seeding** — after building tables, seed them with sample data
-   via INSERT statements.
-6. **Query runner** — execute SELECT queries against the built tables and
-   display results in a grid.
+## Session Worklog — Code Editor, Mock Seeder, SQL Studio & Canvas Upgrades
+
+### Completed Features
+
+1. **Multi-Dialect Code Editor & Formatter (`CodeEditor.tsx`, `code-formatter.ts`)** ✅
+   - Replaced fixed DBML language loading with dynamic CodeMirror 6 `Compartment` reconfiguration.
+   - Detects dialect by file extension (`.dbml`, `.sql`, `.json`) or document content.
+   - DBML sanitization is safely isolated to DBML files to avoid corrupting SQL syntax or JSON strings.
+   - Built robust code formatter (`formatCode`) supporting DBML AST re-serialization, standard SQL keyword uppercase normalization, and JSON indent formatting.
+   - Integrated keyboard shortcut (`⌥⇧F` / `Alt+Shift+F`), Editor tab "Format" button, Command Palette command, and status bar clickable dialect badge.
+   - 7 unit tests in `src/lib/editor/code-formatter.test.ts`.
+
+2. **Inline Relationship Badge Editor (`RelationshipEdge.tsx`)** ✅
+   - Upgraded visual canvas relationship badges with an interactive popover directly on the cardinality badge (`1 : *`, `* : 1`, `1 : 1`, `* : *`).
+   - One-click cardinality changes (`1:N`, `N:1`, `1:1`, `N:M`), direction inversion, referential action (`ON DELETE CASCADE`, `SET NULL`, `RESTRICT`, `NO ACTION`), and edge deletion.
+   - Bidirectional AST and DBML code synchronization on changes.
+
+3. **Constraint-Aware Mock Data Seeding Engine (`mock-data.ts`, `/api/seed-data`)** ✅
+   - Topologically sorts tables according to foreign key dependencies.
+   - Synthesizes realistic semantic data (names, emails, categories, dates, booleans) and propagates generated parent PKs into dependent child FK columns.
+   - Added API endpoint `/api/seed-data` with transaction protection (`PRAGMA foreign_keys = ON;`).
+   - 5 unit tests in `src/lib/seeding/mock-data.test.ts`.
+
+4. **In-Studio SQL Query Runner (`SqlBuilderPanel.tsx`, `/api/query`)** ✅
+   - Interactive tabular SQL runner with quick query chips, execution time metric (ms), row count badge, and CSV download.
+   - Security protection against remote unauthorized execution and guarded system tables (`_prisma_migrations`, `sqlite_*`).
+   - 3 unit tests in `src/app/api/query/route.test.ts`.
+
+5. **Command Palette & Studio Ergonomics Integration (`CommandPalette.tsx`, `ShortcutsOverlay.tsx`, `StatusBar.tsx`)** ✅
+   - Added "Format document" (`⌥⇧F`) to Command Palette and Shortcuts Overlay.
+   - Added "Seed database with mock data…", "Run SQL query in database…", and "Inspect database tables…" opening direct tabs in SQL Studio.
+   - Enhanced Status Bar with detected dialect tag (`DBML`, `SQL`, `JSON`), spaces indicator (`Spaces: 2`), encoding (`UTF-8`), and cursor position (`L {n} C {n}`).
+

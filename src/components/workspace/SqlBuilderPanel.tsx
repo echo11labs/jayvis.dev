@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import {
   Sheet,
   SheetContent,
@@ -17,6 +17,7 @@ import { buildSchemaScript } from '@/lib/sql-script';
 import { SQL_ENGINE_KEY, type SqlEngine } from '@/lib/sql-literal';
 import { appendMigration, checksumText } from '@/lib/persistence';
 import type { SqlStatement } from '@/lib/export/ddl-sqlite';
+import { generateMockSeedScript } from '@/lib/seeding/mock-data';
 import { toast } from 'sonner';
 import { confirmIf } from '@/lib/confirm-action';
 
@@ -24,6 +25,7 @@ interface SqlBuilderPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   slot?: string | null;
+  initialTab?: string;
 }
 
 interface ExecuteResult {
@@ -46,6 +48,14 @@ interface ExecuteResponse {
   statements?: SqlStatement[];
 }
 
+interface QueryResultData {
+  columns: string[];
+  rows: Record<string, unknown>[];
+  count: number;
+  durationMs: number;
+  query: string;
+}
+
 async function readSqlResponse(res: Response): Promise<ExecuteResponse> {
   let data: ExecuteResponse | null = null;
   try {
@@ -62,7 +72,12 @@ async function readSqlResponse(res: Response): Promise<ExecuteResponse> {
   return data;
 }
 
-export function SqlBuilderPanel({ open, onOpenChange, slot }: SqlBuilderPanelProps) {
+export function SqlBuilderPanel({
+  open,
+  onOpenChange,
+  slot,
+  initialTab = 'preview',
+}: SqlBuilderPanelProps) {
   const ast = useDiagramStore((s) => s.ast);
   const [engine, setEngine] = useState<SqlEngine>('sqlite');
   const [postgresReady, setPostgresReady] = useState(false);
@@ -77,7 +92,32 @@ export function SqlBuilderPanel({ open, onOpenChange, slot }: SqlBuilderPanelPro
   const [copied, setCopied] = useState(false);
   const [existingTables, setExistingTables] = useState<string[] | null>(null);
   const [checkingTables, setCheckingTables] = useState(false);
-  const [tab, setTab] = useState('preview');
+  const [tab, setTab] = useState(initialTab);
+
+  useEffect(() => {
+    if (open && initialTab) {
+      setTab(initialTab);
+    }
+  }, [open, initialTab]);
+
+  // Seed Data State
+  const [seedCount, setSeedCount] = useState<number>(5);
+  const [seeding, setSeeding] = useState(false);
+
+  // Query Runner State
+  const firstTableName = Object.keys(ast.tables)[0] || '';
+  const [queryInput, setQueryInput] = useState<string>(
+    firstTableName ? `SELECT * FROM "${firstTableName}" LIMIT 10;` : 'SELECT 1 as test;',
+  );
+  const [queryRunning, setQueryRunning] = useState(false);
+  const [queryResult, setQueryResult] = useState<QueryResultData | null>(null);
+  const [queryError, setQueryError] = useState<string | null>(null);
+
+  const seedData = useMemo(
+    () => generateMockSeedScript(ast, { count: seedCount, engine }),
+    [ast, seedCount, engine],
+  );
+
   const built = useMemo(() => buildSchemaScript(ast, engine), [ast, engine]);
   const statements = built.statements;
   const sqlScript = built.script;
@@ -126,6 +166,8 @@ export function SqlBuilderPanel({ open, onOpenChange, slot }: SqlBuilderPanelPro
   const codeBg = 'bg-[var(--color-bg-panel)]';
   const codeText = 'text-[var(--color-text-primary)]';
 
+  const executeRef = useRef<((confirmDestructive?: boolean) => Promise<void>) | null>(null);
+
   const handleExecute = useCallback(async (confirmDestructive = false) => {
     if (engine === 'postgres' && !postgresReady) {
       toast.error('Set POSTGRES_URL to build on PostgreSQL.');
@@ -150,7 +192,7 @@ export function SqlBuilderPanel({ open, onOpenChange, slot }: SqlBuilderPanelPro
           description: pending.error || 'Columns or tables will be dropped or rewritten. A SQLite backup is written first.',
           confirmLabel: 'Apply build',
           action: () => {
-            void handleExecute(true);
+            void executeRef.current?.(true);
           },
         });
         return;
@@ -202,6 +244,10 @@ export function SqlBuilderPanel({ open, onOpenChange, slot }: SqlBuilderPanelPro
     }
   }, [ast, engine, loadTables, postgresReady, slot, sqlScript]);
 
+  useEffect(() => {
+    executeRef.current = handleExecute;
+  }, [handleExecute]);
+
   const handleCopy = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(sqlScript);
@@ -223,6 +269,95 @@ export function SqlBuilderPanel({ open, onOpenChange, slot }: SqlBuilderPanelPro
     URL.revokeObjectURL(url);
     toast.success('Downloaded build.sql');
   }, [sqlScript]);
+
+  const handleSeedDatabase = useCallback(async () => {
+    setSeeding(true);
+    try {
+      const res = await fetch('/api/seed-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ast, count: seedCount, execute: true }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to seed database');
+      }
+      toast.success(`Seeded ${data.totalRows} records across ${data.tables.length} tables!`);
+      void loadTables();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Seeding failed');
+    } finally {
+      setSeeding(false);
+    }
+  }, [ast, seedCount, loadTables]);
+
+  const handleCopySeed = useCallback(() => {
+    void navigator.clipboard.writeText(seedData.fullScript);
+    toast.success('Copied seed SQL script to clipboard');
+  }, [seedData.fullScript]);
+
+  const handleDownloadSeed = useCallback(() => {
+    const blob = new Blob([seedData.fullScript], { type: 'text/sql' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `seed-${Date.now()}.sql`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Downloaded seed script');
+  }, [seedData.fullScript]);
+
+  const handleRunQuery = useCallback(async (customQuery?: string) => {
+    const q = (customQuery ?? queryInput).trim();
+    if (!q) return;
+    setQueryRunning(true);
+    setQueryError(null);
+    try {
+      const res = await fetch('/api/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: q }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setQueryError(data.error || 'Query failed');
+        setQueryResult(null);
+      } else {
+        setQueryResult(data as QueryResultData);
+      }
+    } catch (err: unknown) {
+      setQueryError(err instanceof Error ? err.message : 'Query execution failed');
+      setQueryResult(null);
+    } finally {
+      setQueryRunning(false);
+    }
+  }, [queryInput]);
+
+  const handleExportCsv = useCallback(() => {
+    if (!queryResult || queryResult.rows.length === 0) return;
+    const cols = queryResult.columns;
+    const csvRows = [cols.join(',')];
+    for (const r of queryResult.rows) {
+      csvRows.push(
+        cols
+          .map((col) => {
+            const val = r[col];
+            if (val === null || val === undefined) return '';
+            const str = String(val).replace(/"/g, '""');
+            return `"${str}"`;
+          })
+          .join(','),
+      );
+    }
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `query-results-${Date.now()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Exported query results to CSV');
+  }, [queryResult]);
 
   const dropAllTables = useCallback(async () => {
     setExecuting(true);
@@ -272,7 +407,7 @@ export function SqlBuilderPanel({ open, onOpenChange, slot }: SqlBuilderPanelPro
             SQL Builder
           </SheetTitle>
           <SheetDescription className="text-pretty text-[12px] leading-5 text-[var(--color-text-muted)]">
-            Build the current schema on {engineName}.
+            Build, seed, and query your database schema on {engineName}.
             {!postgresReady ? ' PostgreSQL stays off until POSTGRES_URL is set.' : ''}
           </SheetDescription>
         </SheetHeader>
@@ -383,14 +518,20 @@ export function SqlBuilderPanel({ open, onOpenChange, slot }: SqlBuilderPanelPro
         )}
 
         <Tabs value={tab} onValueChange={setTab} className="flex h-0 min-h-0 w-full flex-1 flex-col gap-0 overflow-hidden">
-          <TabsList className="mx-3 mt-3 grid h-7 shrink-0 grid-cols-3 rounded-[var(--radius-md)] bg-[var(--color-bg-tertiary)] p-0.5">
-            {['preview', 'results', 'tables'].map((value) => (
+          <TabsList className="mx-3 mt-3 grid h-7 shrink-0 grid-cols-5 rounded-[var(--radius-md)] bg-[var(--color-bg-tertiary)] p-0.5">
+            {[
+              { id: 'preview', label: 'SQL DDL' },
+              { id: 'seed', label: 'Mock Seed' },
+              { id: 'query', label: 'Query Runner' },
+              { id: 'results', label: 'Build Results' },
+              { id: 'tables', label: 'DB Tables' },
+            ].map((item) => (
               <TabsTrigger
-                key={value}
-                value={value}
-                className="h-6 rounded-[var(--radius-sm)] text-[12px] shadow-none data-[state=active]:bg-[var(--color-bg-panel)] data-[state=active]:text-[var(--color-text-primary)]"
+                key={item.id}
+                value={item.id}
+                className="h-6 rounded-[var(--radius-sm)] text-[11px] font-medium shadow-none data-[state=active]:bg-[var(--color-bg-panel)] data-[state=active]:text-[var(--color-text-primary)]"
               >
-                {value === 'preview' ? 'SQL Preview' : value === 'results' ? 'Results' : 'DB Tables'}
+                {item.label}
               </TabsTrigger>
             ))}
           </TabsList>
@@ -400,6 +541,223 @@ export function SqlBuilderPanel({ open, onOpenChange, slot }: SqlBuilderPanelPro
               <pre className={`whitespace-pre-wrap break-words p-4 font-mono text-[12px] leading-relaxed ${codeBg} ${codeText}`}>
                 <code>{previewSql}</code>
               </pre>
+            </ScrollArea>
+          </TabsContent>
+
+          {/* Seed Data tab */}
+          <TabsContent value="seed" className="mt-0 flex min-h-0 flex-1 flex-col overflow-hidden">
+            <div className="flex shrink-0 items-center justify-between border-b border-[var(--color-border-subtle)] bg-[var(--color-bg-panel)] px-4 py-2">
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-[var(--color-text-muted)]">Rows / Table:</span>
+                <div className="flex rounded border border-[var(--color-border-subtle)] bg-[var(--color-bg-app)]">
+                  {[5, 10, 25].map((cnt) => (
+                    <button
+                      key={cnt}
+                      type="button"
+                      onClick={() => setSeedCount(cnt)}
+                      className={`px-2 py-0.5 font-mono text-[11px] ${
+                        seedCount === cnt
+                          ? 'bg-[var(--color-accent-primary)] text-white'
+                          : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
+                      }`}
+                    >
+                      {cnt}
+                    </button>
+                  ))}
+                </div>
+                <span className="font-mono text-[11px] text-[var(--color-text-muted)]">
+                  ({seedData.totalRows} total rows)
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleCopySeed}
+                  className="rounded border border-[var(--color-border-subtle)] bg-[var(--color-bg-app)] px-2 py-1 text-[11px] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+                >
+                  Copy SQL
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDownloadSeed}
+                  className="rounded border border-[var(--color-border-subtle)] bg-[var(--color-bg-app)] px-2 py-1 text-[11px] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+                >
+                  Download .sql
+                </button>
+                <button
+                  type="button"
+                  disabled={seeding || seedData.totalRows === 0}
+                  onClick={() => void handleSeedDatabase()}
+                  className="flex items-center gap-1.5 rounded bg-emerald-600 px-3 py-1 text-[11px] font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
+                >
+                  {seeding ? <Codicon name="loading" spin /> : <Codicon name="play" />}
+                  Seed DB
+                </button>
+              </div>
+            </div>
+            <ScrollArea className="min-h-0 flex-1">
+              <pre className={`whitespace-pre-wrap break-words p-4 font-mono text-[12px] leading-relaxed ${codeBg} ${codeText}`}>
+                <code>{seedData.fullScript}</code>
+              </pre>
+            </ScrollArea>
+          </TabsContent>
+
+          {/* In-Studio Query Runner tab */}
+          <TabsContent value="query" className="mt-0 flex min-h-0 flex-1 flex-col overflow-hidden">
+            <div className="flex shrink-0 flex-col gap-2 border-b border-[var(--color-border-subtle)] bg-[var(--color-bg-panel)] p-3">
+              {/* Quick table chips */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">
+                  Quick Query:
+                </span>
+                {(existingTables && existingTables.length > 0 ? existingTables : Object.keys(ast.tables)).map(
+                  (tbl) => (
+                    <button
+                      key={tbl}
+                      type="button"
+                      onClick={() => {
+                        const q = `SELECT * FROM "${tbl}" LIMIT 10;`;
+                        setQueryInput(q);
+                        void handleRunQuery(q);
+                      }}
+                      className="rounded border border-[var(--color-border-subtle)] bg-[var(--color-bg-app)] px-2 py-0.5 font-mono text-[10px] text-[var(--color-text-secondary)] hover:border-[var(--color-accent-primary)] hover:text-[var(--color-text-primary)]"
+                    >
+                      {tbl}
+                    </button>
+                  ),
+                )}
+              </div>
+
+              {/* SQL Input Textarea */}
+              <div className="relative flex flex-col">
+                <textarea
+                  value={queryInput}
+                  onChange={(e) => setQueryInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                      e.preventDefault();
+                      void handleRunQuery();
+                    }
+                  }}
+                  placeholder="SELECT * FROM users LIMIT 10;"
+                  rows={3}
+                  className="w-full resize-y rounded border border-[var(--color-border-subtle)] bg-[var(--color-bg-app)] p-2.5 font-mono text-xs text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent-primary)]"
+                />
+                <div className="mt-2 flex items-center justify-between">
+                  <span className="text-[10px] text-[var(--color-text-muted)]">
+                    Press <kbd className="rounded bg-[var(--color-bg-app)] px-1 py-0.5 border border-[var(--color-border-subtle)]">⌘Enter</kbd> to execute
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {queryResult && queryResult.rows.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleExportCsv}
+                        className="rounded border border-[var(--color-border-subtle)] bg-[var(--color-bg-app)] px-2 py-1 text-[11px] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+                      >
+                        Export CSV
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      disabled={queryRunning || !queryInput.trim()}
+                      onClick={() => void handleRunQuery()}
+                      className="flex items-center gap-1 rounded bg-[var(--color-accent-primary)] px-3 py-1 text-[11px] font-medium text-white hover:bg-[var(--color-accent-hover)] disabled:opacity-50"
+                    >
+                      {queryRunning ? <Codicon name="loading" spin /> : <Codicon name="play" />}
+                      Run Query
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Query Results / Grid area */}
+            <ScrollArea className="min-h-0 flex-1">
+              <div className="p-3">
+                {queryError && (
+                  <div className="mb-3 rounded border border-rose-500/30 bg-rose-500/10 p-3">
+                    <div className="flex items-center gap-2 text-rose-400">
+                      <Codicon name="error" />
+                      <span className="text-xs font-semibold">Query Error</span>
+                    </div>
+                    <p className="mt-1 font-mono text-xs text-rose-300">{queryError}</p>
+                  </div>
+                )}
+
+                {!queryResult && !queryRunning && !queryError && (
+                  <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
+                    <Codicon name="terminal" className="text-[var(--color-text-muted)]" />
+                    <p className="text-xs text-[var(--color-text-muted)]">
+                      Type a SQL query above and click <span className="font-semibold text-[var(--color-text-primary)]">Run Query</span>.
+                    </p>
+                  </div>
+                )}
+
+                {queryRunning && (
+                  <div className="flex flex-col items-center justify-center gap-2 py-12">
+                    <Codicon name="loading" spin className="text-[var(--color-accent-primary)]" />
+                    <p className="text-xs text-[var(--color-text-muted)]">Executing query…</p>
+                  </div>
+                )}
+
+                {queryResult && (
+                  <div>
+                    <div className="mb-2 flex items-center justify-between text-[11px] text-[var(--color-text-muted)]">
+                      <span className="font-mono">
+                        {queryResult.count} {queryResult.count === 1 ? 'row' : 'rows'} returned in {queryResult.durationMs}ms
+                      </span>
+                    </div>
+
+                    {queryResult.columns.length > 0 && queryResult.rows.length > 0 ? (
+                      <div className="overflow-x-auto rounded border border-[var(--color-border-subtle)]">
+                        <table className="w-full text-left font-mono text-xs">
+                          <thead className="border-b border-[var(--color-border-subtle)] bg-[var(--color-bg-panel)]">
+                            <tr>
+                              {queryResult.columns.map((col) => (
+                                <th
+                                  key={col}
+                                  className="whitespace-nowrap px-3 py-1.5 text-[11px] font-semibold text-[var(--color-text-secondary)]"
+                                >
+                                  {col}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-[var(--color-border-subtle)] bg-[var(--color-bg-app)]">
+                            {queryResult.rows.map((row, idx) => (
+                              <tr key={idx} className="hover:bg-[var(--color-bg-tertiary)]/50">
+                                {queryResult.columns.map((col) => {
+                                  const cell = row[col];
+                                  return (
+                                    <td
+                                      key={col}
+                                      className="whitespace-nowrap px-3 py-1.5 text-[11px] text-[var(--color-text-primary)]"
+                                    >
+                                      {cell === null ? (
+                                        <span className="italic text-[var(--color-text-muted)]">NULL</span>
+                                      ) : typeof cell === 'boolean' ? (
+                                        <span className="text-amber-400">{cell ? 'true' : 'false'}</span>
+                                      ) : typeof cell === 'number' ? (
+                                        <span className="text-sky-400">{cell}</span>
+                                      ) : (
+                                        String(cell)
+                                      )}
+                                    </td>
+                                  );
+                                })}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <p className="py-6 text-center text-xs text-[var(--color-text-muted)]">
+                        Query executed successfully (0 rows returned).
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
             </ScrollArea>
           </TabsContent>
 
