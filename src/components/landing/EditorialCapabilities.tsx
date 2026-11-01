@@ -10,281 +10,316 @@ import {
   Cpu,
   Sparkles,
   GitMerge,
+  ArrowLeftRight,
 } from 'lucide-react';
 
 export function EditorialCapabilities() {
   return (
-    <section id="capabilities" className="w-full bg-black text-white border-t border-neutral-800/80 select-none">
-      {/* Section Header Band */}
-      <div className="border-b border-neutral-800 px-4 sm:px-6 lg:px-8 py-16 sm:py-20 bg-black">
-        <div className="max-w-[1240px] mx-auto">
-          {/* Eyebrow - Pure typography, no badge container */}
-          <p className="font-mono text-xs sm:text-[13px] font-semibold tracking-[0.2em] uppercase text-[#D2FF00] mb-3">
-            STUDIO CAPABILITIES // CORE PRIMITIVES
-          </p>
+    <section 
+      id="capabilities" 
+      aria-label="Studio capabilities"
+      className="relative w-full bg-[#050507] text-white border-t border-neutral-800/80 pt-24 sm:pt-32 pb-24 sm:pb-36 select-none overflow-hidden"
+    >
+      {/* Subtle schematic blueprint grid background */}
+      <div 
+        className="absolute inset-0 pointer-events-none opacity-25" 
+        aria-hidden="true"
+        style={{
+          backgroundImage: 'linear-gradient(to right, rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.04) 1px, transparent 1px)',
+          backgroundSize: '48px 48px',
+        }}
+      />
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-end">
-            <div className="lg:col-span-8">
-              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white leading-tight">
-                Engineered for speed, complexity &amp; rigor.
-              </h2>
-              <p className="mt-4 text-base sm:text-lg text-neutral-400 max-w-2xl font-sans leading-relaxed">
-                Every feature in JayVis is designed for professional software engineers who need architectural precision without clunky UI overhead or security risks.
-              </p>
-            </div>
-            <div className="lg:col-span-4 flex lg:justify-end">
-              <Link
-                href="/app"
-                className="font-mono text-xs sm:text-sm font-bold uppercase tracking-wider text-neutral-300 hover:text-white inline-flex items-center gap-1.5 transition-colors group"
-              >
-                <span>Explore all primitives in studio</span>
-                <ArrowRight className="w-3.5 h-3.5 text-[#D2FF00] group-hover:translate-x-1 transition-transform" />
-              </Link>
-            </div>
-          </div>
-        </div>
+      {/* Subtle ambient spotlight */}
+      <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-[radial-gradient(ellipse_at_center,rgba(210,255,0,0.025),transparent_70%)] blur-3xl" />
       </div>
 
-      {/* Feature Bento Grid */}
-      <div className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Card 1: Bidirectional AST Sync (Spans 2 columns on large screens) */}
-          <div className="md:col-span-2 border border-neutral-800 bg-[#0c0c0c] p-6 sm:p-8 flex flex-col justify-between hover:border-neutral-700 transition-colors group">
+      <div className="relative z-10 max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8">
+        
+        {/* ── Open, Breathable Section Header ── */}
+        <div className="max-w-3xl mb-16 sm:mb-20">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="w-2 h-2 rounded-full bg-[#D2FF00]" />
+            <p className="font-mono text-xs sm:text-[13px] font-semibold tracking-[0.2em] uppercase text-[#D2FF00]">
+              STUDIO CAPABILITIES // CORE PRIMITIVES
+            </p>
+          </div>
+
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white leading-tight">
+            Engineered for speed, complexity &amp; rigor.
+          </h2>
+
+          <p className="mt-4 text-base sm:text-lg text-neutral-400 font-normal leading-relaxed text-balance">
+            Every primitive is built for software architects who need mathematical precision without clunky UI overhead, subscription lock-in, or security hazards.
+          </p>
+        </div>
+
+        {/* ── Open Architectural Capabilities Grid (Zero Nested Boxes) ── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12 sm:gap-14 lg:gap-16">
+          
+          {/* ── CAPABILITY 01: BIDIRECTIONAL SYNC ── */}
+          <div className="flex flex-col justify-between group">
             <div>
-              <div className="flex items-center justify-between font-mono text-xs text-neutral-500 mb-4 pb-2 border-b border-neutral-800">
-                <div className="flex items-center gap-2 text-white font-bold uppercase">
+              {/* Status Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-neutral-800/80 mb-5">
+                <div className="flex items-center gap-2">
                   <GitMerge className="w-4 h-4 text-[#D2FF00]" />
-                  <span>01 // AST CORE</span>
+                  <span className="font-mono text-xs font-semibold uppercase tracking-wider text-neutral-300">
+                    01 // AST CORE
+                  </span>
                 </div>
-                <span className="text-[#D2FF00]">&lt; 15MS SYNC LATENCY</span>
+                <span className="px-2 py-0.5 rounded-full bg-[#D2FF00]/10 text-[#D2FF00] font-mono text-[10px] font-semibold uppercase tracking-wider border border-[#D2FF00]/25">
+                  &lt; 15ms sync
+                </span>
               </div>
 
-              <h3 className="text-xl sm:text-2xl font-bold uppercase tracking-tight text-white mb-3">
+              <h3 className="text-xl font-bold tracking-tight text-white mb-2.5">
                 Bidirectional Code ↔ Canvas Sync
               </h3>
-              <p className="text-sm text-neutral-400 font-sans leading-relaxed max-w-xl mb-6">
-                The Abstract Syntax Tree (AST) is the definitive single source of truth. Edit DBML or SQL in the CodeMirror editor, and your ER diagram updates synchronously. Drag tables, create handles, or edit fields on the canvas, and code serializes cleanly back to your file.
+              <p className="text-sm text-neutral-400 leading-relaxed mb-6">
+                The Abstract Syntax Tree is the definitive single source of truth. Edit DBML or SQL in the editor, and the diagram updates in real-time. Drag handles on the canvas, and code serializes cleanly back to your file.
               </p>
-
-              {/* Code / Visual preview snippet */}
-              <div className="border border-neutral-800 bg-[#050505] p-4 font-mono text-xs text-neutral-300 rounded-none overflow-x-auto">
-                <div className="text-[10px] text-neutral-500 uppercase tracking-wider mb-2 flex items-center justify-between border-b border-neutral-800 pb-1">
-                  <span>DECLARATIVE DBML SOURCE</span>
-                  <span className="text-[#D2FF00] font-bold">SYNCHRONIZED AST</span>
-                </div>
-                <div className="space-y-1 text-[11px]">
-                  <div><span className="text-[#D2FF00]">Table</span> <span className="text-white font-bold">orders</span> {'{'}</div>
-                  <div className="pl-4 text-neutral-300">id <span className="text-neutral-400">uuid</span> <span className="text-[#D2FF00]">[pk]</span></div>
-                  <div className="pl-4 text-neutral-300">user_id <span className="text-neutral-400">uuid</span> <span className="text-[#D2FF00]">[ref: &gt; users.id]</span> <span className="text-neutral-500">{'// Instant Edge Drawn'}</span></div>
-                  <div className="pl-4 text-neutral-300">total_cents <span className="text-neutral-400">integer</span></div>
-                  <div>{'}'}</div>
-                </div>
-              </div>
             </div>
 
-            <div className="mt-6 pt-4 border-t border-neutral-800 flex items-center justify-between font-mono text-[11px] text-neutral-500">
-              <span>ZERO DRIFT COMPILATION</span>
-              <span className="font-bold text-[#D2FF00] uppercase group-hover:underline">Instant AST Updates →</span>
+            {/* Open Schematic Visual: No nested boxes, clean technical lines */}
+            <div className="pt-4 border-t border-neutral-800/80 font-mono text-xs">
+              <div className="flex items-center justify-between text-[11px] text-neutral-400 mb-2">
+                <span className="text-[#D2FF00]">Table orders</span>
+                <span className="text-neutral-500">── AST Edge ──&gt;</span>
+                <span className="text-white">users.id</span>
+              </div>
+              <div className="flex items-center justify-between text-[10px] text-neutral-500 pt-1">
+                <span>ZERO-DRIFT SERIALIZER</span>
+                <span className="text-[#D2FF00] font-semibold">BILATERAL ACTIVE</span>
+              </div>
             </div>
           </div>
 
-          {/* Card 2: Multi-Dialect Code Editor & Formatter */}
-          <div className="border border-neutral-800 bg-[#0c0c0c] p-6 sm:p-8 flex flex-col justify-between hover:border-neutral-700 transition-colors group">
+          {/* ── CAPABILITY 02: MULTI-DIALECT CODE EDITOR ── */}
+          <div className="flex flex-col justify-between group">
             <div>
-              <div className="flex items-center justify-between font-mono text-xs text-neutral-500 mb-4 pb-2 border-b border-neutral-800">
-                <div className="flex items-center gap-2 text-white font-bold uppercase">
+              {/* Status Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-neutral-800/80 mb-5">
+                <div className="flex items-center gap-2">
                   <Code2 className="w-4 h-4 text-[#D2FF00]" />
-                  <span>02 // EDITOR</span>
+                  <span className="font-mono text-xs font-semibold uppercase tracking-wider text-neutral-300">
+                    02 // CODE ENGINE
+                  </span>
                 </div>
-                <span>⌥⇧F FORMAT</span>
+                <span className="px-2 py-0.5 rounded-full bg-neutral-800 text-neutral-300 font-mono text-[10px] font-semibold uppercase tracking-wider border border-neutral-700">
+                  ⌥⇧F format
+                </span>
               </div>
 
-              <h3 className="text-xl font-bold uppercase tracking-tight text-white mb-3">
-                Multi-Dialect Code Editor &amp; Formatter
+              <h3 className="text-xl font-bold tracking-tight text-white mb-2.5">
+                Multi-Dialect Editor &amp; Formatter
               </h3>
-              <p className="text-sm text-neutral-400 font-sans leading-relaxed mb-4">
-                CodeMirror 6 compartments dynamically detect DBML, SQL, and JSON documents. Built-in code formatter (<kbd className="font-mono text-xs bg-neutral-900 px-1 border border-neutral-700 text-neutral-200">⌥⇧F</kbd>) ensures standardized casing, spacing, and AST structure.
+              <p className="text-sm text-neutral-400 leading-relaxed mb-6">
+                CodeMirror 6 compartments automatically detect DBML, SQL DDL, and JSON AST. Instant diagnostics highlight missing foreign keys, while the auto-formatter standardizes casing and indentation.
               </p>
-
-              <div className="p-3 border border-neutral-800 bg-[#050505] font-mono text-xs space-y-1.5 text-neutral-300">
-                <div className="flex justify-between items-center text-[10px] text-neutral-500 uppercase">
-                  <span>SUPPORTED MODES</span>
-                  <span className="text-[#D2FF00] font-bold">LIVE COMPARTMENTS</span>
-                </div>
-                <div className="flex items-center gap-2 pt-1">
-                  <span className="px-1.5 py-0.5 bg-[#D2FF00] text-black text-[10px] font-bold">DBML</span>
-                  <span className="px-1.5 py-0.5 bg-neutral-800 text-neutral-200 text-[10px] font-bold">SQL DDL</span>
-                  <span className="px-1.5 py-0.5 bg-neutral-800 text-neutral-200 text-[10px] font-bold">JSON AST</span>
-                </div>
-              </div>
             </div>
 
-            <div className="mt-6 pt-4 border-t border-neutral-800 font-mono text-[11px] text-neutral-500 flex justify-between items-center">
-              <span>Lezer Incremental Tokenizer</span>
-              <span className="font-bold text-[#D2FF00] uppercase group-hover:underline">Test Editor →</span>
+            {/* Open Schematic Visual: Dialect chips */}
+            <div className="pt-4 border-t border-neutral-800/80 font-mono text-xs">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="px-2 py-0.5 rounded bg-[#D2FF00] text-black font-bold text-[10px]">
+                  DBML 2.6
+                </span>
+                <span className="px-2 py-0.5 rounded bg-neutral-900 border border-neutral-800 text-neutral-300 text-[10px]">
+                  PostgreSQL
+                </span>
+                <span className="px-2 py-0.5 rounded bg-neutral-900 border border-neutral-800 text-neutral-300 text-[10px]">
+                  SQLite
+                </span>
+                <span className="px-2 py-0.5 rounded bg-neutral-900 border border-neutral-800 text-neutral-300 text-[10px]">
+                  MySQL
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-[10px] text-neutral-500 pt-1">
+                <span>LEZER INCREMENTAL PARSER</span>
+                <span className="text-neutral-400">0ms lag</span>
+              </div>
             </div>
           </div>
 
-          {/* Card 3: Constraint-Aware Mock Seeder */}
-          <div className="border border-neutral-800 bg-[#0c0c0c] p-6 sm:p-8 flex flex-col justify-between hover:border-neutral-700 transition-colors group">
+          {/* ── CAPABILITY 03: CONSTRAINT-AWARE MOCK SEEDER ── */}
+          <div className="flex flex-col justify-between group">
             <div>
-              <div className="flex items-center justify-between font-mono text-xs text-neutral-500 mb-4 pb-2 border-b border-neutral-800">
-                <div className="flex items-center gap-2 text-white font-bold uppercase">
+              {/* Status Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-neutral-800/80 mb-5">
+                <div className="flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-[#D2FF00]" />
-                  <span>03 // SEED DATA</span>
+                  <span className="font-mono text-xs font-semibold uppercase tracking-wider text-neutral-300">
+                    03 // SEED DATA
+                  </span>
                 </div>
-                <span>TOPOLOGICAL SORT</span>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-400/10 text-emerald-400 font-mono text-[10px] font-semibold uppercase tracking-wider border border-emerald-400/25">
+                  topological sort
+                </span>
               </div>
 
-              <h3 className="text-xl font-bold uppercase tracking-tight text-white mb-3">
+              <h3 className="text-xl font-bold tracking-tight text-white mb-2.5">
                 Constraint-Aware Mock Seeder
               </h3>
-              <p className="text-sm text-neutral-400 font-sans leading-relaxed mb-4">
-                Generates realistic test data respecting foreign-key hierarchy. Child records automatically inherit generated primary keys from parent tables—guaranteeing zero foreign key constraint violations.
+              <p className="text-sm text-neutral-400 leading-relaxed mb-6">
+                Generates realistic test data respecting your relational schema. Child rows automatically inherit primary keys from parent records—guaranteeing zero foreign key constraint violations on insert.
               </p>
-
-              <div className="p-3 border border-neutral-800 bg-[#050505] font-mono text-xs space-y-1">
-                <div className="flex justify-between text-[11px]">
-                  <span className="text-neutral-500">Volume</span>
-                  <span className="font-bold text-white">5, 10, or 25 rows/table</span>
-                </div>
-                <div className="flex justify-between text-[11px]">
-                  <span className="text-neutral-500">Semantics</span>
-                  <span className="font-bold text-white">Names, Emails, Dates, UUIDs</span>
-                </div>
-                <div className="flex justify-between text-[11px]">
-                  <span className="text-neutral-500">Integrity</span>
-                  <span className="font-bold text-[#D2FF00]">Parent PK Inheritance</span>
-                </div>
-              </div>
             </div>
 
-            <div className="mt-6 pt-4 border-t border-neutral-800 font-mono text-[11px] text-neutral-500 flex justify-between items-center">
-              <span>PRAGMA foreign_keys = ON</span>
-              <span className="font-bold text-[#D2FF00] uppercase group-hover:underline">Seed Data →</span>
+            {/* Open Schematic Visual: Seed flow */}
+            <div className="pt-4 border-t border-neutral-800/80 font-mono text-xs">
+              <div className="flex items-center justify-between text-[11px] text-neutral-400 mb-2">
+                <span>Parent PK</span>
+                <span className="text-emerald-400">── Inherit ──&gt;</span>
+                <span className="text-white">Child FK Records</span>
+              </div>
+              <div className="flex items-center justify-between text-[10px] text-neutral-500 pt-1">
+                <span>PRAGMA FOREIGN_KEYS = ON</span>
+                <span className="text-emerald-400 font-semibold">100% VALIDATED</span>
+              </div>
             </div>
           </div>
 
-          {/* Card 4: In-Studio SQL Query Runner */}
-          <div className="border border-neutral-800 bg-[#0c0c0c] p-6 sm:p-8 flex flex-col justify-between hover:border-neutral-700 transition-colors group">
+          {/* ── CAPABILITY 04: IN-STUDIO SQL QUERY RUNNER ── */}
+          <div className="flex flex-col justify-between group">
             <div>
-              <div className="flex items-center justify-between font-mono text-xs text-neutral-500 mb-4 pb-2 border-b border-neutral-800">
-                <div className="flex items-center gap-2 text-white font-bold uppercase">
+              {/* Status Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-neutral-800/80 mb-5">
+                <div className="flex items-center gap-2">
                   <Database className="w-4 h-4 text-[#D2FF00]" />
-                  <span>04 // SQL STUDIO</span>
+                  <span className="font-mono text-xs font-semibold uppercase tracking-wider text-neutral-300">
+                    04 // SQL ENGINE
+                  </span>
                 </div>
-                <span>TABULAR RUNNER</span>
+                <span className="px-2 py-0.5 rounded-full bg-sky-400/10 text-sky-400 font-mono text-[10px] font-semibold uppercase tracking-wider border border-sky-400/25">
+                  in-browser sqlite
+                </span>
               </div>
 
-              <h3 className="text-xl font-bold uppercase tracking-tight text-white mb-3">
+              <h3 className="text-xl font-bold tracking-tight text-white mb-2.5">
                 In-Studio SQL Query Runner
               </h3>
-              <p className="text-sm text-neutral-400 font-sans leading-relaxed mb-4">
-                Execute SELECT, INSERT, or DDL statements directly in your studio. Inspect real column headers, measure execution duration (ms), inspect row counts, and export tabular data to CSV.
+              <p className="text-sm text-neutral-400 leading-relaxed mb-6">
+                Execute SELECT queries, test joins, or run ALTER statements against an isolated in-memory engine. Inspect row counts, measure execution duration down to the millisecond, and export to CSV.
               </p>
-
-              <div className="p-3 border border-neutral-800 bg-[#050505] font-mono text-xs space-y-1">
-                <div className="flex justify-between text-[11px]">
-                  <span className="text-neutral-500">Execution Time</span>
-                  <span className="font-bold text-white">&lt; 5ms Local SQLite</span>
-                </div>
-                <div className="flex justify-between text-[11px]">
-                  <span className="text-neutral-500">Export</span>
-                  <span className="font-bold text-white">Tabular Grid &amp; CSV</span>
-                </div>
-                <div className="flex justify-between text-[11px]">
-                  <span className="text-neutral-500">Safety Guard</span>
-                  <span className="font-bold text-[#D2FF00]">Local Gated Endpoints</span>
-                </div>
-              </div>
             </div>
 
-            <div className="mt-6 pt-4 border-t border-neutral-800 font-mono text-[11px] text-neutral-500 flex justify-between items-center">
-              <span>SQLite &amp; PostgreSQL Ready</span>
-              <span className="font-bold text-[#D2FF00] uppercase group-hover:underline">Run Queries →</span>
+            {/* Open Schematic Visual: Query Execution */}
+            <div className="pt-4 border-t border-neutral-800/80 font-mono text-xs">
+              <div className="flex items-center justify-between text-[11px] text-neutral-400 mb-2">
+                <span className="text-sky-400">SELECT * FROM orders</span>
+                <span className="text-white font-semibold">1,000 rows</span>
+              </div>
+              <div className="flex items-center justify-between text-[10px] text-neutral-500 pt-1">
+                <span>DURATION: 3.4MS</span>
+                <span className="text-sky-400 font-semibold">TABULAR GRID &amp; CSV</span>
+              </div>
             </div>
           </div>
 
-          {/* Card 5: Interactive Relationship Badges */}
-          <div className="border border-neutral-800 bg-[#0c0c0c] p-6 sm:p-8 flex flex-col justify-between hover:border-neutral-700 transition-colors group">
+          {/* ── CAPABILITY 05: INTERACTIVE CARDINALITY ── */}
+          <div className="flex flex-col justify-between group">
             <div>
-              <div className="flex items-center justify-between font-mono text-xs text-neutral-500 mb-4 pb-2 border-b border-neutral-800">
-                <div className="flex items-center gap-2 text-white font-bold uppercase">
+              {/* Status Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-neutral-800/80 mb-5">
+                <div className="flex items-center gap-2">
                   <Network className="w-4 h-4 text-[#D2FF00]" />
-                  <span>05 // CANVAS EDGES</span>
+                  <span className="font-mono text-xs font-semibold uppercase tracking-wider text-neutral-300">
+                    05 // CANVAS EDGES
+                  </span>
                 </div>
-                <span>ONE-CLICK POPOVER</span>
+                <span className="px-2 py-0.5 rounded-full bg-[#D2FF00]/10 text-[#D2FF00] font-mono text-[10px] font-semibold uppercase tracking-wider border border-[#D2FF00]/25">
+                  one-click popover
+                </span>
               </div>
 
-              <h3 className="text-xl font-bold uppercase tracking-tight text-white mb-3">
-                Interactive Relationship Badges
+              <h3 className="text-xl font-bold tracking-tight text-white mb-2.5">
+                Interactive Relationship Controls
               </h3>
-              <p className="text-sm text-neutral-400 font-sans leading-relaxed mb-4">
-                No need to manually edit syntax. Click any cardinality badge directly on the canvas (<span className="font-mono text-xs font-bold text-[#D2FF00]">1:*</span>, <span className="font-mono text-xs font-bold text-[#D2FF00]">*:1</span>, <span className="font-mono text-xs font-bold text-[#D2FF00]">1:1</span>) to invert directions or set <span className="font-mono text-xs text-neutral-300">ON DELETE CASCADE</span> actions.
+              <p className="text-sm text-neutral-400 leading-relaxed mb-6">
+                Click any connection badge directly on the visual board to switch cardinality directions (1:N, N:1, 1:1) or configure ON DELETE CASCADE referential actions with immediate code synchronization.
               </p>
-
-              <div className="p-3 border border-neutral-800 bg-[#050505] font-mono text-xs space-y-1">
-                <div className="flex justify-between text-[11px]">
-                  <span className="text-neutral-500">Cardinality</span>
-                  <span className="font-bold text-white">1:N · N:1 · 1:1 · N:M</span>
-                </div>
-                <div className="flex justify-between text-[11px]">
-                  <span className="text-neutral-500">Referential Action</span>
-                  <span className="font-bold text-white">CASCADE · SET NULL</span>
-                </div>
-                <div className="flex justify-between text-[11px]">
-                  <span className="text-neutral-500">Propagation</span>
-                  <span className="font-bold text-[#D2FF00]">Immediate AST Patch</span>
-                </div>
-              </div>
             </div>
 
-            <div className="mt-6 pt-4 border-t border-neutral-800 font-mono text-[11px] text-neutral-500 flex justify-between items-center">
-              <span>Orthogonal ELK Routing</span>
-              <span className="font-bold text-[#D2FF00] uppercase group-hover:underline">Explore Canvas →</span>
+            {/* Open Schematic Visual: Cardinality badges */}
+            <div className="pt-4 border-t border-neutral-800/80 font-mono text-xs">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="px-2 py-0.5 rounded bg-[#D2FF00]/20 text-[#D2FF00] border border-[#D2FF00]/40 font-bold text-[10px]">
+                  1 : *
+                </span>
+                <span className="px-2 py-0.5 rounded bg-neutral-900 border border-neutral-800 text-neutral-400 text-[10px]">
+                  * : 1
+                </span>
+                <span className="px-2 py-0.5 rounded bg-neutral-900 border border-neutral-800 text-neutral-400 text-[10px]">
+                  1 : 1
+                </span>
+                <span className="text-[10px] text-neutral-500 ml-auto">
+                  CASCADE
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-[10px] text-neutral-500 pt-1">
+                <span>ORTHOGONAL ELK ROUTING</span>
+                <span className="text-[#D2FF00] font-semibold">INSTANT AST PATCH</span>
+              </div>
             </div>
           </div>
 
-          {/* Card 6: Stdio Model Context Protocol (MCP) */}
-          <div className="border border-neutral-800 bg-[#0c0c0c] p-6 sm:p-8 flex flex-col justify-between hover:border-neutral-700 transition-colors group">
+          {/* ── CAPABILITY 06: AGENT PROTOCOL NATIVE (MCP) ── */}
+          <div className="flex flex-col justify-between group">
             <div>
-              <div className="flex items-center justify-between font-mono text-xs text-neutral-500 mb-4 pb-2 border-b border-neutral-800">
-                <div className="flex items-center gap-2 text-white font-bold uppercase">
+              {/* Status Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-neutral-800/80 mb-5">
+                <div className="flex items-center gap-2">
                   <Cpu className="w-4 h-4 text-[#D2FF00]" />
-                  <span>06 // AI AGENTS</span>
+                  <span className="font-mono text-xs font-semibold uppercase tracking-wider text-neutral-300">
+                    06 // AGENT PROTOCOL
+                  </span>
                 </div>
-                <span>STDIO MCP SERVER</span>
+                <span className="px-2 py-0.5 rounded-full bg-purple-400/10 text-purple-400 font-mono text-[10px] font-semibold uppercase tracking-wider border border-purple-400/25">
+                  stdio mcp server
+                </span>
               </div>
 
-              <h3 className="text-xl font-bold uppercase tracking-tight text-white mb-3">
+              <h3 className="text-xl font-bold tracking-tight text-white mb-2.5">
                 Agent Protocol Native (MCP)
               </h3>
-              <p className="text-sm text-neutral-400 font-sans leading-relaxed mb-4">
-                Connect Claude Desktop, Cursor, or Gemini directly to your database design via standard Model Context Protocol. AI assistants can read schemas, validate foreign keys, and suggest optimal column indexing without third-party cloud leakage.
+              <p className="text-sm text-neutral-400 leading-relaxed mb-6">
+                Connect Claude Desktop, Cursor, or Gemini CLI directly to your schemas via Model Context Protocol. AI assistants can inspect constraints, query tables, and propose safe ALTER migrations over a private stdio pipe.
               </p>
+            </div>
 
-              <div className="p-3 border border-neutral-800 bg-[#050505] font-mono text-xs space-y-1">
-                <div className="flex justify-between text-[11px]">
-                  <span className="text-neutral-500">Interface</span>
-                  <span className="font-bold text-white">Local Unix Stdio Pipe</span>
-                </div>
-                <div className="flex justify-between text-[11px]">
-                  <span className="text-neutral-500">Compatible Clients</span>
-                  <span className="font-bold text-white">Claude · Cursor · Gemini</span>
-                </div>
-                <div className="flex justify-between text-[11px]">
-                  <span className="text-neutral-500">Privacy</span>
-                  <span className="font-bold text-[#D2FF00]">Zero Cloud Relays</span>
-                </div>
+            {/* Open Schematic Visual: Stdio Pipe */}
+            <div className="pt-4 border-t border-neutral-800/80 font-mono text-xs">
+              <div className="flex items-center justify-between text-[11px] text-neutral-400 mb-2">
+                <span className="text-purple-400">Claude / Cursor</span>
+                <span className="text-neutral-500">── Stdio Pipe ──&gt;</span>
+                <span className="text-white">Local AST</span>
+              </div>
+              <div className="flex items-center justify-between text-[10px] text-neutral-500 pt-1">
+                <span>ZERO CLOUD LEAKAGE</span>
+                <span className="text-purple-400 font-semibold">AIR-GAPPED STDIN/OUT</span>
               </div>
             </div>
-
-            <div className="mt-6 pt-4 border-t border-neutral-800 font-mono text-[11px] text-neutral-500 flex justify-between items-center">
-              <span>Standard MCP Tools</span>
-              <span className="font-bold text-[#D2FF00] uppercase group-hover:underline">View MCP Spec →</span>
-            </div>
           </div>
+
         </div>
+
+        {/* ── Bottom Link Callout ── */}
+        <div className="mt-16 sm:mt-20 pt-8 border-t border-neutral-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <p className="font-mono text-xs text-neutral-500">
+            FIG 02 // STUDIO ARCHITECTURE — 6 INTEGRATED CORE PRIMITIVES
+          </p>
+
+          <Link
+            href="/app"
+            className="font-mono text-xs sm:text-sm font-bold uppercase tracking-wider text-neutral-300 hover:text-white inline-flex items-center gap-2 transition-colors group"
+          >
+            <span>Launch Studio &amp; Explore All Primitives</span>
+            <ArrowRight className="w-3.5 h-3.5 text-[#D2FF00] group-hover:translate-x-1.5 transition-transform" />
+          </Link>
+        </div>
+
       </div>
     </section>
   );
