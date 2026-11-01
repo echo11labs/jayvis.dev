@@ -35,19 +35,17 @@ export function CodeAndCanvas() {
           </p>
         </div>
 
-        {/* ── Center Stage: Wide Cinematic Dual-View Artwork ── */}
-        <div className="relative w-full max-w-[1100px] mx-auto mb-16 sm:mb-20">
-          <div className="group relative aspect-[16/9] sm:aspect-[21/10] rounded-2xl overflow-hidden border border-neutral-800/80 bg-[#09090e] shadow-[0_20px_70px_rgba(0,0,0,0.9)] hover:border-[#D2FF00]/50 transition-all duration-500">
+        {/* ── Center Stage: Free-Floating Dual-View Graphic (Zero Container Box) ── */}
+        <div className="relative w-full max-w-[1100px] mx-auto mb-16 sm:mb-20 flex items-center justify-center">
+          <div className="group relative aspect-[16/9] sm:aspect-[21/10] w-full">
             <Image
               src="/images/illustrations/two-views-one-schema.jpg"
               alt="Two Views One Schema: Synchronized Code Editor and ERD Board"
               fill
               sizes="(max-width: 1240px) 100vw, 1100px"
-              className="object-cover object-center group-hover:scale-[1.015] transition-transform duration-700"
+              className="object-contain object-center [mask-image:radial-gradient(ellipse_80%_70%_at_50%_50%,#000_50%,transparent_95%)] group-hover:scale-[1.015] transition-transform duration-700"
               priority
             />
-            {/* Subtle soft edge gradient vignette */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
           </div>
         </div>
 

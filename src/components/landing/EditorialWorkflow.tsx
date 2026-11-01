@@ -20,7 +20,17 @@ export function EditorialWorkflow() {
       aria-label="How it works"
       className="relative w-full bg-[#050507] text-white border-t border-neutral-800/80 pt-24 sm:pt-32 pb-24 sm:pb-36 select-none overflow-hidden"
     >
-      {/* Subtle ambient lighting on open canvas */}
+      {/* Subtle schematic blueprint grid background */}
+      <div 
+        className="absolute inset-0 pointer-events-none opacity-30" 
+        aria-hidden="true"
+        style={{
+          backgroundImage: 'linear-gradient(to right, rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.04) 1px, transparent 1px)',
+          backgroundSize: '48px 48px',
+        }}
+      />
+
+      {/* Subtle ambient lighting */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[900px] h-[400px] bg-[radial-gradient(ellipse_at_center,rgba(210,255,0,0.035),transparent_70%)] blur-3xl" />
       </div>
@@ -50,21 +60,25 @@ export function EditorialWorkflow() {
           
           {/* ── STAGE 01: DEFINE ── */}
           <div className="flex flex-col group">
-            {/* Stage Indicator */}
-            <p className="font-mono text-xs font-semibold tracking-widest uppercase text-[#D2FF00] mb-3">
-              01 / SPECIFY
-            </p>
+            {/* Stage Indicator & Status Chip */}
+            <div className="flex items-center justify-between mb-4">
+              <p className="font-mono text-xs font-semibold tracking-widest uppercase text-[#D2FF00]">
+                01 / SPECIFY
+              </p>
+              <span className="px-2 py-0.5 rounded-full bg-[#D2FF00]/10 text-[#D2FF00] font-mono text-[10px] font-semibold uppercase tracking-wider border border-[#D2FF00]/20">
+                live
+              </span>
+            </div>
 
-            {/* Illustration Graphic - Free-standing, spacious */}
-            <div className="relative aspect-[16/10] rounded-xl overflow-hidden border border-neutral-800/80 bg-[#09090e] shadow-xl group-hover:border-[#D2FF00]/50 transition-all duration-300">
+            {/* Illustration Graphic - Free-standing, transparent background, zero container box */}
+            <div className="relative aspect-[16/10] w-full flex items-center justify-center">
               <Image
                 src="/images/illustrations/workflow-define-clean.jpg"
                 alt="Define Step: DBML code and schema definition"
                 fill
                 sizes="(max-width: 1024px) 100vw, 33vw"
-                className="object-cover object-center group-hover:scale-[1.03] transition-transform duration-500"
+                className="object-contain object-center [mask-image:radial-gradient(ellipse_80%_70%_at_50%_50%,#000_45%,transparent_92%)] group-hover:scale-[1.03] transition-transform duration-500"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
             </div>
 
             {/* Copy & Details */}
@@ -93,21 +107,25 @@ export function EditorialWorkflow() {
 
           {/* ── STAGE 02: RESOLVE ── */}
           <div className="flex flex-col group">
-            {/* Stage Indicator */}
-            <p className="font-mono text-xs font-semibold tracking-widest uppercase text-[#D2FF00] mb-3">
-              02 / EXPLORE
-            </p>
+            {/* Stage Indicator & Status Chip */}
+            <div className="flex items-center justify-between mb-4">
+              <p className="font-mono text-xs font-semibold tracking-widest uppercase text-sky-400">
+                02 / EXPLORE
+              </p>
+              <span className="px-2 py-0.5 rounded-full bg-sky-400/10 text-sky-400 font-mono text-[10px] font-semibold uppercase tracking-wider border border-sky-400/20">
+                bilateral
+              </span>
+            </div>
 
-            {/* Illustration Graphic - Free-standing, spacious */}
-            <div className="relative aspect-[16/10] rounded-xl overflow-hidden border border-neutral-800/80 bg-[#09090e] shadow-xl group-hover:border-sky-400/50 transition-all duration-300">
+            {/* Illustration Graphic - Free-standing, transparent background, zero container box */}
+            <div className="relative aspect-[16/10] w-full flex items-center justify-center">
               <Image
                 src="/images/illustrations/workflow-resolve-clean.jpg"
                 alt="Resolve Step: Interactive ERD visual canvas"
                 fill
                 sizes="(max-width: 1024px) 100vw, 33vw"
-                className="object-cover object-center group-hover:scale-[1.03] transition-transform duration-500"
+                className="object-contain object-center [mask-image:radial-gradient(ellipse_80%_70%_at_50%_50%,#000_45%,transparent_92%)] group-hover:scale-[1.03] transition-transform duration-500"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
             </div>
 
             {/* Copy & Details */}
@@ -136,21 +154,25 @@ export function EditorialWorkflow() {
 
           {/* ── STAGE 03: DEPLOY ── */}
           <div className="flex flex-col group">
-            {/* Stage Indicator */}
-            <p className="font-mono text-xs font-semibold tracking-widest uppercase text-[#D2FF00] mb-3">
-              03 / DELIVER
-            </p>
+            {/* Stage Indicator & Status Chip */}
+            <div className="flex items-center justify-between mb-4">
+              <p className="font-mono text-xs font-semibold tracking-widest uppercase text-emerald-400">
+                03 / DELIVER
+              </p>
+              <span className="px-2 py-0.5 rounded-full bg-emerald-400/10 text-emerald-400 font-mono text-[10px] font-semibold uppercase tracking-wider border border-emerald-400/20">
+                verified
+              </span>
+            </div>
 
-            {/* Illustration Graphic - Free-standing, spacious */}
-            <div className="relative aspect-[16/10] rounded-xl overflow-hidden border border-neutral-800/80 bg-[#09090e] shadow-xl group-hover:border-emerald-400/50 transition-all duration-300">
+            {/* Illustration Graphic - Free-standing, transparent background, zero container box */}
+            <div className="relative aspect-[16/10] w-full flex items-center justify-center">
               <Image
                 src="/images/illustrations/workflow-deploy-clean.jpg"
                 alt="Deploy Step: Safe migration diffs and production DDL"
                 fill
                 sizes="(max-width: 1024px) 100vw, 33vw"
-                className="object-cover object-center group-hover:scale-[1.03] transition-transform duration-500"
+                className="object-contain object-center [mask-image:radial-gradient(ellipse_80%_70%_at_50%_50%,#000_45%,transparent_92%)] group-hover:scale-[1.03] transition-transform duration-500"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
             </div>
 
             {/* Copy & Details */}
