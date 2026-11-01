@@ -64,7 +64,7 @@ export function EditorialWorkflow() {
             {/* Illustration Graphic - Free-standing, spacious */}
             <div className="relative aspect-[16/10] rounded-xl overflow-hidden border border-neutral-800/80 bg-[#09090e] shadow-xl group-hover:border-[#D2FF00]/50 transition-all duration-300">
               <Image
-                src="/images/illustrations/workflow-define.jpg"
+                src="/images/illustrations/workflow-define-clean.jpg"
                 alt="Define Step: DBML code and schema definition"
                 fill
                 sizes="(max-width: 1024px) 100vw, 33vw"
@@ -113,7 +113,7 @@ export function EditorialWorkflow() {
             {/* Illustration Graphic - Free-standing, spacious */}
             <div className="relative aspect-[16/10] rounded-xl overflow-hidden border border-neutral-800/80 bg-[#09090e] shadow-xl group-hover:border-sky-400/50 transition-all duration-300">
               <Image
-                src="/images/illustrations/workflow-resolve.jpg"
+                src="/images/illustrations/workflow-resolve-clean.jpg"
                 alt="Resolve Step: Interactive ERD visual canvas"
                 fill
                 sizes="(max-width: 1024px) 100vw, 33vw"
@@ -162,7 +162,7 @@ export function EditorialWorkflow() {
             {/* Illustration Graphic - Free-standing, spacious */}
             <div className="relative aspect-[16/10] rounded-xl overflow-hidden border border-neutral-800/80 bg-[#09090e] shadow-xl group-hover:border-emerald-400/50 transition-all duration-300">
               <Image
-                src="/images/illustrations/workflow-deploy.jpg"
+                src="/images/illustrations/workflow-deploy-clean.jpg"
                 alt="Deploy Step: Safe migration diffs and production DDL"
                 fill
                 sizes="(max-width: 1024px) 100vw, 33vw"
