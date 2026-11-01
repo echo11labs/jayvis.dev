@@ -50,16 +50,10 @@ export function EditorialWorkflow() {
           
           {/* ── STAGE 01: DEFINE ── */}
           <div className="flex flex-col group">
-            {/* Stage Indicator & Status */}
-            <div className="flex items-center justify-between pb-3 mb-4 border-b border-neutral-800/80 font-mono text-xs">
-              <span className="text-[#D2FF00] font-bold tracking-widest uppercase text-[11px]">
-                01 / SPECIFY
-              </span>
-              <span className="px-2 py-0.5 rounded bg-[#131318] border border-neutral-800 text-neutral-300 text-[10px] flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#D2FF00]" />
-                DBML v2.6
-              </span>
-            </div>
+            {/* Stage Indicator */}
+            <p className="font-mono text-xs font-semibold tracking-widest uppercase text-[#D2FF00] mb-3">
+              01 / SPECIFY
+            </p>
 
             {/* Illustration Graphic - Free-standing, spacious */}
             <div className="relative aspect-[16/10] rounded-xl overflow-hidden border border-neutral-800/80 bg-[#09090e] shadow-xl group-hover:border-[#D2FF00]/50 transition-all duration-300">
@@ -99,16 +93,10 @@ export function EditorialWorkflow() {
 
           {/* ── STAGE 02: RESOLVE ── */}
           <div className="flex flex-col group">
-            {/* Stage Indicator & Status */}
-            <div className="flex items-center justify-between pb-3 mb-4 border-b border-neutral-800/80 font-mono text-xs">
-              <span className="text-[#D2FF00] font-bold tracking-widest uppercase text-[11px]">
-                02 / EXPLORE
-              </span>
-              <span className="px-2 py-0.5 rounded bg-[#131318] border border-neutral-800 text-sky-400 text-[10px] flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
-                2-WAY REACTIVE
-              </span>
-            </div>
+            {/* Stage Indicator */}
+            <p className="font-mono text-xs font-semibold tracking-widest uppercase text-[#D2FF00] mb-3">
+              02 / EXPLORE
+            </p>
 
             {/* Illustration Graphic - Free-standing, spacious */}
             <div className="relative aspect-[16/10] rounded-xl overflow-hidden border border-neutral-800/80 bg-[#09090e] shadow-xl group-hover:border-sky-400/50 transition-all duration-300">
@@ -148,16 +136,10 @@ export function EditorialWorkflow() {
 
           {/* ── STAGE 03: DEPLOY ── */}
           <div className="flex flex-col group">
-            {/* Stage Indicator & Status */}
-            <div className="flex items-center justify-between pb-3 mb-4 border-b border-neutral-800/80 font-mono text-xs">
-              <span className="text-[#D2FF00] font-bold tracking-widest uppercase text-[11px]">
-                03 / DELIVER
-              </span>
-              <span className="px-2 py-0.5 rounded bg-[#131318] border border-neutral-800 text-emerald-400 text-[10px] flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                ZERO DRIFT
-              </span>
-            </div>
+            {/* Stage Indicator */}
+            <p className="font-mono text-xs font-semibold tracking-widest uppercase text-[#D2FF00] mb-3">
+              03 / DELIVER
+            </p>
 
             {/* Illustration Graphic - Free-standing, spacious */}
             <div className="relative aspect-[16/10] rounded-xl overflow-hidden border border-neutral-800/80 bg-[#09090e] shadow-xl group-hover:border-emerald-400/50 transition-all duration-300">
