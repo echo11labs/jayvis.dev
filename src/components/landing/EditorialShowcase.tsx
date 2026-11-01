@@ -31,6 +31,7 @@ interface DialectSpec {
   description: string;
   features: string[];
   sampleCode: string;
+  image: string;
 }
 
 const DIALECTS: DialectSpec[] = [
@@ -40,6 +41,7 @@ const DIALECTS: DialectSpec[] = [
     code: 'PG',
     icon: PostgresLogo,
     version: 'PostgreSQL 14–17',
+    image: '/images/illustrations/dialect-postgres.jpg',
     description: 'Enterprise relational standard with native UUIDs, timezone timestamps, and cascade referential actions.',
     features: [
       'UUID primary keys with default gen_random_uuid()',
@@ -63,6 +65,7 @@ CREATE INDEX "idx_orders_user_id" ON "orders" ("user_id");`,
     code: 'SQ',
     icon: SqliteLogo,
     version: 'SQLite 3.40+ / Turso',
+    image: '/images/illustrations/dialect-sqlite.jpg',
     description: 'Zero-configuration serverless database with pragma enforcement and table transactional execution.',
     features: [
       'Enforces PRAGMA foreign_keys = ON',
@@ -88,6 +91,7 @@ CREATE INDEX "idx_orders_user_id" ON "orders" ("user_id");`,
     code: 'PR',
     icon: PrismaLogo,
     version: 'Prisma Schema v5+',
+    image: '/images/illustrations/dialect-prisma.jpg',
     description: 'Type-safe ORM schema mapping with relations, cascade attributes, and model mapping.',
     features: [
       'Native model relation attributes with onDelete: Cascade',
@@ -114,6 +118,7 @@ CREATE INDEX "idx_orders_user_id" ON "orders" ("user_id");`,
     code: 'SB',
     icon: SupabaseLogo,
     version: 'PostgreSQL + Auth',
+    image: '/images/illustrations/dialect-supabase.jpg',
     description: 'PostgreSQL tailored for Supabase projects with auth.users foreign key mapping and RLS scaffolding.',
     features: [
       'Direct references to auth.users identities',
@@ -137,6 +142,7 @@ ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;`,
     code: 'MY',
     icon: MysqlLogo,
     version: 'MySQL 8.0+ / MariaDB',
+    image: '/images/illustrations/dialect-mysql.jpg',
     description: 'InnoDB transactional table definitions with utf8mb4 collation and foreign key constraints.',
     features: [
       'InnoDB transactional storage engine',
@@ -239,24 +245,25 @@ export function EditorialShowcase() {
         </div>
 
         {/* ── Hero Architectural Matrix Showcase (Zero Container Box) ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center mb-24 sm:mb-32">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-start mb-24 sm:mb-32">
           
           {/* Left: Free-Standing Multi-Dialect Illustration */}
           <div className="lg:col-span-6 flex flex-col items-center justify-center">
             <div className="relative aspect-[16/9] w-full group">
               <Image
-                src="/images/illustrations/capability-multi-dialect-matrix.jpg"
-                alt="Multi-Dialect Polyglot Compiler Hub Matrix"
+                key={selectedDialect.id}
+                src={selectedDialect.image}
+                alt={`${selectedDialect.name} compiler engine module`}
                 fill
                 sizes="(max-width: 1024px) 100vw, 50vw"
-                className="object-contain object-center [mask-image:radial-gradient(ellipse_80%_70%_at_50%_50%,#000_50%,transparent_95%)] group-hover:scale-[1.02] transition-transform duration-700"
+                className="object-contain object-center [mask-image:radial-gradient(ellipse_80%_70%_at_50%_50%,#000_50%,transparent_95%)] group-hover:scale-[1.02] transition-all duration-500"
                 priority
               />
             </div>
 
             <div className="mt-4 flex items-center gap-2 font-mono text-[11px] text-neutral-500">
               <span className="w-1.5 h-1.5 rounded-full bg-[#D2FF00]" />
-              <span>FIG 03 // COMPILER MATRIX — 5 SYNCHRONOUS TARGET ENGINES</span>
+              <span>FIG 03 // {selectedDialect.code} COMPILER ENGINE — {selectedDialect.version.toUpperCase()}</span>
             </div>
           </div>
 
@@ -302,11 +309,11 @@ export function EditorialShowcase() {
               </span>
             </div>
 
-            <p className="text-sm text-neutral-400 leading-relaxed mb-5">
+            <p className="text-sm text-neutral-400 leading-relaxed mb-5 min-h-[44px]">
               {selectedDialect.description}
             </p>
 
-            {/* Code Output Window: Clean & Unboxed */}
+            {/* Code Output Window: Locked Height to Prevent Layout Shift */}
             <div className="border border-neutral-800/80 rounded-lg bg-neutral-950/90 overflow-hidden mb-6">
               <div className="border-b border-neutral-800/80 px-4 py-2 flex items-center justify-between font-mono text-xs text-neutral-400 bg-neutral-900/60">
                 <span className="text-white font-bold text-[11px]">emitted_{selectedDialect.id}.sql</span>
@@ -329,7 +336,7 @@ export function EditorialShowcase() {
                 </button>
               </div>
 
-              <div className="p-4 font-mono text-xs leading-relaxed overflow-x-auto text-neutral-200">
+              <div className="p-4 font-mono text-xs leading-relaxed overflow-x-auto text-neutral-200 h-[270px] overflow-y-auto">
                 <pre className="text-neutral-300 text-[11px] leading-relaxed">{selectedDialect.sampleCode}</pre>
               </div>
 
