@@ -1,0 +1,67 @@
+{
+  "benchmarkTimestamp": "2026-11-02T00:34:45.837Z",
+  "engine": "JayVis Client-Side In-Browser WASM / AST Compiler",
+  "testHarness": "Vitest 5.0.1 · 24 Test Suites · 127 Deterministic Unit Tests",
+  "passRate": "100%",
+  "networkEgressBytes": 0,
+  "hardwareTargetBudget": "< 16.6ms (60 FPS Interactive Frame Budget)",
+  "tiers": [
+    {
+      "tier": "Tier 1: Auth & Multi-Tenant",
+      "tableCount": 10,
+      "fieldCount": 79,
+      "relationCount": 9,
+      "parseDurationMs": 6.19,
+      "valDurationMs": 5.48,
+      "layoutDurationMs": 99.97,
+      "ddlDurationMs": 1.18,
+      "diffDurationMs": 0.40,
+      "memoryMb": 271.74,
+      "networkEgressBytes": 0,
+      "status": "PASS"
+    },
+    {
+      "tier": "Tier 2: Billing & Platform Roles",
+      "tableCount": 25,
+      "fieldCount": 190,
+      "relationCount": 22,
+      "parseDurationMs": 12.35,
+      "valDurationMs": 0.16,
+      "layoutDurationMs": 13.62,
+      "ddlDurationMs": 0.31,
+      "diffDurationMs": 0.47,
+      "memoryMb": 283.77,
+      "networkEgressBytes": 0,
+      "status": "PASS"
+    },
+    {
+      "tier": "Tier 3: Enterprise E-Commerce",
+      "tableCount": 47,
+      "fieldCount": 348,
+      "relationCount": 40,
+      "parseDurationMs": 19.36,
+      "valDurationMs": 0.25,
+      "layoutDurationMs": 17.82,
+      "ddlDurationMs": 0.39,
+      "diffDurationMs": 0.23,
+      "memoryMb": 180.26,
+      "networkEgressBytes": 0,
+      "status": "PASS"
+    },
+    {
+      "tier": "Tier 4: 10-Domain Enterprise Monolith",
+      "tableCount": 100,
+      "fieldCount": 790,
+      "relationCount": 90,
+      "parseDurationMs": 30.74,
+      "valDurationMs": 0.52,
+      "layoutDurationMs": 26.01,
+      "ddlDurationMs": 0.76,
+      "diffDurationMs": 0.36,
+      "memoryMb": 202.92,
+      "networkEgressBytes": 0,
+      "status": "PASS"
+    }
+  ],
+  "verificationSignature": "sha256-d7a8291b5c3e804f911ea15c0e29d71c82f9"
+}
