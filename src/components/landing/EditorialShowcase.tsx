@@ -7,15 +7,10 @@ import {
   ArrowRight,
   Check,
   Copy,
-  Cpu,
-  Download,
   Gauge,
-  HardDrive,
-  Laptop,
   Layers,
   ShieldCheck,
   Activity,
-  Terminal,
 } from 'lucide-react';
 
 import {
@@ -527,218 +522,134 @@ export function EditorialShowcase() {
 
         </div>
 
-        {/* ── Measured Performance Benchmarks: Holographic Telemetry Suite ── */}
-        <div id="benchmarks" className="pt-20 border-t border-neutral-800/80">
+        {/* ── Benchmarks & Measured Performance ── */}
+        <div id="benchmarks" className="pt-24 border-t border-neutral-800/80">
           
-          {/* Telemetry Header */}
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-8">
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <span className="w-2 h-2 rounded-full bg-[#D2FF00] animate-pulse" />
-                <p className="font-mono text-xs sm:text-[13px] font-semibold tracking-[0.2em] uppercase text-[#D2FF00]">
-                  MEASURED PERFORMANCE // HOLOGRAPHIC TELEMETRY
-                </p>
-              </div>
-              <h3 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-white leading-tight">
-                Tested against real-world production complexity.
-              </h3>
-              <p className="mt-2 text-sm text-neutral-400 max-w-2xl leading-relaxed">
-                Empirically measured client-side performance across circular schemas, deep composite indexes, off-thread ELK topologies, and zero-egress WASM sandboxes.
+          {/* Section Header */}
+          <div className="max-w-3xl mb-12 sm:mb-16">
+            <div className="inline-flex items-center gap-2 mb-3">
+              <span className="w-2 h-2 rounded-full bg-[#D2FF00]" />
+              <p className="font-mono text-xs sm:text-[13px] font-semibold tracking-[0.2em] uppercase text-[#D2FF00]">
+                BENCHMARKS
               </p>
             </div>
-            
-            {/* Live Rig Status Chip */}
-            <div className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-neutral-900/90 border border-neutral-800 text-neutral-300 font-mono text-[11px] shrink-0">
-              <span className="w-2 h-2 rounded-full bg-[#D2FF00] animate-pulse" />
-              <span>TEST BED: APPLE M4 PRO · 12-CORE · ZERO EGRESS</span>
+
+            <h3 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white leading-tight">
+              Engineered for instantaneous response.
+            </h3>
+
+            <p className="mt-4 text-base sm:text-lg text-neutral-400 font-normal leading-relaxed text-balance">
+              Every AST modification, layout calculation, and DDL export runs locally in browser memory. No server round-trips, no debounce delay, and zero schema data leaving your device.
+            </p>
+
+            {/* Hardware Test Rig Meta Line */}
+            <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 font-mono text-xs text-neutral-400">
+              <span className="text-neutral-300">Profiled on {DEVICE_RIG.processor} ({DEVICE_RIG.cores})</span>
+              <span className="text-neutral-600 hidden sm:inline">·</span>
+              <span>macOS · Node v22 / V8 12.4</span>
+              <span className="text-neutral-600 hidden sm:inline">·</span>
+              <span className="text-emerald-400">127/127 tests passing</span>
+              <span className="text-neutral-600 hidden sm:inline">·</span>
+              <a
+                href="/data/benchmark-telemetry.json"
+                download="jayvis-benchmark-telemetry.json"
+                className="text-[#D2FF00] hover:underline underline-offset-4 inline-flex items-center gap-1 font-semibold"
+              >
+                <span>Download raw telemetry (.json)</span>
+                <ArrowRight className="w-3 h-3" />
+              </a>
             </div>
           </div>
 
-          {/* ── Hardware Device & Environment Rig Strip ── */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
-            {/* Processor */}
-            <div className="p-3.5 rounded-xl bg-neutral-950/80 border border-neutral-800/80 hover:border-neutral-700 transition-colors">
-              <div className="flex items-center gap-2 mb-1.5">
-                <Cpu className="w-3.5 h-3.5 text-[#D2FF00]" />
-                <span className="font-mono text-[9px] uppercase tracking-wider text-neutral-500 font-semibold">TEST PROCESSOR</span>
-              </div>
-              <div className="font-mono text-xs font-bold text-white truncate">{DEVICE_RIG.processor}</div>
-              <div className="font-mono text-[10px] text-neutral-400 truncate">{DEVICE_RIG.cores} · {DEVICE_RIG.arch}</div>
-            </div>
-
-            {/* RAM */}
-            <div className="p-3.5 rounded-xl bg-neutral-950/80 border border-neutral-800/80 hover:border-neutral-700 transition-colors">
-              <div className="flex items-center gap-2 mb-1.5">
-                <HardDrive className="w-3.5 h-3.5 text-sky-400" />
-                <span className="font-mono text-[9px] uppercase tracking-wider text-neutral-500 font-semibold">UNIFIED MEMORY</span>
-              </div>
-              <div className="font-mono text-xs font-bold text-white truncate">{DEVICE_RIG.ram}</div>
-              <div className="font-mono text-[10px] text-neutral-400 truncate">In-Memory Heap: ~178MB (Peak)</div>
-            </div>
-
-            {/* Runtime */}
-            <div className="p-3.5 rounded-xl bg-neutral-950/80 border border-neutral-800/80 hover:border-neutral-700 transition-colors">
-              <div className="flex items-center gap-2 mb-1.5">
-                <Terminal className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="font-mono text-[9px] uppercase tracking-wider text-neutral-500 font-semibold">EXECUTION RUNTIME</span>
-              </div>
-              <div className="font-mono text-xs font-bold text-white truncate">{DEVICE_RIG.runtime}</div>
-              <div className="font-mono text-[10px] text-neutral-400 truncate">{DEVICE_RIG.os} · WASM SIMD</div>
-            </div>
-
-            {/* Test Harness */}
-            <div className="p-3.5 rounded-xl bg-neutral-950/80 border border-neutral-800/80 hover:border-neutral-700 transition-colors">
-              <div className="flex items-center gap-2 mb-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-[#D2FF00]" />
-                <span className="font-mono text-[9px] uppercase tracking-wider text-neutral-500 font-semibold">TEST INTEGRITY</span>
-              </div>
-              <div className="font-mono text-xs font-bold text-white truncate">24 Suites · 127 Tests</div>
-              <div className="font-mono text-[10px] text-emerald-400 font-semibold truncate">100% Pass · 0 Outbound Egress</div>
-            </div>
-          </div>
-
-          {/* ── Holographic HUD Cockpit / Visualizer Console ── */}
-          <div className="relative w-full rounded-2xl border border-neutral-800/80 bg-gradient-to-b from-neutral-900/40 via-[#050507]/90 to-neutral-950/90 backdrop-blur-xl p-6 sm:p-8 lg:p-10 mb-10 shadow-[0_0_60px_rgba(210,255,0,0.04)] overflow-hidden group">
+          {/* ── Benchmark Showcase Panel ── */}
+          <div className="relative w-full rounded-2xl border border-neutral-800 bg-[#09090e] p-6 sm:p-8 lg:p-10 mb-16 shadow-2xl">
             
-            {/* Top Luminous Laser Edge */}
-            <div className="absolute top-0 left-8 right-8 h-px bg-gradient-to-r from-transparent via-[#D2FF00]/50 to-transparent pointer-events-none" />
-
-            {/* Ambient Holographic Glow */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] bg-[radial-gradient(ellipse_at_center,rgba(210,255,0,0.04),transparent_70%)] blur-2xl pointer-events-none" />
-
-            {/* Subtle Holographic Scanline Texture */}
-            <div 
-              className="absolute inset-0 pointer-events-none opacity-20"
-              style={{
-                backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(210, 255, 0, 0.05) 3px, rgba(210, 255, 0, 0.05) 4px)',
-              }}
-            />
-
-            {/* Reticle Corner Crosshairs */}
-            <span className="absolute top-3 left-4 font-mono text-[10px] text-neutral-600 select-none">+ [DEVICE: APPLE_M4_PRO]</span>
-            <span className="absolute top-3 right-4 font-mono text-[10px] text-neutral-600 select-none">[CALIBRATED: 100%] +</span>
-            <span className="absolute bottom-3 left-4 font-mono text-[10px] text-neutral-600 select-none">+ [WASM 64-BIT SIMD]</span>
-            <span className="absolute bottom-3 right-4 font-mono text-[10px] text-neutral-600 select-none">[AIR-GAPPED: 0 BYTES] +</span>
-
-            {/* HUD Status Bar */}
-            <div className="relative z-10 flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-neutral-800/80 mb-8">
-              <div className="flex items-center gap-3">
-                <div className="p-1.5 rounded bg-[#D2FF00]/10 text-[#D2FF00] border border-[#D2FF00]/30">
-                  <CurrentBenchmarkIcon className="w-4 h-4" />
+            {/* Panel Top Bar: Tab Switcher */}
+            <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-neutral-800 mb-8">
+              <div>
+                <div className="text-base sm:text-lg font-bold text-white">
+                  {currentBenchmark.label}
                 </div>
-                <div>
-                  <div className="font-mono text-xs font-bold uppercase tracking-wider text-white">
-                    {currentBenchmark.label}
-                  </div>
-                  <div className="font-mono text-[10px] text-neutral-500">
-                    MODULE: {currentBenchmark.tag} // {currentBenchmark.sublabel}
-                  </div>
+                <div className="text-xs text-neutral-400 font-normal">
+                  {currentBenchmark.sublabel}
                 </div>
               </div>
 
-              {/* Mode Selector Tabs & Verification Hash */}
-              <div className="flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  onClick={handleCopyHash}
-                  className="hidden xl:inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-neutral-900/90 border border-neutral-800 hover:border-neutral-700 text-neutral-400 hover:text-white font-mono text-[10px] transition-colors"
-                  title="Click to copy SHA-256 verification signature"
-                >
-                  {copiedHash ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-neutral-500" />}
-                  <span>SHA-256: d7a8291b...</span>
-                </button>
-
-                <div className="flex items-center gap-1.5 p-1 rounded-lg bg-neutral-900/80 border border-neutral-800 font-mono text-[10px]">
-                  {BENCHMARKS.map((b, idx) => (
-                    <button
-                      key={b.id}
-                      type="button"
-                      onClick={() => setActiveBenchmark(idx)}
-                      className={`px-2.5 py-1 rounded transition-all font-bold uppercase tracking-wider ${
-                        activeBenchmark === idx
-                          ? 'bg-[#D2FF00] text-black shadow-[0_0_12px_rgba(210,255,0,0.3)]'
-                          : 'text-neutral-400 hover:text-white hover:bg-neutral-800/60'
-                      }`}
-                    >
-                      0{idx + 1} // {b.id.toUpperCase()}
-                    </button>
-                  ))}
-                </div>
+              {/* Clean Segmented Tabs */}
+              <div className="flex flex-wrap items-center gap-1 p-1 rounded-lg bg-neutral-900 border border-neutral-800 font-mono text-xs">
+                {BENCHMARKS.map((b, idx) => (
+                  <button
+                    key={b.id}
+                    type="button"
+                    onClick={() => setActiveBenchmark(idx)}
+                    className={`px-3 py-1.5 rounded transition-all font-medium ${
+                      activeBenchmark === idx
+                        ? 'bg-[#D2FF00] text-black font-semibold shadow-sm'
+                        : 'text-neutral-400 hover:text-white hover:bg-neutral-800/60'
+                    }`}
+                  >
+                    {b.label}
+                  </button>
+                ))}
               </div>
             </div>
 
-            {/* HUD Core Display: Interactive Telemetry Visualizer */}
-            <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+            {/* Panel Content Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
               
-              {/* Left Stage: Holographic Vector Visualizer */}
+              {/* Left Column: Visual Presentation */}
               <div className="lg:col-span-7 flex flex-col justify-center">
                 
-                {/* Visualizer 0: Incremental AST Parse */}
+                {/* View 0: AST Parse Latency Curve */}
                 {activeBenchmark === 0 && (
                   <div className="w-full flex flex-col">
-                    {/* Header + Tier Switcher */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 font-mono text-xs text-neutral-400 mb-3">
-                      <span className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#D2FF00]" />
-                        <span>EMPIRICAL LATENCY ON {DEVICE_RIG.processor.toUpperCase()} (10 → 100 TABLES)</span>
+                    
+                    {/* Tier Pills */}
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="font-mono text-xs text-neutral-400">
+                        Schema complexity tier:
                       </span>
-                      {/* Tier Pills */}
-                      <div className="flex flex-wrap items-center gap-1.5 p-1 rounded-lg bg-neutral-900 border border-neutral-800 text-[10px]">
+                      <div className="flex items-center gap-1 p-1 rounded-lg bg-neutral-900 border border-neutral-800 text-xs font-mono">
                         {EMPIRICAL_TIERS.map((tier, idx) => (
                           <button
                             key={tier.id}
                             type="button"
                             onClick={() => setSelectedTier(idx)}
-                            className={`px-2.5 py-1 rounded font-mono transition-all flex items-center gap-1.5 ${
+                            className={`px-2.5 py-1 rounded transition-colors ${
                               selectedTier === idx
-                                ? 'bg-[#D2FF00] text-black shadow-[0_0_8px_rgba(210,255,0,0.3)] font-bold'
-                                : 'text-neutral-400 hover:text-white hover:bg-neutral-800/60'
+                                ? 'bg-neutral-800 text-white font-semibold'
+                                : 'text-neutral-400 hover:text-white'
                             }`}
                           >
-                            <span>{tier.badge}</span>
-                            <span className={selectedTier === idx ? 'text-black/80 font-normal' : 'text-[#D2FF00] font-normal'}>
-                              {tier.parseMs}ms
-                            </span>
+                            {tier.tables} Tables
                           </button>
                         ))}
                       </div>
                     </div>
 
-                    {/* SVG Empirical Latency Curve */}
-                    <div className="relative h-48 sm:h-56 w-full bg-neutral-950/90 rounded-xl border border-neutral-800/90 p-4 sm:p-5 overflow-hidden flex items-end">
-                      {/* Grid Ticks */}
-                      <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
-                      
-                      {/* Threshold Line at 16.6ms (60FPS Frame Budget) */}
-                      <div className="absolute top-[52%] left-0 right-0 border-t border-dashed border-[#D2FF00]/40 flex items-center justify-between px-3 pointer-events-none">
-                        <span className="font-mono text-[9px] text-[#D2FF00] uppercase tracking-wider font-semibold">
-                          16.6ms (60 FPS Frame Budget)
-                        </span>
-                        <span className="font-mono text-[9px] text-emerald-400 uppercase font-semibold">
-                          Zero Frame Drop Safe
-                        </span>
+                    {/* SVG Curve Container */}
+                    <div className="relative h-48 sm:h-56 w-full bg-[#050508] rounded-xl border border-neutral-800/80 p-5 overflow-hidden flex items-end">
+                      {/* Subtle Grid Guidelines */}
+                      <div className="absolute top-[25%] left-0 right-0 border-t border-neutral-800/60 px-3 flex items-center justify-between pointer-events-none">
+                        <span className="font-mono text-[10px] text-neutral-500">30ms</span>
                       </div>
-
-                      {/* Threshold Line at 8.3ms (120FPS ProMotion Budget) */}
-                      <div className="absolute top-[71%] left-0 right-0 border-t border-dotted border-emerald-400/30 flex items-center justify-between px-3 pointer-events-none">
-                        <span className="font-mono text-[9px] text-emerald-400/80 uppercase tracking-wider">
-                          8.3ms (120 FPS ProMotion Target)
-                        </span>
-                        <span className="font-mono text-[9px] text-emerald-400/80 uppercase">
-                          Tier 1 Cleared
-                        </span>
+                      <div className="absolute top-[52%] left-0 right-0 border-t border-dashed border-[#D2FF00]/30 px-3 flex items-center justify-between pointer-events-none">
+                        <span className="font-mono text-[10px] text-[#D2FF00]/80">16.6ms — 60 FPS frame budget</span>
+                        <span className="font-mono text-[10px] text-emerald-400/80">Sub-frame safe</span>
+                      </div>
+                      <div className="absolute top-[75%] left-0 right-0 border-t border-neutral-800/60 px-3 flex items-center justify-between pointer-events-none">
+                        <span className="font-mono text-[10px] text-neutral-500">10ms</span>
                       </div>
 
                       <svg className="w-full h-full overflow-visible" viewBox="0 0 400 120" preserveAspectRatio="none">
                         <defs>
-                          <linearGradient id="waveGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#D2FF00" stopOpacity="0.35" />
-                            <stop offset="60%" stopColor="#D2FF00" stopOpacity="0.08" />
+                          <linearGradient id="cleanCurveGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#D2FF00" stopOpacity="0.2" />
                             <stop offset="100%" stopColor="#D2FF00" stopOpacity="0.0" />
                           </linearGradient>
                         </defs>
 
-                        {/* Empirical Benchmark Curve */}
+                        {/* Smooth Line */}
                         <path
                           d="M 45 87 C 95 80, 110 68, 145 66 C 185 64, 210 65, 250 65 C 290 65, 315 32, 355 26"
                           fill="none"
@@ -748,73 +659,52 @@ export function EditorialShowcase() {
                         />
                         <path
                           d="M 45 87 C 95 80, 110 68, 145 66 C 185 64, 210 65, 250 65 C 290 65, 315 32, 355 26 L 355 115 L 45 115 Z"
-                          fill="url(#waveGrad)"
+                          fill="url(#cleanCurveGrad)"
                         />
 
-                        {/* All 4 Data Points */}
+                        {/* Tiers Points */}
                         {tierCoords.map((coord, idx) => {
                           const isCur = selectedTier === idx;
                           return (
-                            <g key={idx} onClick={() => setSelectedTier(idx)} className="cursor-pointer group/node">
-                              {/* Vertical Drop Line */}
-                              <line
-                                x1={coord.cx}
-                                y1={coord.cy}
-                                x2={coord.cx}
-                                y2="115"
-                                stroke={isCur ? '#D2FF00' : 'rgba(255,255,255,0.12)'}
-                                strokeDasharray={isCur ? 'none' : '2 2'}
-                                strokeWidth={isCur ? '1.5' : '1'}
-                              />
-                              {/* Coordinate Dot */}
+                            <g key={idx} onClick={() => setSelectedTier(idx)} className="cursor-pointer">
                               <circle
                                 cx={coord.cx}
                                 cy={coord.cy}
-                                r={isCur ? 5.5 : 4}
-                                fill={isCur ? '#D2FF00' : '#141418'}
+                                r={isCur ? 5 : 3.5}
+                                fill={isCur ? '#D2FF00' : '#050508'}
                                 stroke={isCur ? '#ffffff' : '#D2FF00'}
                                 strokeWidth={isCur ? '2' : '1.5'}
-                                className="transition-transform group-hover/node:scale-125"
                               />
-                              {/* Bottom Table Count Label */}
                               <text
                                 x={coord.cx}
                                 y="112"
                                 textAnchor="middle"
-                                fill={isCur ? '#D2FF00' : '#737373'}
+                                fill={isCur ? '#D2FF00' : '#666666'}
                                 fontSize="9"
                                 fontFamily="monospace"
                                 fontWeight={isCur ? 'bold' : 'normal'}
                               >
-                                {coord.label}
+                                {coord.tables}T
                               </text>
                             </g>
                           );
                         })}
 
-                        {/* Active Point Highlight Pulse & Tooltip */}
-                        <circle
-                          cx={activeCoord.cx}
-                          cy={activeCoord.cy}
-                          r="10"
-                          fill="#D2FF00"
-                          className="animate-ping opacity-60 pointer-events-none"
-                        />
+                        {/* Selected Tier Callout */}
                         <g pointerEvents="none">
                           <rect
-                            x={activeCoord.cx - 28}
-                            y={activeCoord.cy - 24}
-                            width="56"
-                            height="18"
+                            x={activeCoord.cx - 24}
+                            y={activeCoord.cy - 22}
+                            width="48"
+                            height="16"
                             rx="3"
-                            fill="#000000"
+                            fill="#141416"
                             stroke="#D2FF00"
-                            strokeWidth="1.2"
-                            className="shadow-lg"
+                            strokeWidth="1"
                           />
                           <text
                             x={activeCoord.cx}
-                            y={activeCoord.cy - 12}
+                            y={activeCoord.cy - 11}
                             textAnchor="middle"
                             fill="#D2FF00"
                             fontSize="9"
@@ -827,247 +717,165 @@ export function EditorialShowcase() {
                       </svg>
                     </div>
 
-                    {/* Empirical Sub-bar & Proof Download */}
-                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 font-mono text-[11px] text-neutral-400">
-                      <div className="flex items-center gap-2">
-                        <span className="text-white font-bold">{currentTier.name}:</span>
-                        <span>{currentTier.fields} fields</span>
-                        <span className="text-neutral-600">·</span>
-                        <span>{currentTier.relations} relations</span>
-                        <span className="text-neutral-600">·</span>
-                        <span className="text-[#D2FF00] font-bold">{currentTier.parseMs}ms parse</span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={handleCopyHash}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-neutral-900 border border-neutral-800 hover:border-neutral-700 text-neutral-400 hover:text-white transition-colors text-[10px]"
-                          title="Copy SHA-256 Checksum"
-                        >
-                          {copiedHash ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-neutral-400" />}
-                          <span>SHA-256</span>
-                        </button>
-
-                        <a
-                          href="/data/benchmark-telemetry.json"
-                          download="jayvis-benchmark-telemetry.json"
-                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-neutral-900/90 border border-neutral-700/80 hover:border-[#D2FF00]/60 text-neutral-300 hover:text-white transition-all text-[10px] font-semibold"
-                          title="Download verified Vitest telemetry JSON file with device specifications"
-                        >
-                          <Download className="w-3 h-3 text-[#D2FF00]" />
-                          <span>RAW PROOF (.JSON)</span>
-                        </a>
-                      </div>
+                    <div className="mt-3 flex items-center justify-between font-mono text-xs text-neutral-500">
+                      <span>{currentTier.name}: {currentTier.fields} fields · {currentTier.relations} relationships</span>
+                      <span className="text-[#D2FF00] font-semibold">{currentTier.parseMs}ms parse</span>
                     </div>
                   </div>
                 )}
 
-                {/* Visualizer 1: Spatial 47-Table Layout */}
+                {/* View 1: Layout */}
                 {activeBenchmark === 1 && (
                   <div className="w-full flex flex-col">
-                    <div className="flex items-center justify-between font-mono text-xs text-neutral-400 mb-2">
-                      <span className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#D2FF00]" />
-                        ELK ORTHOGONAL TOPOLOGY GRID
-                      </span>
-                      <span className="text-[#D2FF00] font-bold">47 TABLES · 40 FK RELATIONS · 18.42ms</span>
-                    </div>
-
-                    {/* Holographic Radar / Spatial Nodes */}
-                    <div className="relative h-48 sm:h-56 w-full bg-neutral-950/80 rounded-lg border border-neutral-800/80 p-4 overflow-hidden flex items-center justify-center">
-                      <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:28px_28px] pointer-events-none" />
-                      
-                      {/* Simulated Wireframe Nodes */}
+                    <div className="relative h-48 sm:h-56 w-full bg-[#050508] rounded-xl border border-neutral-800/80 p-5 overflow-hidden flex items-center justify-center">
                       <svg className="w-full h-full" viewBox="0 0 360 140">
-                        {/* Orthogonal Edges */}
-                        <path d="M 60 70 L 130 70 L 130 35 L 200 35" fill="none" stroke="#D2FF00" strokeWidth="1.5" strokeDasharray="3 3" />
+                        <path d="M 60 70 L 130 70 L 130 35 L 200 35" fill="none" stroke="#D2FF00" strokeWidth="1.5" />
                         <path d="M 60 70 L 130 70 L 130 105 L 200 105" fill="none" stroke="#D2FF00" strokeWidth="1.5" />
                         <path d="M 200 35 L 260 35 L 260 70 L 310 70" fill="none" stroke="#D2FF00" strokeWidth="1.5" />
-                        <path d="M 200 105 L 260 105 L 260 70 L 310 70" fill="none" stroke="#D2FF00" strokeWidth="1.5" strokeDasharray="3 3" />
-                        
-                        {/* Node Rectangles */}
-                        <rect x="25" y="55" width="50" height="30" rx="3" fill="#141416" stroke="#D2FF00" strokeWidth="1.5" />
-                        <rect x="180" y="20" width="55" height="30" rx="3" fill="#141416" stroke="#D2FF00" strokeWidth="1.5" />
-                        <rect x="180" y="90" width="55" height="30" rx="3" fill="#141416" stroke="#D2FF00" strokeWidth="1.5" />
-                        <rect x="290" y="55" width="50" height="30" rx="3" fill="#141416" stroke="#D2FF00" strokeWidth="1.5" />
+                        <path d="M 200 105 L 260 105 L 260 70 L 310 70" fill="none" stroke="#D2FF00" strokeWidth="1.5" />
 
-                        {/* Node Labels */}
-                        <text x="50" y="73" textAnchor="middle" fill="#ffffff" fontSize="8" fontFamily="monospace">users</text>
-                        <text x="207" y="38" textAnchor="middle" fill="#ffffff" fontSize="8" fontFamily="monospace">orders</text>
-                        <text x="207" y="108" textAnchor="middle" fill="#ffffff" fontSize="8" fontFamily="monospace">roles</text>
-                        <text x="315" y="73" textAnchor="middle" fill="#ffffff" fontSize="8" fontFamily="monospace">items</text>
+                        <rect x="25" y="55" width="55" height="30" rx="4" fill="#141418" stroke="#333" strokeWidth="1" />
+                        <rect x="180" y="20" width="55" height="30" rx="4" fill="#141418" stroke="#333" strokeWidth="1" />
+                        <rect x="180" y="90" width="55" height="30" rx="4" fill="#141418" stroke="#333" strokeWidth="1" />
+                        <rect x="290" y="55" width="55" height="30" rx="4" fill="#141418" stroke="#333" strokeWidth="1" />
 
-                        {/* Node Pulse Points */}
-                        <circle cx="50" cy="70" r="2.5" fill="#D2FF00" />
+                        <text x="52" y="73" textAnchor="middle" fill="#ccc" fontSize="9" fontFamily="monospace">users</text>
+                        <text x="207" y="38" textAnchor="middle" fill="#ccc" fontSize="9" fontFamily="monospace">orders</text>
+                        <text x="207" y="108" textAnchor="middle" fill="#ccc" fontSize="9" fontFamily="monospace">roles</text>
+                        <text x="317" y="73" textAnchor="middle" fill="#ccc" fontSize="9" fontFamily="monospace">items</text>
+
+                        <circle cx="52" cy="70" r="2.5" fill="#D2FF00" />
                         <circle cx="207" cy="35" r="2.5" fill="#D2FF00" />
                         <circle cx="207" cy="105" r="2.5" fill="#D2FF00" />
-                        <circle cx="315" cy="70" r="2.5" fill="#D2FF00" />
+                        <circle cx="317" cy="70" r="2.5" fill="#D2FF00" />
                       </svg>
-
-                      {/* HUD Overlay Label */}
-                      <div className="absolute bottom-3 left-4 px-2 py-0.5 rounded bg-neutral-900/90 border border-neutral-800 font-mono text-[9px] text-neutral-300">
-                        WARMUP: 104.37ms · HOT LAYOUT: 18.42ms (47T) / 26.39ms (100T) · 0ms UI BLOCK
-                      </div>
                     </div>
 
-                    <div className="flex items-center justify-between font-mono text-[10px] text-neutral-500 mt-2">
-                      <span>ORIGIN: (0, 0)</span>
-                      <span>WEB WORKER ISOLATION: 100% OFF-THREAD</span>
-                      <span>BOUNDS: (3400px × 2200px)</span>
+                    <div className="mt-3 flex items-center justify-between font-mono text-xs text-neutral-500">
+                      <span>ELK Routing Engine · Web Worker Thread</span>
+                      <span className="text-[#D2FF00] font-semibold">18.42ms (47 Tables)</span>
                     </div>
                   </div>
                 )}
 
-                {/* Visualizer 2: Verified Automated Tests */}
+                {/* View 2: Tests */}
                 {activeBenchmark === 2 && (
                   <div className="w-full flex flex-col">
-                    <div className="flex items-center justify-between font-mono text-xs text-neutral-400 mb-2">
-                      <span className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                        DETERMINISTIC TEST INTEGRITY MATRIX
-                      </span>
-                      <span className="text-emerald-400 font-bold">24 SUITES · 127 TESTS PASSING</span>
-                    </div>
-
-                    {/* Holographic Matrix of Passing Tests */}
-                    <div className="relative h-48 sm:h-56 w-full bg-neutral-950/80 rounded-lg border border-neutral-800/80 p-5 overflow-hidden flex flex-col justify-between">
+                    <div className="relative h-48 sm:h-56 w-full bg-[#050508] rounded-xl border border-neutral-800/80 p-5 overflow-hidden flex flex-col justify-between">
                       <div className="grid grid-cols-6 sm:grid-cols-12 gap-2">
                         {Array.from({ length: 24 }).map((_, i) => (
                           <div
                             key={i}
-                            className="h-7 rounded bg-emerald-400/15 border border-emerald-400/40 flex items-center justify-center transition-all hover:bg-emerald-400 hover:scale-105"
-                            title={`Test Suite #${i + 1} - 100% Pass`}
+                            className="h-7 rounded bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center font-mono text-[9px] text-emerald-400 font-semibold"
                           >
-                            <span className="font-mono text-[9px] text-emerald-300 font-bold">S{i + 1}</span>
+                            S{i + 1}
                           </div>
                         ))}
                       </div>
 
-                      <div className="pt-3 border-t border-neutral-800/80 flex items-center justify-between font-mono text-[10px]">
-                        <span className="text-neutral-400">VITEST 5.0.1 + PGLITE WASM</span>
-                        <span className="text-emerald-400 font-bold flex items-center gap-1.5">
-                          <Check className="w-3.5 h-3.5" /> ZERO FLAKINESS DETECTED
+                      <div className="pt-3 border-t border-neutral-800 flex items-center justify-between font-mono text-xs text-neutral-400">
+                        <span>24 suites · 127 assertions</span>
+                        <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                          <Check className="w-3.5 h-3.5" /> 100% Passing in 2.72s
                         </span>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between font-mono text-[10px] text-neutral-500 mt-2">
-                      <span>SUITES: 24 VERIFIED</span>
-                      <span>TOTAL ASSERTIONS: 127 TESTS</span>
-                      <span>DURATION: 2.72s TOTAL</span>
+                    <div className="mt-3 flex items-center justify-between font-mono text-xs text-neutral-500">
+                      <span>Vitest 5.0.1 + PGlite WASM Harness</span>
+                      <span className="text-white">Deterministic Results</span>
                     </div>
                   </div>
                 )}
 
-                {/* Visualizer 3: Zero Network Egress */}
+                {/* View 3: Egress */}
                 {activeBenchmark === 3 && (
                   <div className="w-full flex flex-col">
-                    <div className="flex items-center justify-between font-mono text-xs text-neutral-400 mb-2">
-                      <span className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#D2FF00]" />
-                        AIR-GAPPED CLIENT PERIMETER
-                      </span>
-                      <span className="text-[#D2FF00] font-bold">0.00 KB TRANSMITTED</span>
-                    </div>
-
-                    {/* Holographic Concentric Security Radar */}
-                    <div className="relative h-48 sm:h-56 w-full bg-neutral-950/80 rounded-lg border border-neutral-800/80 p-4 overflow-hidden flex items-center justify-center">
-                      <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:28px_28px] pointer-events-none" />
-                      
-                      {/* Concentric Rings */}
-                      <div className="w-36 h-36 rounded-full border border-neutral-800 flex items-center justify-center">
-                        <div className="w-24 h-24 rounded-full border border-[#D2FF00]/30 flex items-center justify-center">
-                          <div className="w-12 h-12 rounded-full border border-[#D2FF00] bg-[#D2FF00]/10 flex items-center justify-center shadow-[0_0_15px_rgba(210,255,0,0.3)]">
-                            <Activity className="w-5 h-5 text-[#D2FF00]" />
-                          </div>
+                    <div className="relative h-48 sm:h-56 w-full bg-[#050508] rounded-xl border border-neutral-800/80 p-5 overflow-hidden flex items-center justify-center">
+                      <div className="text-center max-w-sm">
+                        <div className="w-12 h-12 rounded-full bg-neutral-900 border border-neutral-800 flex items-center justify-center mx-auto mb-3">
+                          <Activity className="w-5 h-5 text-[#D2FF00]" />
                         </div>
-                      </div>
-
-                      <div className="absolute bottom-3 left-4 px-2 py-0.5 rounded bg-neutral-900/90 border border-neutral-800 font-mono text-[9px] text-neutral-300">
-                        AIR-GAPPED: {DEVICE_RIG.processor} · 0 OUTBOUND SOCKETS · ZERO TRACKERS
+                        <div className="text-xl font-bold text-white mb-1">0 Bytes Outbound</div>
+                        <p className="text-xs text-neutral-400 leading-relaxed">
+                          All parsing, layout calculations, and database connection strings stay in browser memory.
+                        </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between font-mono text-[10px] text-neutral-500 mt-2">
-                      <span>SANDBOX: BROWSER MEMORY</span>
-                      <span>CLIENT-SIDE STORAGE ONLY</span>
-                      <span>EGRESS: 0 BYTES</span>
+                    <div className="mt-3 flex items-center justify-between font-mono text-xs text-neutral-500">
+                      <span>Local-First Runtime</span>
+                      <span className="text-emerald-400 font-semibold">100% Air-Gapped</span>
                     </div>
                   </div>
                 )}
 
               </div>
 
-              {/* Right Stage: Detailed Telemetry Breakdown & Gauges */}
+              {/* Right Column: Key Measurement Details */}
               <div className="lg:col-span-5 flex flex-col justify-between space-y-6">
                 <div>
-                  <div className="flex items-center justify-between font-mono text-xs mb-3">
-                    <span className="text-neutral-400">MEASURED TELEMETRY</span>
-                    <span className="px-2 py-0.5 rounded bg-[#D2FF00]/10 text-[#D2FF00] font-bold text-[10px]">
-                      {activeBenchmark === 0 ? `< 35ms (100 TABLES)` : currentBenchmark.telemetry.target}
-                    </span>
+                  <div className="text-xs font-mono uppercase tracking-wider text-neutral-500 mb-2">
+                    MEASURED DURATION
                   </div>
-
-                  {/* Big Number */}
+                  
                   <div className="text-4xl sm:text-5xl font-mono font-bold text-white tracking-tight mb-2">
                     {activeBenchmark === 0 ? `${currentTier.parseMs}ms` : currentBenchmark.stat}
                   </div>
 
-                  <p className="text-xs sm:text-sm text-neutral-400 font-sans leading-relaxed mb-6">
+                  <p className="text-sm text-neutral-400 leading-relaxed mb-6">
                     {activeBenchmark === 0
-                      ? `Empirically verified in-browser on ${currentTier.name} (${currentTier.tables} tables, ${currentTier.fields} fields, ${currentTier.relations} relationships). Re-tokenizes on every keystroke.`
+                      ? `Empirically measured on ${currentTier.name} (${currentTier.tables} tables, ${currentTier.fields} fields, ${currentTier.relations} relationships). Re-tokenizes on every keystroke.`
                       : currentBenchmark.context}
                   </p>
 
-                  {/* Telemetry Breakdown Bars */}
+                  {/* Clean Execution Breakdown */}
                   <div className="space-y-3 font-mono text-xs">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">
-                      SYSTEM EXECUTION BREAKDOWN:
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
+                      Execution Breakdown:
                     </div>
 
                     {activeBenchmark === 0 ? (
                       <>
                         <div className="space-y-1">
-                          <div className="flex justify-between text-[11px]">
-                            <span className="text-neutral-300">Lexer Character Tokenization</span>
-                            <span className="text-[#D2FF00] font-bold">{(currentTier.parseMs * 0.22).toFixed(2)}ms</span>
+                          <div className="flex justify-between text-neutral-300">
+                            <span>Lexer Character Tokenization</span>
+                            <span className="font-semibold text-white">{(currentTier.parseMs * 0.22).toFixed(2)}ms</span>
                           </div>
-                          <div className="w-full h-1.5 rounded-full bg-neutral-900 overflow-hidden border border-neutral-800">
-                            <div className="h-full bg-gradient-to-r from-[#D2FF00]/70 to-[#D2FF00] rounded-full transition-all duration-500" style={{ width: '22%' }} />
-                          </div>
-                        </div>
-                        <div className="space-y-1">
-                          <div className="flex justify-between text-[11px]">
-                            <span className="text-neutral-300">Incremental Lezer AST Construction</span>
-                            <span className="text-[#D2FF00] font-bold">{(currentTier.parseMs * 0.48).toFixed(2)}ms</span>
-                          </div>
-                          <div className="w-full h-1.5 rounded-full bg-neutral-900 overflow-hidden border border-neutral-800">
-                            <div className="h-full bg-gradient-to-r from-[#D2FF00]/70 to-[#D2FF00] rounded-full transition-all duration-500" style={{ width: '48%' }} />
+                          <div className="w-full h-1 bg-neutral-800 rounded-full overflow-hidden">
+                            <div className="h-full bg-[#D2FF00] rounded-full" style={{ width: '22%' }} />
                           </div>
                         </div>
+
                         <div className="space-y-1">
-                          <div className="flex justify-between text-[11px]">
-                            <span className="text-neutral-300">Relational Graph & Index Sync</span>
-                            <span className="text-[#D2FF00] font-bold">{(currentTier.parseMs * 0.30).toFixed(2)}ms</span>
+                          <div className="flex justify-between text-neutral-300">
+                            <span>Lezer AST Construction</span>
+                            <span className="font-semibold text-white">{(currentTier.parseMs * 0.48).toFixed(2)}ms</span>
                           </div>
-                          <div className="w-full h-1.5 rounded-full bg-neutral-900 overflow-hidden border border-neutral-800">
-                            <div className="h-full bg-gradient-to-r from-[#D2FF00]/70 to-[#D2FF00] rounded-full transition-all duration-500" style={{ width: '30%' }} />
+                          <div className="w-full h-1 bg-neutral-800 rounded-full overflow-hidden">
+                            <div className="h-full bg-[#D2FF00] rounded-full" style={{ width: '48%' }} />
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-neutral-300">
+                            <span>Relational Graph & Index Sync</span>
+                            <span className="font-semibold text-white">{(currentTier.parseMs * 0.30).toFixed(2)}ms</span>
+                          </div>
+                          <div className="w-full h-1 bg-neutral-800 rounded-full overflow-hidden">
+                            <div className="h-full bg-[#D2FF00] rounded-full" style={{ width: '30%' }} />
                           </div>
                         </div>
                       </>
                     ) : (
                       currentBenchmark.telemetry.breakdown.map((item, idx) => (
                         <div key={idx} className="space-y-1">
-                          <div className="flex justify-between text-[11px]">
-                            <span className="text-neutral-300">{item.name}</span>
-                            <span className="text-[#D2FF00] font-bold">{item.val}</span>
+                          <div className="flex justify-between text-neutral-300">
+                            <span>{item.name}</span>
+                            <span className="font-semibold text-white">{item.val}</span>
                           </div>
-                          <div className="w-full h-1.5 rounded-full bg-neutral-900 overflow-hidden border border-neutral-800">
-                            <div
-                              className="h-full bg-gradient-to-r from-[#D2FF00]/70 to-[#D2FF00] rounded-full transition-all duration-500"
-                              style={{ width: `${Math.max(item.pct, 4)}%` }}
-                            />
+                          <div className="w-full h-1 bg-neutral-800 rounded-full overflow-hidden">
+                            <div className="h-full bg-[#D2FF00] rounded-full" style={{ width: `${Math.max(item.pct, 6)}%` }} />
                           </div>
                         </div>
                       ))
@@ -1075,11 +883,16 @@ export function EditorialShowcase() {
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-neutral-800/80 flex items-center justify-between font-mono text-[10px] text-neutral-500">
-                  <span>DETERMINISTIC VERIFICATION</span>
-                  <span className="text-[#D2FF00] font-semibold">
-                    {activeBenchmark === 0 ? `${currentTier.status} · 0 BYTES EGRESS` : currentBenchmark.telemetry.actual}
-                  </span>
+                <div className="pt-4 border-t border-neutral-800 flex items-center justify-between font-mono text-xs text-neutral-500">
+                  <span>Audit Signature:</span>
+                  <button
+                    type="button"
+                    onClick={handleCopyHash}
+                    className="hover:text-white transition-colors inline-flex items-center gap-1"
+                  >
+                    {copiedHash ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-neutral-400" />}
+                    <span>{DEVICE_RIG.checksum.slice(0, 16)}...</span>
+                  </button>
                 </div>
               </div>
 
@@ -1087,60 +900,55 @@ export function EditorialShowcase() {
 
           </div>
 
-          {/* ── 4 Interactive Holographic Metric Cards ── */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            {BENCHMARKS.map((b, idx) => {
-              const BenchmarkIcon = b.icon;
-              const isSelected = activeBenchmark === idx;
-              return (
-                <button
-                  key={b.id}
-                  type="button"
-                  onClick={() => setActiveBenchmark(idx)}
-                  className={`text-left relative p-5 sm:p-6 rounded-xl transition-all duration-300 group ${
-                    isSelected
-                      ? 'bg-gradient-to-b from-[#D2FF00]/10 via-neutral-900/60 to-neutral-950 border border-[#D2FF00]/60 shadow-[0_0_24px_rgba(210,255,0,0.12)]'
-                      : 'bg-neutral-950/60 border border-neutral-800/80 hover:border-neutral-700 hover:bg-neutral-900/40'
-                  }`}
-                >
-                  {/* Top Glowing Laser Accent on active card */}
-                  {isSelected && (
-                    <div className="absolute top-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-[#D2FF00] to-transparent pointer-events-none" />
-                  )}
+          {/* ── 4 Clean Value Points (Unboxed, Open Rhythm) ── */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-10 pt-8 border-t border-neutral-800/80">
+            <div>
+              <div className="font-mono text-xs font-semibold text-[#D2FF00] uppercase tracking-wider mb-2">
+                01 / SUB-FRAME SPEED
+              </div>
+              <h4 className="text-base sm:text-lg font-bold text-white mb-2">
+                Sub-16ms Keystroke Parse
+              </h4>
+              <p className="text-sm text-neutral-400 leading-relaxed">
+                Incremental Lezer LALR parser computes AST changes on every keystroke in browser memory with zero UI debounce lag.
+              </p>
+            </div>
 
-                  <div className="flex items-center justify-between mb-3">
-                    <div className={`p-1.5 rounded transition-colors ${
-                      isSelected ? 'bg-[#D2FF00] text-black' : 'bg-neutral-900 border border-neutral-800 text-neutral-400 group-hover:text-white'
-                    }`}>
-                      <BenchmarkIcon className="w-3.5 h-3.5" />
-                    </div>
-                    <span className="font-mono text-[10px] text-neutral-500 font-bold uppercase tracking-wider">
-                      [{b.tag}]
-                    </span>
-                  </div>
+            <div>
+              <div className="font-mono text-xs font-semibold text-sky-400 uppercase tracking-wider mb-2">
+                02 / OFF-THREAD LAYOUT
+              </div>
+              <h4 className="text-base sm:text-lg font-bold text-white mb-2">
+                Isolated Web Worker
+              </h4>
+              <p className="text-sm text-neutral-400 leading-relaxed">
+                ELK orthogonal layout routing runs in a background thread, keeping canvas navigation and pan/zoom at a rock-solid 60–120 FPS.
+              </p>
+            </div>
 
-                  <div className="text-2xl sm:text-3xl font-mono font-bold tracking-tight text-white mb-1.5">
-                    {b.stat}
-                  </div>
+            <div>
+              <div className="font-mono text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-2">
+                03 / DETERMINISTIC INTEGRITY
+              </div>
+              <h4 className="text-base sm:text-lg font-bold text-white mb-2">
+                127 Verified Tests
+              </h4>
+              <p className="text-sm text-neutral-400 leading-relaxed">
+                Automated test suites pass across circular references, composite keys, and SQL DDL compilers with 100% reproducible results.
+              </p>
+            </div>
 
-                  <div className="font-mono text-[11px] font-bold uppercase tracking-wider text-[#D2FF00] mb-2">
-                    {b.label}
-                  </div>
-
-                  <p className="text-xs text-neutral-400 font-sans leading-relaxed line-clamp-2">
-                    {b.context}
-                  </p>
-
-                  {/* Micro-telemetry status tick */}
-                  <div className="mt-4 pt-3 border-t border-neutral-800/60 flex items-center justify-between font-mono text-[10px] text-neutral-500">
-                    <span>{b.telemetry.target}</span>
-                    <span className={`font-semibold ${isSelected ? 'text-[#D2FF00]' : 'text-neutral-400'}`}>
-                      {isSelected ? '● ACTIVE HUD' : 'INSPECT →'}
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
+            <div>
+              <div className="font-mono text-xs font-semibold text-[#D2FF00] uppercase tracking-wider mb-2">
+                04 / COMPLETE PRIVACY
+              </div>
+              <h4 className="text-base sm:text-lg font-bold text-white mb-2">
+                100% Air-Gapped Egress
+              </h4>
+              <p className="text-sm text-neutral-400 leading-relaxed">
+                Zero credentials transmitted, zero server indexing, and zero telemetry beacons. Your schema never leaves your machine.
+              </p>
+            </div>
           </div>
 
         </div>
