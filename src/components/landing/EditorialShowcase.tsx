@@ -430,129 +430,153 @@ export function EditorialShowcase() {
             </div>
           </div>
 
-          {/* 4 Grand Architectural Metric Columns (Zero Box Wrappers) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 sm:gap-12 lg:gap-8 pb-20 sm:pb-28 border-b border-neutral-800/80">
+          {/* ── Hero Performance Rig Showcase: 3D Hardware Graphic + 4 Telemetry Metrics ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center mb-20 sm:mb-28">
             
-            {/* Stat 01 */}
-            <div className="flex flex-col justify-between group">
-              <div>
-                <div className="flex items-center justify-between pb-3 border-b border-neutral-800/80 mb-4">
-                  <span className="font-mono text-xs font-semibold text-[#D2FF00] uppercase tracking-wider">
-                    01 // PARSER
-                  </span>
-                  <span className="px-2 py-0.5 rounded-full bg-[#D2FF00]/10 text-[#D2FF00] font-mono text-[10px] font-bold uppercase tracking-wider border border-[#D2FF00]/25">
-                    lezer lalr
-                  </span>
-                </div>
-
-                <div className="text-4xl sm:text-5xl lg:text-6xl font-mono font-bold tracking-tight text-white mb-3">
-                  &lt; 15ms
-                </div>
-
-                <h4 className="text-base font-bold text-white mb-2">
-                  Incremental AST Compilation
-                </h4>
-                <p className="text-sm text-neutral-400 leading-relaxed font-sans">
-                  Character-level diffing parses code edits on every keystroke in browser memory with zero UI debounce lag or frame drops.
-                </p>
+            {/* Left 6 Cols: Free-Standing 3D Hardware Benchmark Engine Graphic */}
+            <div className="lg:col-span-6 flex flex-col items-center justify-center">
+              <div className="relative aspect-[16/9] w-full group">
+                <Image
+                  src="/images/illustrations/measured-performance-engine.jpg"
+                  alt="JayVis In-Memory Execution Engine & High-Speed Benchmark Rig"
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 50vw"
+                  className="object-contain object-center [mask-image:radial-gradient(ellipse_80%_70%_at_50%_50%,#000_50%,transparent_95%)] group-hover:scale-[1.02] transition-transform duration-700"
+                  priority
+                />
               </div>
 
-              <div className="pt-6 font-mono text-[11px] text-neutral-500">
-                <span className="text-neutral-400">Mean Duration:</span> 8.7ms
+              <div className="mt-4 flex items-center gap-2 font-mono text-[11px] text-neutral-500">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#D2FF00]" />
+                <span>FIG 04 // JAYVIS IN-MEMORY EXECUTION ENGINE — CLIENT-SIDE AST BENCHMARK RIG</span>
               </div>
             </div>
 
-            {/* Stat 02 */}
-            <div className="flex flex-col justify-between group">
-              <div>
-                <div className="flex items-center justify-between pb-3 border-b border-neutral-800/80 mb-4">
-                  <span className="font-mono text-xs font-semibold text-sky-400 uppercase tracking-wider">
-                    02 // TOPOLOGY
-                  </span>
-                  <span className="px-2 py-0.5 rounded-full bg-sky-400/10 text-sky-400 font-mono text-[10px] font-bold uppercase tracking-wider border border-sky-400/25">
-                    elk engine
-                  </span>
+            {/* Right 6 Cols: 4 Telemetry Metric Blocks in a Clean 2x2 Grid */}
+            <div className="lg:col-span-6 grid grid-cols-1 sm:grid-cols-2 gap-8 lg:gap-10">
+              
+              {/* Stat 01: Incremental Parse */}
+              <div className="flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between pb-2.5 border-b border-neutral-800/80 mb-3">
+                    <span className="font-mono text-xs font-semibold text-[#D2FF00] uppercase tracking-wider">
+                      01 // PARSER
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-[#D2FF00]/10 text-[#D2FF00] font-mono text-[10px] font-bold uppercase tracking-wider border border-[#D2FF00]/25">
+                      lezer lalr
+                    </span>
+                  </div>
+
+                  <div className="text-3xl sm:text-4xl font-mono font-bold tracking-tight text-white mb-1.5">
+                    &lt; 15ms
+                  </div>
+
+                  <h4 className="text-sm font-bold text-white mb-1">
+                    Incremental AST Parse
+                  </h4>
+                  <p className="text-xs text-neutral-400 leading-relaxed font-sans">
+                    Character-level diffing parses code edits on every keystroke in browser memory with zero UI debounce lag.
+                  </p>
                 </div>
 
-                <div className="text-4xl sm:text-5xl lg:text-6xl font-mono font-bold tracking-tight text-white mb-3">
-                  &lt; 550ms
+                <div className="mt-4 pt-3 border-t border-neutral-800/60 font-mono text-[10px] text-neutral-500">
+                  <span className="text-neutral-400">Mean Duration:</span> 8.7ms
+                </div>
+              </div>
+
+              {/* Stat 02: Spatial Layout */}
+              <div className="flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between pb-2.5 border-b border-neutral-800/80 mb-3">
+                    <span className="font-mono text-xs font-semibold text-sky-400 uppercase tracking-wider">
+                      02 // TOPOLOGY
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-sky-400/10 text-sky-400 font-mono text-[10px] font-bold uppercase tracking-wider border border-sky-400/25">
+                      elk engine
+                    </span>
+                  </div>
+
+                  <div className="text-3xl sm:text-4xl font-mono font-bold tracking-tight text-white mb-1.5">
+                    &lt; 550ms
+                  </div>
+
+                  <h4 className="text-sm font-bold text-white mb-1">
+                    47-Table Auto-Layout
+                  </h4>
+                  <p className="text-xs text-neutral-400 leading-relaxed font-sans">
+                    Computes layered orthogonal routing across 118 foreign-key edges in an isolated background Web Worker.
+                  </p>
                 </div>
 
-                <h4 className="text-base font-bold text-white mb-2">
-                  47-Table Auto-Layout
-                </h4>
-                <p className="text-sm text-neutral-400 leading-relaxed font-sans">
-                  Computes layered orthogonal routing and port positioning across 118 foreign-key edges in an isolated background Web Worker.
-                </p>
+                <div className="mt-4 pt-3 border-t border-neutral-800/60 font-mono text-[10px] text-neutral-500">
+                  <span className="text-neutral-400">Mean Duration:</span> 412ms
+                </div>
               </div>
 
-              <div className="pt-6 font-mono text-[11px] text-neutral-500">
-                <span className="text-neutral-400">Mean Duration:</span> 412ms
-              </div>
-            </div>
+              {/* Stat 03: Test Coverage */}
+              <div className="flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between pb-2.5 border-b border-neutral-800/80 mb-3">
+                    <span className="font-mono text-xs font-semibold text-emerald-400 uppercase tracking-wider">
+                      03 // INTEGRITY
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-400/10 text-emerald-400 font-mono text-[10px] font-bold uppercase tracking-wider border border-emerald-400/25">
+                      vitest suite
+                    </span>
+                  </div>
 
-            {/* Stat 03 */}
-            <div className="flex flex-col justify-between group">
-              <div>
-                <div className="flex items-center justify-between pb-3 border-b border-neutral-800/80 mb-4">
-                  <span className="font-mono text-xs font-semibold text-emerald-400 uppercase tracking-wider">
-                    03 // INTEGRITY
-                  </span>
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-400/10 text-emerald-400 font-mono text-[10px] font-bold uppercase tracking-wider border border-emerald-400/25">
-                    vitest suite
-                  </span>
+                  <div className="text-3xl sm:text-4xl font-mono font-bold tracking-tight text-white mb-1.5">
+                    210 / 210
+                  </div>
+
+                  <h4 className="text-sm font-bold text-white mb-1">
+                    Automated Test Pass
+                  </h4>
+                  <p className="text-xs text-neutral-400 leading-relaxed font-sans">
+                    Automated verification suites across circular relationships, composite keys, SQL DDL, and safe diffs.
+                  </p>
                 </div>
 
-                <div className="text-4xl sm:text-5xl lg:text-6xl font-mono font-bold tracking-tight text-white mb-3">
-                  210 / 210
+                <div className="mt-4 pt-3 border-t border-neutral-800/60 font-mono text-[10px] text-neutral-500">
+                  <span className="text-emerald-400 font-semibold">100% Deterministic Pass</span>
+                </div>
+              </div>
+
+              {/* Stat 04: Air-Gapped Egress */}
+              <div className="flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between pb-2.5 border-b border-neutral-800/80 mb-3">
+                    <span className="font-mono text-xs font-semibold text-[#D2FF00] uppercase tracking-wider">
+                      04 // PRIVACY
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-[#D2FF00]/10 text-[#D2FF00] font-mono text-[10px] font-bold uppercase tracking-wider border border-[#D2FF00]/25">
+                      air-gapped
+                    </span>
+                  </div>
+
+                  <div className="text-3xl sm:text-4xl font-mono font-bold tracking-tight text-white mb-1.5">
+                    0 KB
+                  </div>
+
+                  <h4 className="text-sm font-bold text-white mb-1">
+                    Network Egress
+                  </h4>
+                  <p className="text-xs text-neutral-400 leading-relaxed font-sans">
+                    100% in-browser memory execution. Zero credentials transmitted, zero server indexing, zero telemetry.
+                  </p>
                 </div>
 
-                <h4 className="text-base font-bold text-white mb-2">
-                  Passing Automated Tests
-                </h4>
-                <p className="text-sm text-neutral-400 leading-relaxed font-sans">
-                  Rigorous automated verification suites across circular relationships, composite keys, SQL DDL roundtrips, and safe migration diffs.
-                </p>
-              </div>
-
-              <div className="pt-6 font-mono text-[11px] text-neutral-500">
-                <span className="text-emerald-400 font-semibold">100% Deterministic Pass</span>
-              </div>
-            </div>
-
-            {/* Stat 04 */}
-            <div className="flex flex-col justify-between group">
-              <div>
-                <div className="flex items-center justify-between pb-3 border-b border-neutral-800/80 mb-4">
-                  <span className="font-mono text-xs font-semibold text-[#D2FF00] uppercase tracking-wider">
-                    04 // PRIVACY
-                  </span>
-                  <span className="px-2 py-0.5 rounded-full bg-[#D2FF00]/10 text-[#D2FF00] font-mono text-[10px] font-bold uppercase tracking-wider border border-[#D2FF00]/25">
-                    air-gapped
-                  </span>
+                <div className="mt-4 pt-3 border-t border-neutral-800/60 font-mono text-[10px] text-neutral-500">
+                  <span className="text-[#D2FF00] font-semibold">Client-Side Memory Only</span>
                 </div>
-
-                <div className="text-4xl sm:text-5xl lg:text-6xl font-mono font-bold tracking-tight text-white mb-3">
-                  0 KB
-                </div>
-
-                <h4 className="text-base font-bold text-white mb-2">
-                  Network Egress
-                </h4>
-                <p className="text-sm text-neutral-400 leading-relaxed font-sans">
-                  100% in-browser memory execution. Zero database credentials transmitted, zero cloud relays, and zero telemetry tracking.
-                </p>
               </div>
 
-              <div className="pt-6 font-mono text-[11px] text-neutral-500">
-                <span className="text-[#D2FF00] font-semibold">Client-Side Memory Only</span>
-              </div>
             </div>
 
           </div>
 
           {/* Architectural Comparison Matrix */}
-          <div className="pt-16 sm:pt-20">
+          <div className="pt-16 sm:pt-20 border-t border-neutral-800/80">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
               <div>
                 <p className="font-mono text-xs font-semibold uppercase tracking-wider text-[#D2FF00] mb-1">
@@ -563,7 +587,7 @@ export function EditorialShowcase() {
                 </h4>
               </div>
               <span className="font-mono text-xs text-neutral-500">
-                FIG 04 // LATENCY &amp; PRIVACY AUDIT
+                FIG 05 // LATENCY &amp; PRIVACY AUDIT
               </span>
             </div>
 
