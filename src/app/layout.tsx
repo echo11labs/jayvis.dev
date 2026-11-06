@@ -26,6 +26,13 @@ export const metadata: Metadata = {
     siteName: "JayVis.dev",
     type: "website",
   },
+  icons: {
+    icon: [
+      { url: '/favicon-32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/logo.png', sizes: '192x192', type: 'image/png' },
+    ],
+    apple: [{ url: '/icon-192.png', sizes: '192x192', type: 'image/png' }],
+  },
 };
 
 export default function RootLayout({

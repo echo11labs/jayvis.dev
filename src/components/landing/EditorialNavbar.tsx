@@ -2,9 +2,9 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, ArrowUpRight, Github } from 'lucide-react';
-import { JayvisBrandIcon } from './Logos';
 
 interface EditorialNavbarProps {
   onOpenRecent?: () => void;
@@ -43,8 +43,15 @@ export function EditorialNavbar({ onOpenRecent }: EditorialNavbarProps) {
             href="/"
             className="flex items-center gap-2.5 px-6 sm:px-8 border-r border-neutral-800 hover:bg-neutral-900/50 transition-colors shrink-0 group"
           >
-            <motion.div whileHover={{ rotate: 90 }} transition={{ duration: 0.3 }}>
-              <JayvisBrandIcon className="w-6 h-6 shrink-0" />
+            <motion.div whileHover={{ scale: 1.08 }} transition={{ duration: 0.2 }}>
+              <Image
+                src="/logo.png"
+                alt="Jayvis Logo"
+                width={26}
+                height={26}
+                className="w-6 h-6 shrink-0 object-contain"
+                priority
+              />
             </motion.div>
             <span className="font-sans text-xl sm:text-2xl font-bold tracking-tight text-white">
               jayvis<span className="text-[#D2FF00]">.</span>

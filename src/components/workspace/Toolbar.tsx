@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -214,10 +215,16 @@ export function Toolbar({
       <div role="group" aria-label="Workspace" className="flex shrink-0 items-center gap-2.5">
         <Link
           href="/"
-          className="flex shrink-0 items-center gap-2 font-medium tracking-tight text-[var(--color-text-primary)] transition hover:opacity-80"
+          className="flex shrink-0 items-center gap-2 font-medium tracking-tight text-[var(--color-text-primary)] transition hover:opacity-80 group"
           title="Back to JayVis.dev Home"
         >
-          <span className="h-2 w-2 rounded-full bg-[var(--color-accent-primary)] shadow-[0_0_8px_var(--color-accent-primary)]" />
+          <Image
+            src="/logo.png"
+            alt="JayVis Logo"
+            width={16}
+            height={16}
+            className="w-4 h-4 shrink-0 object-contain group-hover:scale-105 transition-transform"
+          />
           JayVis.dev
         </Link>
         <button

@@ -2,9 +2,9 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion, useScroll, useTransform, useSpring, useMotionValue, type Variants } from 'framer-motion';
 import { ArrowUpRight, Github, FileText, ArrowRight } from 'lucide-react';
-import { JayvisBrandIcon } from './Logos';
 
 interface LineData {
   phase: number;
@@ -267,7 +267,13 @@ export function EditorialFooter() {
         >
           <div className="space-y-2">
             <Link href="/" className="inline-flex items-center gap-2.5 group">
-              <JayvisBrandIcon className="w-5 h-5 text-white group-hover:text-[#D2FF00] transition-colors" />
+              <Image
+                src="/logo.png"
+                alt="Jayvis Logo"
+                width={22}
+                height={22}
+                className="w-5 h-5 shrink-0 object-contain group-hover:scale-105 transition-transform"
+              />
               <span className="font-sans text-xl font-bold tracking-tight text-white">
                 jayvis<span className="text-[#D2FF00]">.</span>
               </span>

@@ -136,10 +136,14 @@ export function JayvisDocs() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           
           {/* Brand Logo */}
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-7 h-7 rounded bg-gray-900 text-white flex items-center justify-center font-bold text-sm tracking-wider">
-              J
-            </div>
+          <Link href="/" className="flex items-center gap-2.5 group">
+            <Image
+              src="/logo-dark.png"
+              alt="Jayvis Logo"
+              width={26}
+              height={26}
+              className="w-6 h-6 shrink-0 object-contain group-hover:scale-105 transition-transform"
+            />
             <span className="font-bold text-lg tracking-tight text-gray-900">
               JAYVIS
             </span>

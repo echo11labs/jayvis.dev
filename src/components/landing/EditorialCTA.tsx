@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   ArrowRight,
   Check,
@@ -9,7 +10,6 @@ import {
   Terminal,
   ExternalLink,
 } from 'lucide-react';
-import { JayvisBrandIcon } from './Logos';
 
 export function EditorialCTA() {
   const [copied, setCopied] = useState(false);
@@ -41,7 +41,13 @@ export function EditorialCTA() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20 lg:py-24 bg-white flex flex-col items-center text-center">
         <div className="max-w-3xl">
           <div className="inline-flex items-center gap-2.5 border border-black bg-neutral-50 px-3.5 py-1.5 mb-6 font-mono text-xs text-neutral-700 uppercase tracking-widest shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-            <JayvisBrandIcon className="w-4 h-4 shrink-0" />
+            <Image
+              src="/logo-dark.png"
+              alt="Jayvis Logo"
+              width={16}
+              height={16}
+              className="w-4 h-4 shrink-0 object-contain"
+            />
             <span className="font-bold">INSTANT ACCESS // ZERO SIGNUP</span>
           </div>
 
