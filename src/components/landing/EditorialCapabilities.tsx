@@ -3,6 +3,8 @@
 import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { motion, type Variants } from 'framer-motion';
+import { ImageReveal } from './ImageReveal';
 import {
   ArrowRight,
   Code2,
@@ -11,17 +13,22 @@ import {
   Cpu,
   Sparkles,
   GitMerge,
-  Terminal,
-  Layers,
-  ShieldCheck,
-  CheckCircle2,
 } from 'lucide-react';
 
 export function EditorialCapabilities() {
+  const systemVariants: Variants = {
+    hidden: { opacity: 0, y: 32 },
+    show: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1] },
+    },
+  };
+
   return (
     <section 
       id="capabilities" 
-      aria-label="Studio capabilities"
+      aria-label="Playground capabilities"
       className="relative w-full bg-[#050507] text-white border-t border-neutral-800/80 pt-24 sm:pt-32 pb-24 sm:pb-36 select-none overflow-hidden"
     >
       {/* Subtle schematic blueprint grid background */}
@@ -41,10 +48,16 @@ export function EditorialCapabilities() {
 
       <div className="relative z-10 max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8">
         
-        {/* ── Section Header ── */}
-        <div className="max-w-3xl mb-20 sm:mb-28">
+        {/* ── Section Header with Framer Motion ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-60px' }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="max-w-3xl mb-20 sm:mb-28"
+        >
           <div className="flex items-center gap-2 mb-3">
-            <span className="w-2 h-2 rounded-full bg-[#D2FF00]" />
+            <span className="w-2 h-2 rounded-full bg-[#D2FF00] animate-pulse" />
             <p className="font-mono text-xs sm:text-[13px] font-semibold tracking-[0.2em] uppercase text-[#D2FF00]">
               STUDIO CAPABILITIES // CORE ARCHITECTURE
             </p>
@@ -57,7 +70,7 @@ export function EditorialCapabilities() {
           <p className="mt-4 text-base sm:text-lg text-neutral-400 font-normal leading-relaxed text-balance">
             Three tightly integrated engineering systems designed for software architects who need mathematical precision without clunky UI overhead, cloud telemetry, or vendor lock-in.
           </p>
-        </div>
+        </motion.div>
 
         {/* ── 3 Expansive Architectural Systems ── */}
         <div className="space-y-24 sm:space-y-32 lg:space-y-36">
@@ -65,19 +78,27 @@ export function EditorialCapabilities() {
           {/* ══════════════════════════════════════════════════════════════════
               SYSTEM 01: THE REACTIVE AST ENGINE
               ══════════════════════════════════════════════════════════════════ */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
-            {/* Visual Graphic: Free-standing, borderless, transparent radial blending */}
+          <motion.div
+            variants={systemVariants}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, margin: '-60px' }}
+            className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center"
+          >
+            {/* Visual Graphic */}
             <div className="lg:col-span-7 order-2 lg:order-1 flex items-center justify-center">
-              <div className="relative aspect-[16/9] w-full group">
-                <Image
-                  src="/images/illustrations/capability-ast-sync.jpg"
-                  alt="System 01: Bidirectional AST Compiler & Parser Engine"
-                  fill
-                  sizes="(max-width: 1024px) 100vw, 58vw"
-                  className="object-contain object-center [mask-image:radial-gradient(ellipse_80%_70%_at_50%_50%,#000_50%,transparent_95%)] group-hover:scale-[1.02] transition-transform duration-700"
-                  priority
-                />
-              </div>
+              <ImageReveal delay={0.1} duration={0.9} parallaxOffset={16} className="w-full">
+                <div className="relative aspect-[16/9] w-full group cursor-pointer">
+                  <Image
+                    src="/images/illustrations/capability-ast-sync.jpg"
+                    alt="System 01: Bidirectional AST Compiler & Parser Engine"
+                    fill
+                    sizes="(max-width: 1024px) 100vw, 58vw"
+                    className="object-contain object-center [mask-image:radial-gradient(ellipse_80%_70%_at_50%_50%,#000_50%,transparent_95%)] group-hover:scale-[1.02] transition-transform duration-500"
+                    priority
+                  />
+                </div>
+              </ImageReveal>
             </div>
 
             {/* Content & Specs */}
@@ -143,12 +164,18 @@ export function EditorialCapabilities() {
                 </span>
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* ══════════════════════════════════════════════════════════════════
               SYSTEM 02: IN-BROWSER DATA & VERIFICATION STUDIO
               ══════════════════════════════════════════════════════════════════ */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
+          <motion.div
+            variants={systemVariants}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, margin: '-60px' }}
+            className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center"
+          >
             {/* Content & Specs */}
             <div className="lg:col-span-5 flex flex-col justify-center">
               <div className="flex items-center justify-between pb-3 border-b border-neutral-800/80 mb-6">
@@ -161,7 +188,7 @@ export function EditorialCapabilities() {
               </div>
 
               <h3 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight leading-snug mb-4">
-                Constraint-Aware Seeder &amp; SQL Studio
+                Constraint-Aware Seeder &amp; SQL Playground
               </h3>
 
               <p className="text-sm sm:text-base text-neutral-400 leading-relaxed mb-8">
@@ -213,35 +240,45 @@ export function EditorialCapabilities() {
               </div>
             </div>
 
-            {/* Visual Graphic: Free-standing, borderless, transparent radial blending */}
+            {/* Visual Graphic */}
             <div className="lg:col-span-7 flex items-center justify-center">
-              <div className="relative aspect-[16/9] w-full group">
-                <Image
-                  src="/images/illustrations/capability-sql-seeder.jpg"
-                  alt="System 02: Local Database Engine & Constraint Seeder"
-                  fill
-                  sizes="(max-width: 1024px) 100vw, 58vw"
-                  className="object-contain object-center [mask-image:radial-gradient(ellipse_80%_70%_at_50%_50%,#000_50%,transparent_95%)] group-hover:scale-[1.02] transition-transform duration-700"
-                />
-              </div>
+              <ImageReveal delay={0.1} duration={0.9} parallaxOffset={16} className="w-full">
+                <div className="relative aspect-[16/9] w-full group cursor-pointer">
+                  <Image
+                    src="/images/illustrations/capability-sql-seeder.jpg"
+                    alt="System 02: Local Database Engine & Constraint Seeder"
+                    fill
+                    sizes="(max-width: 1024px) 100vw, 58vw"
+                    className="object-contain object-center [mask-image:radial-gradient(ellipse_80%_70%_at_50%_50%,#000_50%,transparent_95%)] group-hover:scale-[1.02] transition-transform duration-500"
+                  />
+                </div>
+              </ImageReveal>
             </div>
-          </div>
+          </motion.div>
 
           {/* ══════════════════════════════════════════════════════════════════
               SYSTEM 03: AUTONOMOUS AGENT MESH & CANVAS INTELLIGENCE
               ══════════════════════════════════════════════════════════════════ */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
-            {/* Visual Graphic: Free-standing, borderless, transparent radial blending */}
+          <motion.div
+            variants={systemVariants}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, margin: '-60px' }}
+            className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center"
+          >
+            {/* Visual Graphic */}
             <div className="lg:col-span-7 order-2 lg:order-1 flex items-center justify-center">
-              <div className="relative aspect-[16/9] w-full group">
-                <Image
-                  src="/images/illustrations/capability-agent-mcp.jpg"
-                  alt="System 03: AI Agent Protocol & Local Stdio Pipe"
-                  fill
-                  sizes="(max-width: 1024px) 100vw, 58vw"
-                  className="object-contain object-center [mask-image:radial-gradient(ellipse_80%_70%_at_50%_50%,#000_50%,transparent_95%)] group-hover:scale-[1.02] transition-transform duration-700"
-                />
-              </div>
+              <ImageReveal delay={0.1} duration={0.9} parallaxOffset={16} className="w-full">
+                <div className="relative aspect-[16/9] w-full group cursor-pointer">
+                  <Image
+                    src="/images/illustrations/capability-agent-mcp.jpg"
+                    alt="System 03: AI Agent Protocol & Local Stdio Pipe"
+                    fill
+                    sizes="(max-width: 1024px) 100vw, 58vw"
+                    className="object-contain object-center [mask-image:radial-gradient(ellipse_80%_70%_at_50%_50%,#000_50%,transparent_95%)] group-hover:scale-[1.02] transition-transform duration-500"
+                  />
+                </div>
+              </ImageReveal>
             </div>
 
             {/* Content & Specs */}
@@ -307,12 +344,18 @@ export function EditorialCapabilities() {
                 </span>
               </div>
             </div>
-          </div>
+          </motion.div>
 
         </div>
 
         {/* ── Section Footer CTA ── */}
-        <div className="mt-24 sm:mt-32 pt-10 border-t border-neutral-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+          className="mt-24 sm:mt-32 pt-10 border-t border-neutral-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-6"
+        >
           <div className="flex items-center gap-3">
             <span className="w-2 h-2 rounded-full bg-[#D2FF00]" />
             <p className="font-mono text-xs text-neutral-400 uppercase tracking-wider">
@@ -324,10 +367,10 @@ export function EditorialCapabilities() {
             href="/app"
             className="font-mono text-xs sm:text-sm font-bold uppercase tracking-wider text-neutral-300 hover:text-white inline-flex items-center gap-2 transition-colors group"
           >
-            <span>Launch Studio &amp; Explore All Primitives</span>
+            <span>Launch Playground &amp; Explore All Primitives</span>
             <ArrowRight className="w-3.5 h-3.5 text-[#D2FF00] group-hover:translate-x-1.5 transition-transform" />
           </Link>
-        </div>
+        </motion.div>
 
       </div>
     </section>

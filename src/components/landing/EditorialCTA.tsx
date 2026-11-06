@@ -63,7 +63,7 @@ export function EditorialCTA() {
               href="/app"
               className="inline-flex items-center justify-center gap-2 bg-black hover:bg-neutral-800 text-white px-8 py-4 border border-black transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]"
             >
-              <span>Launch Studio Free</span>
+              <span>Launch Playground Free</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
 

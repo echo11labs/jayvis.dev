@@ -41,8 +41,12 @@ DBML_PARSER_URL=http://127.0.0.1:3031
 DBML_PARSER_TIMEOUT_MS=5000
 EOF
 fi
-if ! grep -q '^JAYVIS_PUBLIC_HOSTS=' "$STAGE/.env"; then
-  printf '\nJAYVIS_PUBLIC_HOSTS=%s\n' "${JAYVIS_PUBLIC_HOSTS:-35.202.154.195}" >>"$STAGE/.env"
+if grep -q '^JAYVIS_PUBLIC_HOSTS=' "$STAGE/.env"; then
+  if ! grep -q 'jayvis.echo11.tech' "$STAGE/.env"; then
+    sed -i 's/^JAYVIS_PUBLIC_HOSTS=.*/&,jayvis.echo11.tech/' "$STAGE/.env"
+  fi
+else
+  printf '\nJAYVIS_PUBLIC_HOSTS=%s\n' "${JAYVIS_PUBLIC_HOSTS:-35.202.154.195,jayvis.echo11.tech}" >>"$STAGE/.env"
 fi
 
 cd "$STAGE"

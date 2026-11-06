@@ -2,18 +2,30 @@
 
 import React from 'react';
 import Image from 'next/image';
-import {
-  FileCode2,
-  Network,
-  GitBranch,
-  Check,
-  ArrowRight,
-  Database,
-  ShieldCheck,
-  Layers,
-} from 'lucide-react';
+import { motion, type Variants } from 'framer-motion';
+import { ImageReveal } from './ImageReveal';
 
 export function EditorialWorkflow() {
+  const containerVariants: Variants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.15,
+        delayChildren: 0.1,
+      },
+    },
+  };
+
+  const itemVariants: Variants = {
+    hidden: { opacity: 0, y: 24 },
+    show: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] },
+    },
+  };
+
   return (
     <section
       id="workflow"
@@ -37,10 +49,16 @@ export function EditorialWorkflow() {
 
       <div className="relative z-10 max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8">
         
-        {/* ── Open, Breathable Section Header ── */}
-        <div className="max-w-2xl mb-16 sm:mb-20">
+        {/* ── Open, Breathable Section Header with Framer Motion ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-60px' }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="max-w-2xl mb-16 sm:mb-20"
+        >
           <div className="flex items-center gap-2 mb-3">
-            <span className="w-2 h-2 rounded-full bg-[#D2FF00]" />
+            <span className="w-2 h-2 rounded-full bg-[#D2FF00] animate-pulse" />
             <p className="font-mono text-xs sm:text-[13px] font-semibold tracking-[0.2em] uppercase text-[#D2FF00]">
               HOW IT WORKS
             </p>
@@ -53,13 +71,19 @@ export function EditorialWorkflow() {
           <p className="mt-4 text-base sm:text-lg text-neutral-400 font-normal leading-relaxed text-balance">
             Move seamlessly from raw schema definitions to visual relationship exploration and production-ready migrations—without switching tools.
           </p>
-        </div>
+        </motion.div>
 
-        {/* ── 3 Spacious Stages (No Nested Boxes) ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 lg:gap-8">
+        {/* ── 3 Spacious Stages Staggered Grid ── */}
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: '-40px' }}
+          className="grid grid-cols-1 lg:grid-cols-3 gap-12 lg:gap-8"
+        >
           
           {/* ── STAGE 01: DEFINE ── */}
-          <div className="flex flex-col group">
+          <motion.div variants={itemVariants} className="flex flex-col group">
             {/* Stage Indicator & Status Chip */}
             <div className="flex items-center justify-between mb-4">
               <p className="font-mono text-xs font-semibold tracking-widest uppercase text-[#D2FF00]">
@@ -70,16 +94,18 @@ export function EditorialWorkflow() {
               </span>
             </div>
 
-            {/* Illustration Graphic - Free-standing, transparent background, zero container box */}
-            <div className="relative aspect-[16/10] w-full flex items-center justify-center">
-              <Image
-                src="/images/illustrations/workflow-define-clean.jpg"
-                alt="Define Step: DBML code and schema definition"
-                fill
-                sizes="(max-width: 1024px) 100vw, 33vw"
-                className="object-contain object-center [mask-image:radial-gradient(ellipse_80%_70%_at_50%_50%,#000_45%,transparent_92%)] group-hover:scale-[1.03] transition-transform duration-500"
-              />
-            </div>
+            {/* Illustration Graphic with ImageReveal */}
+            <ImageReveal delay={0.1} className="w-full">
+              <div className="relative aspect-[16/10] w-full flex items-center justify-center cursor-pointer">
+                <Image
+                  src="/images/illustrations/workflow-define-clean.jpg"
+                  alt="Define Step: DBML code and schema definition"
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 33vw"
+                  className="object-contain object-center [mask-image:radial-gradient(ellipse_80%_70%_at_50%_50%,#000_45%,transparent_92%)]"
+                />
+              </div>
+            </ImageReveal>
 
             {/* Copy & Details */}
             <div className="mt-6">
@@ -103,10 +129,10 @@ export function EditorialWorkflow() {
                 </span>
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* ── STAGE 02: RESOLVE ── */}
-          <div className="flex flex-col group">
+          <motion.div variants={itemVariants} className="flex flex-col group">
             {/* Stage Indicator & Status Chip */}
             <div className="flex items-center justify-between mb-4">
               <p className="font-mono text-xs font-semibold tracking-widest uppercase text-sky-400">
@@ -117,16 +143,18 @@ export function EditorialWorkflow() {
               </span>
             </div>
 
-            {/* Illustration Graphic - Free-standing, transparent background, zero container box */}
-            <div className="relative aspect-[16/10] w-full flex items-center justify-center">
-              <Image
-                src="/images/illustrations/workflow-resolve-clean.jpg"
-                alt="Resolve Step: Interactive ERD visual canvas"
-                fill
-                sizes="(max-width: 1024px) 100vw, 33vw"
-                className="object-contain object-center [mask-image:radial-gradient(ellipse_80%_70%_at_50%_50%,#000_45%,transparent_92%)] group-hover:scale-[1.03] transition-transform duration-500"
-              />
-            </div>
+            {/* Illustration Graphic with ImageReveal */}
+            <ImageReveal delay={0.2} className="w-full">
+              <div className="relative aspect-[16/10] w-full flex items-center justify-center cursor-pointer">
+                <Image
+                  src="/images/illustrations/workflow-resolve-clean.jpg"
+                  alt="Resolve Step: Interactive ERD visual canvas"
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 33vw"
+                  className="object-contain object-center [mask-image:radial-gradient(ellipse_80%_70%_at_50%_50%,#000_45%,transparent_92%)]"
+                />
+              </div>
+            </ImageReveal>
 
             {/* Copy & Details */}
             <div className="mt-6">
@@ -150,10 +178,10 @@ export function EditorialWorkflow() {
                 </span>
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* ── STAGE 03: DEPLOY ── */}
-          <div className="flex flex-col group">
+          <motion.div variants={itemVariants} className="flex flex-col group">
             {/* Stage Indicator & Status Chip */}
             <div className="flex items-center justify-between mb-4">
               <p className="font-mono text-xs font-semibold tracking-widest uppercase text-emerald-400">
@@ -164,16 +192,18 @@ export function EditorialWorkflow() {
               </span>
             </div>
 
-            {/* Illustration Graphic - Free-standing, transparent background, zero container box */}
-            <div className="relative aspect-[16/10] w-full flex items-center justify-center">
-              <Image
-                src="/images/illustrations/workflow-deploy-clean.jpg"
-                alt="Deploy Step: Safe migration diffs and production DDL"
-                fill
-                sizes="(max-width: 1024px) 100vw, 33vw"
-                className="object-contain object-center [mask-image:radial-gradient(ellipse_80%_70%_at_50%_50%,#000_45%,transparent_92%)] group-hover:scale-[1.03] transition-transform duration-500"
-              />
-            </div>
+            {/* Illustration Graphic with ImageReveal */}
+            <ImageReveal delay={0.3} className="w-full">
+              <div className="relative aspect-[16/10] w-full flex items-center justify-center cursor-pointer">
+                <Image
+                  src="/images/illustrations/workflow-deploy-clean.jpg"
+                  alt="Deploy Step: Safe migration diffs and production DDL"
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 33vw"
+                  className="object-contain object-center [mask-image:radial-gradient(ellipse_80%_70%_at_50%_50%,#000_45%,transparent_92%)]"
+                />
+              </div>
+            </ImageReveal>
 
             {/* Copy & Details */}
             <div className="mt-6">
@@ -197,9 +227,9 @@ export function EditorialWorkflow() {
                 </span>
               </div>
             </div>
-          </div>
+          </motion.div>
 
-        </div>
+        </motion.div>
 
       </div>
     </section>

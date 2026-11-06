@@ -6,7 +6,7 @@
     "dev": "concurrently --kill-others-on-fail --names parser,web --prefix-colors magenta,cyan \"npm:dev:parser\" \"npm:dev:web\"",
     "dev:web": "next dev -p 3000",
     "dev:parser": "tsx watch mini-services/dbml-parser/index.ts",
-    "build": "prisma generate && next build",
+    "build": "prisma generate && next build --webpack",
     "start": "concurrently --kill-others-on-fail --names parser,web --prefix-colors magenta,cyan \"npm:start:parser\" \"npm:start:web\"",
     "start:web": "next start -p 3000",
     "start:parser": "tsx mini-services/dbml-parser/index.ts",
